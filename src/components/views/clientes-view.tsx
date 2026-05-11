@@ -39,6 +39,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, ChevronLeft, ChevronRight, Download, Users, Upload, Loader2 } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 
 interface Cliente {
@@ -82,6 +83,7 @@ export function ClientesView() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [importLoading, setImportLoading] = useState(false)
+  const [togglingStatusId, setTogglingStatusId] = useState<string | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement | null>(null)
 
   // Fetch rotas once
@@ -160,6 +162,40 @@ export function ClientesView() {
     }
   }
 
+  // Status toggle handler
+  const handleToggleStatus = async (clienteId: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'Ativo' ? 'Inativo' : 'Ativo'
+    setTogglingStatusId(clienteId)
+    // Optimistic update
+    setClientes((prev) =>
+      prev.map((c) => c.id === clienteId ? { ...c, status: newStatus } : c)
+    )
+    try {
+      const res = await fetch(`/api/clientes/${clienteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      if (res.ok) {
+        toast.success(`Cliente ${newStatus === 'Ativo' ? 'ativado' : 'desativado'} com sucesso`)
+      } else {
+        // Revert on failure
+        setClientes((prev) =>
+          prev.map((c) => c.id === clienteId ? { ...c, status: currentStatus } : c)
+        )
+        toast.error('Erro ao alterar status do cliente')
+      }
+    } catch {
+      // Revert on failure
+      setClientes((prev) =>
+        prev.map((c) => c.id === clienteId ? { ...c, status: currentStatus } : c)
+      )
+      toast.error('Erro ao alterar status do cliente')
+    } finally {
+      setTogglingStatusId(null)
+    }
+  }
+
   // CSV Import handler
   const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -200,7 +236,8 @@ export function ClientesView() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Clientes</h1>
-          <p className="text-muted-foreground text-sm">
+          <div className="gradient-line mt-2 w-32" />
+          <p className="text-muted-foreground text-sm mt-1">
             {total} cliente{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}
           </p>
         </div>
@@ -282,8 +319,13 @@ export function ClientesView() {
             <TableSkeleton />
           ) : clientes.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="h-20 w-20 rounded-2xl bg-muted/50 flex items-center justify-center mb-6">
-                <Users className="h-10 w-10 text-muted-foreground/50" />
+              <div className="relative mb-6">
+                <div className="h-20 w-20 rounded-2xl bg-muted/50 flex items-center justify-center">
+                  <Users className="h-10 w-10 text-muted-foreground/50" />
+                </div>
+                <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
+                  <Plus className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                </div>
               </div>
               <p className="text-lg font-semibold">Nenhum cliente encontrado</p>
               <p className="text-sm text-muted-foreground mt-1 max-w-xs">
@@ -314,7 +356,7 @@ export function ClientesView() {
                 {clientes.map((cliente) => (
                   <TableRow
                     key={cliente.id}
-                    className={`cursor-pointer hover:bg-muted/50 transition-colors ${cliente.status === 'Ativo' ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-red-400'}`}
+                    className={`cursor-pointer hover:bg-muted/50 hover:shadow-sm transition-all ${cliente.status === 'Ativo' ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-red-400'}`}
                     onClick={() => navigate('cliente-detalhe', cliente.id)}
                   >
                     <TableCell className="font-medium">{cliente.identificador}</TableCell>
@@ -341,7 +383,16 @@ export function ClientesView() {
                         : '—'}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={cliente.status} />
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={cliente.status === 'Ativo'}
+                          disabled={togglingStatusId === cliente.id}
+                          onCheckedChange={() => handleToggleStatus(cliente.id, cliente.status)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-400"
+                        />
+                        <StatusBadge status={cliente.status} size="pill" />
+                      </div>
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>

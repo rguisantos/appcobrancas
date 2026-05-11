@@ -62,6 +62,52 @@ export async function PUT(
   }
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getAuthSession()
+  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+
+  const { id } = await params
+  const existing = await db.cliente.findFirst({ where: { id, deletedAt: null } })
+  if (!existing) return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
+
+  try {
+    const body = await request.json()
+    const allowedFields = ['status']
+    const updateData: Record<string, unknown> = {}
+    for (const key of allowedFields) {
+      if (body[key] !== undefined) updateData[key] = body[key]
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: 'Nenhum campo válido para atualizar' }, { status: 400 })
+    }
+
+    const antes = existing as Record<string, unknown>
+    const cliente = await db.cliente.update({
+      where: { id },
+      data: { ...updateData, version: { increment: 1 } },
+    })
+
+    await registrarAuditoria({
+      usuarioId: session.userId,
+      acao: 'atualizar_cliente',
+      entidade: 'cliente',
+      entidadeId: cliente.id,
+      entidadeNome: cliente.nomeExibicao,
+      antes,
+      depois: updateData as Record<string, unknown>,
+      severidade: 'info',
+    })
+
+    return NextResponse.json(cliente)
+  } catch {
+    return NextResponse.json({ error: 'Erro ao atualizar cliente' }, { status: 500 })
+  }
+}
+
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

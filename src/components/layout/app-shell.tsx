@@ -112,6 +112,9 @@ export function AppShell() {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [pendingCount, setPendingCount] = useState<number | null>(null)
+  const [overdueCount, setOverdueCount] = useState<number | null>(null)
+  const [prevPendingCount, setPrevPendingCount] = useState<number | null>(null)
+  const [prevOverdueCount, setPrevOverdueCount] = useState<number | null>(null)
 
   const permissoesWeb = user?.permissoesWeb || {}
   const isAdmin = user?.tipoPermissao === 'Administrador'
@@ -161,20 +164,33 @@ export function AppShell() {
     }
   }, [mobileOpen])
 
-  // Fetch pending cobranças count
+  // Fetch pending and overdue cobranças count
   useEffect(() => {
-    async function fetchPending() {
+    async function fetchCounts() {
       try {
-        const res = await fetch('/api/cobrancas?status=Pendente&limit=1')
-        if (res.ok) {
-          const data = await res.json()
-          setPendingCount(data.total || data.pagination?.total || 0)
+        const [pendRes, atrasRes] = await Promise.all([
+          fetch('/api/cobrancas?status=Pendente&limit=1'),
+          fetch('/api/cobrancas?status=Atrasado&limit=1'),
+        ])
+
+        if (pendRes.ok) {
+          const data = await pendRes.json()
+          const newCount = data.total || data.pagination?.total || 0
+          setPrevPendingCount(pendingCount)
+          setPendingCount(newCount)
+        }
+
+        if (atrasRes.ok) {
+          const data = await atrasRes.json()
+          const newCount = data.total || data.pagination?.total || 0
+          setPrevOverdueCount(overdueCount)
+          setOverdueCount(newCount)
         }
       } catch {
         // silently ignore
       }
     }
-    fetchPending()
+    fetchCounts()
   }, [currentView])
 
   return (
@@ -390,22 +406,54 @@ export function AppShell() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="px-4 py-3 border-t"
+            className="px-4 py-3 border-t space-y-2"
           >
             <div className="rounded-lg bg-gradient-to-br from-emerald-50 to-emerald-100/80 dark:from-emerald-950/50 dark:to-emerald-900/30 p-3 border border-emerald-200/50 dark:border-emerald-800/30">
-              <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-1">Cobranças Pendentes</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Cobranças Pendentes</p>
+                {pendingCount !== null && prevPendingCount !== null && pendingCount !== prevPendingCount && (
+                  <span className={`text-[10px] font-semibold flex items-center gap-0.5 ${
+                    pendingCount < prevPendingCount ? 'text-emerald-600' : 'text-amber-600'
+                  }`}>
+                    {pendingCount < prevPendingCount ? '↓' : '↑'}
+                    {Math.abs(pendingCount - prevPendingCount)}
+                  </span>
+                )}
+              </div>
               <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
                 {pendingCount !== null ? pendingCount : '--'}
+              </p>
+            </div>
+            <div className="rounded-lg bg-gradient-to-br from-red-50 to-amber-50/80 dark:from-red-950/50 dark:to-amber-900/20 p-3 border border-red-200/50 dark:border-red-800/30">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-red-700 dark:text-red-400">Cobranças Atrasadas</p>
+                {overdueCount !== null && prevOverdueCount !== null && overdueCount !== prevOverdueCount && (
+                  <span className={`text-[10px] font-semibold flex items-center gap-0.5 ${
+                    overdueCount < prevOverdueCount ? 'text-emerald-600' : 'text-red-600'
+                  }`}>
+                    {overdueCount < prevOverdueCount ? '↓' : '↑'}
+                    {Math.abs(overdueCount - prevOverdueCount)}
+                  </span>
+                )}
+              </div>
+              <p className="text-lg font-bold text-red-600 dark:text-red-400">
+                {overdueCount !== null ? overdueCount : '--'}
               </p>
             </div>
           </motion.div>
         )}
         {collapsed && (
-          <div className="px-2 py-3 border-t">
+          <div className="px-2 py-3 border-t space-y-1.5">
             <div className="rounded-md bg-gradient-to-br from-emerald-50 to-emerald-100/80 dark:from-emerald-950/50 dark:to-emerald-900/30 p-1.5 text-center border border-emerald-200/50 dark:border-emerald-800/30">
               <p className="text-[9px] font-medium text-emerald-700 dark:text-emerald-400">Pend.</p>
               <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                 {pendingCount !== null ? pendingCount : '--'}
+              </p>
+            </div>
+            <div className="rounded-md bg-gradient-to-br from-red-50 to-amber-50/80 dark:from-red-950/50 dark:to-amber-900/20 p-1.5 text-center border border-red-200/50 dark:border-red-800/30">
+              <p className="text-[9px] font-medium text-red-700 dark:text-red-400">Atras.</p>
+              <p className="text-xs font-bold text-red-600 dark:text-red-400">
+                {overdueCount !== null ? overdueCount : '--'}
               </p>
             </div>
           </div>

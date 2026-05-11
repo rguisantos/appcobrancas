@@ -25,11 +25,14 @@ import {
   PlusCircle,
   UserPlus,
   BarChart3,
-  Map,
+  Map as MapIcon,
   Sun,
   MoonStar,
   Sunrise,
   CalendarDays,
+  BarChart2,
+  Inbox,
+  CalendarX,
   CircleDot,
   Table2,
   Disc3,
@@ -41,6 +44,11 @@ import {
   Trophy,
   Dices,
   Box,
+  Plus,
+  Pencil,
+  Trash2,
+  CreditCard,
+  Activity,
 } from 'lucide-react'
 import {
   BarChart,
@@ -132,6 +140,23 @@ function getStatusBorderColor(status: string): string {
     case 'Parcial': return 'border-l-4 border-l-orange-500'
     default: return 'border-l-4 border-l-gray-400'
   }
+}
+
+function StatusBadgePill({ status }: { status: string }) {
+  const config: Record<string, { label: string; bg: string; text: string; dot: string }> = {
+    Pago: { label: 'Pago', bg: 'bg-emerald-100 dark:bg-emerald-900/50', text: 'text-emerald-700 dark:text-emerald-300', dot: 'bg-emerald-500' },
+    Pendente: { label: 'Pendente', bg: 'bg-amber-100 dark:bg-amber-900/50', text: 'text-amber-700 dark:text-amber-300', dot: 'bg-amber-500' },
+    Atrasado: { label: 'Atrasado', bg: 'bg-red-100 dark:bg-red-900/50', text: 'text-red-700 dark:text-red-300', dot: 'bg-red-500' },
+    Parcial: { label: 'Parcial', bg: 'bg-orange-100 dark:bg-orange-900/50', text: 'text-orange-700 dark:text-orange-300', dot: 'bg-orange-500' },
+  }
+  const c = config[status]
+  if (!c) return <span className="status-badge bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">{status}</span>
+  return (
+    <span className={`status-badge ${c.bg} ${c.text}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
+      {c.label}
+    </span>
+  )
 }
 
 function getProductTypeStyle(tipoNome: string): {
@@ -442,6 +467,7 @@ export function DashboardView() {
       displayValue: <CountUpValue value={data.ganhoAtualMes} isCurrency />,
       icon: <DollarSign className="h-5 w-5" />,
       accent: 'border-t-4 border-t-emerald-500',
+      gradient: 'bg-gradient-to-br from-emerald-50/80 to-white dark:from-emerald-950/40 dark:to-card',
       iconBg: 'bg-emerald-100 dark:bg-emerald-900',
       iconColor: 'text-emerald-600 dark:text-emerald-400',
       subtitle: 'Receita recebida no mês',
@@ -456,6 +482,7 @@ export function DashboardView() {
       displayValue: <CountUpValue value={data.totalClientes} />,
       icon: <Users className="h-5 w-5" />,
       accent: 'border-t-4 border-t-sky-500',
+      gradient: 'bg-gradient-to-br from-sky-50/80 to-white dark:from-sky-950/40 dark:to-card',
       iconBg: 'bg-sky-100 dark:bg-sky-900',
       iconColor: 'text-sky-600 dark:text-sky-400',
       subtitle: `${data.clientesNaoCobrados.length} sem cobrança`,
@@ -470,6 +497,7 @@ export function DashboardView() {
       displayValue: `${data.produtosLocados}/${data.totalProdutos}`,
       icon: <Package className="h-5 w-5" />,
       accent: 'border-t-4 border-t-amber-500',
+      gradient: 'bg-gradient-to-br from-amber-50/80 to-white dark:from-amber-950/40 dark:to-card',
       iconBg: 'bg-amber-100 dark:bg-amber-900',
       iconColor: 'text-amber-600 dark:text-amber-400',
       subtitle: 'Locados vs. disponíveis',
@@ -484,6 +512,7 @@ export function DashboardView() {
       displayValue: <CountUpValue value={data.cobrancasPendentes} />,
       icon: <FileText className="h-5 w-5" />,
       accent: 'border-t-4 border-t-rose-500',
+      gradient: 'bg-gradient-to-br from-rose-50/80 to-white dark:from-rose-950/40 dark:to-card',
       iconBg: 'bg-rose-100 dark:bg-rose-900',
       iconColor: 'text-rose-600 dark:text-rose-400',
       subtitle: `${data.cobrancasAtrasadas} atrasada${data.cobrancasAtrasadas !== 1 ? 's' : ''}`,
@@ -597,7 +626,7 @@ export function DashboardView() {
             whileHover={{ scale: 1.02, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
             transition={{ type: 'spring', stiffness: 400, damping: 25 }}
           >
-            <Card className={`shadow-sm hover:shadow-md transition-shadow ${kpi.accent}`}>
+            <Card className={`shadow-sm hover:shadow-md transition-shadow ${kpi.accent} ${kpi.gradient}`}>
               <CardContent className="p-5">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1 flex-1">
@@ -613,16 +642,16 @@ export function DashboardView() {
                     <p className="text-2xl font-bold">{kpi.displayValue}</p>
                     <p className="text-xs text-muted-foreground">{kpi.subtitle}</p>
                   </div>
-                  <div className={`rounded-lg p-2.5 ${kpi.iconBg}`}>
+                  <div className={`rounded-xl p-2.5 shadow-sm ${kpi.iconBg}`}>
                     <span className={kpi.iconColor}>{kpi.icon}</span>
                   </div>
                 </div>
                 {/* Progress bar */}
                 {kpi.progress !== undefined && (
                   <div className="mt-3">
-                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                    <div className="h-2 w-full bg-muted/60 rounded-full overflow-hidden">
                       <div
-                        className="h-full rounded-full transition-all duration-1000"
+                        className="h-full rounded-full progress-animated"
                         style={{
                           width: `${Math.min(kpi.progress, 100)}%`,
                           backgroundColor: kpi.progressColor || 'var(--color-valor, #16a34a)',
@@ -646,12 +675,12 @@ export function DashboardView() {
       >
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Card
-            className="shadow-sm hover:shadow-md transition-all cursor-pointer group border-0 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900 hover:from-emerald-100 hover:to-emerald-200 dark:hover:from-emerald-900 dark:hover:to-emerald-800"
+            className="hover-lift cursor-pointer group border-0 bg-gradient-to-br from-emerald-100 to-emerald-200/80 dark:from-emerald-900 dark:to-emerald-800/80 hover:from-emerald-200 hover:to-emerald-300 dark:hover:from-emerald-800 dark:hover:to-emerald-700"
             onClick={() => navigate('cobranca-nova')}
           >
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="rounded-xl bg-emerald-200 dark:bg-emerald-800 p-2 group-hover:scale-110 transition-transform">
-                <PlusCircle className="h-5 w-5 text-emerald-700 dark:text-emerald-300" />
+              <div className="rounded-full bg-emerald-300/80 dark:bg-emerald-700 p-3 shadow-md group-hover:scale-105 transition-transform">
+                <PlusCircle className="h-6 w-6 text-emerald-800 dark:text-emerald-200" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Nova Cobrança</p>
@@ -660,12 +689,12 @@ export function DashboardView() {
             </CardContent>
           </Card>
           <Card
-            className="shadow-sm hover:shadow-md transition-all cursor-pointer group border-0 bg-gradient-to-br from-sky-50 to-sky-100 dark:from-sky-950 dark:to-sky-900 hover:from-sky-100 hover:to-sky-200 dark:hover:from-sky-900 dark:hover:to-sky-800"
+            className="hover-lift cursor-pointer group border-0 bg-gradient-to-br from-sky-100 to-sky-200/80 dark:from-sky-900 dark:to-sky-800/80 hover:from-sky-200 hover:to-sky-300 dark:hover:from-sky-800 dark:hover:to-sky-700"
             onClick={() => navigate('cliente-novo')}
           >
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="rounded-xl bg-sky-200 dark:bg-sky-800 p-2 group-hover:scale-110 transition-transform">
-                <UserPlus className="h-5 w-5 text-sky-700 dark:text-sky-300" />
+              <div className="rounded-full bg-sky-300/80 dark:bg-sky-700 p-3 shadow-md group-hover:scale-105 transition-transform">
+                <UserPlus className="h-6 w-6 text-sky-800 dark:text-sky-200" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-sky-900 dark:text-sky-100">Novo Cliente</p>
@@ -674,12 +703,12 @@ export function DashboardView() {
             </CardContent>
           </Card>
           <Card
-            className="shadow-sm hover:shadow-md transition-all cursor-pointer group border-0 bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900 hover:from-amber-100 hover:to-amber-200 dark:hover:from-amber-900 dark:hover:to-amber-800"
+            className="hover-lift cursor-pointer group border-0 bg-gradient-to-br from-amber-100 to-amber-200/80 dark:from-amber-900 dark:to-amber-800/80 hover:from-amber-200 hover:to-amber-300 dark:hover:from-amber-800 dark:hover:to-amber-700"
             onClick={() => navigate('relatorios')}
           >
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="rounded-xl bg-amber-200 dark:bg-amber-800 p-2 group-hover:scale-110 transition-transform">
-                <BarChart3 className="h-5 w-5 text-amber-700 dark:text-amber-300" />
+              <div className="rounded-full bg-amber-300/80 dark:bg-amber-700 p-3 shadow-md group-hover:scale-105 transition-transform">
+                <BarChart3 className="h-6 w-6 text-amber-800 dark:text-amber-200" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">Ver Relatórios</p>
@@ -688,12 +717,12 @@ export function DashboardView() {
             </CardContent>
           </Card>
           <Card
-            className="shadow-sm hover:shadow-md transition-all cursor-pointer group border-0 bg-gradient-to-br from-rose-50 to-rose-100 dark:from-rose-950 dark:to-rose-900 hover:from-rose-100 hover:to-rose-200 dark:hover:from-rose-900 dark:hover:to-rose-800"
+            className="hover-lift cursor-pointer group border-0 bg-gradient-to-br from-rose-100 to-rose-200/80 dark:from-rose-900 dark:to-rose-800/80 hover:from-rose-200 hover:to-rose-300 dark:hover:from-rose-800 dark:hover:to-rose-700"
             onClick={() => navigate('mapa')}
           >
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="rounded-xl bg-rose-200 dark:bg-rose-800 p-2 group-hover:scale-110 transition-transform">
-                <Map className="h-5 w-5 text-rose-700 dark:text-rose-300" />
+              <div className="rounded-full bg-rose-300/80 dark:bg-rose-700 p-3 shadow-md group-hover:scale-105 transition-transform">
+                <MapIcon className="h-6 w-6 text-rose-800 dark:text-rose-200" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-rose-900 dark:text-rose-100">Mapa de Rotas</p>
@@ -704,8 +733,14 @@ export function DashboardView() {
         </div>
       </motion.div>
 
-      {/* Weekly Comparison Widget */}
-      <WeeklyComparisonWidget />
+      {/* Monthly Comparison Widget */}
+      <MonthlyComparisonWidget />
+
+      {/* Atividade Recente */}
+      <RecentActivityFeed navigate={navigate} />
+
+      {/* Resumo Financeiro */}
+      <FinancialOverviewWidget data={data} />
 
       {/* Charts Section */}
       <motion.div
@@ -725,6 +760,7 @@ export function DashboardView() {
           </CardHeader>
           <CardContent>
             <ChartContainer config={barChartConfig} className="h-[220px] sm:h-[280px] w-full">
+              {data.receitaMensal.length > 0 && data.receitaMensal.some(d => d.valor > 0) ? (
               <BarChart data={data.receitaMensal} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
                 <XAxis dataKey="mes" className="text-xs" tick={{ fontSize: 12 }} />
@@ -735,6 +771,13 @@ export function DashboardView() {
                 />
                 <Bar dataKey="valor" fill="var(--color-valor)" radius={[4, 4, 0, 0]} />
               </BarChart>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-[220px] sm:h-[280px] text-muted-foreground">
+                  <BarChart2 className="h-10 w-10 mb-2 opacity-30" />
+                  <p className="text-sm font-medium">Nenhum dado disponível</p>
+                  <p className="text-xs mt-1">Os dados de receita aparecerão aqui</p>
+                </div>
+              )}
             </ChartContainer>
           </CardContent>
         </Card>
@@ -781,8 +824,10 @@ export function DashboardView() {
                 </PieChart>
               </ChartContainer>
             ) : (
-              <div className="flex items-center justify-center h-[220px] sm:h-[280px] text-muted-foreground text-sm">
-                Nenhuma cobrança registrada
+              <div className="flex flex-col items-center justify-center h-[220px] sm:h-[280px] text-muted-foreground">
+                <Inbox className="h-10 w-10 mb-2 opacity-30" />
+                <p className="text-sm font-medium">Nenhum dado disponível</p>
+                <p className="text-xs mt-1">As cobranças por status aparecerão aqui</p>
               </div>
             )}
           </CardContent>
@@ -815,31 +860,37 @@ export function DashboardView() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
+            <div className="space-y-1.5 max-h-96 overflow-y-auto">
               {data.cobrancasRecentes.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">Nenhuma cobrança encontrada</p>
+                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                  <Inbox className="h-8 w-8 mb-2 opacity-30" />
+                  <p className="text-sm">Nenhuma cobrança encontrada</p>
+                </div>
               ) : (
-                data.cobrancasRecentes.map((c) => (
-                  <div
-                    key={c.id}
-                    className={`flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer ${getStatusBorderColor(c.status)}`}
-                    onClick={() => navigate('cobranca-detalhe', c.id)}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{c.clienteNome}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {c.produtoIdentificador} · {c.dataInicio} a {c.dataFim}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 ml-4 shrink-0">
-                      <div className="text-right">
-                        <span className="text-sm font-semibold">{formatarMoeda(c.totalClientePaga)}</span>
-                        <p className="text-[10px] text-muted-foreground">{getRelativeTime(c.createdAt)}</p>
-                      </div>
-                      <StatusBadge status={c.status} />
-                    </div>
+                <>
+                  {/* Header row */}
+                  <div className="grid grid-cols-[1fr_auto_auto] gap-3 px-3 pb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b">
+                    <span>Cliente / Produto</span>
+                    <span>Valor</span>
+                    <span>Status</span>
                   </div>
-                ))
+                  {data.cobrancasRecentes.map((c, idx) => (
+                    <div
+                      key={c.id}
+                      className={`grid grid-cols-[1fr_auto_auto] gap-3 items-center py-2.5 px-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer ${getStatusBorderColor(c.status)} ${idx % 2 === 1 ? 'bg-muted/20' : ''}`}
+                      onClick={() => navigate('cobranca-detalhe', c.id)}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{c.clienteNome}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {c.produtoIdentificador} · <span className="text-[10px]">{getRelativeTime(c.createdAt)}</span>
+                        </p>
+                      </div>
+                      <span className="text-sm font-semibold">{formatarMoeda(c.totalClientePaga)}</span>
+                      <StatusBadgePill status={c.status} />
+                    </div>
+                  ))}
+                </>
               )}
             </div>
           </CardContent>
@@ -985,76 +1036,299 @@ function BadgeWithColor({ label, color }: { label: string; color: string }) {
   )
 }
 
-function WeeklyComparisonWidget() {
-  const [weekData, setWeekData] = useState<{ thisWeek: number; lastWeek: number } | null>(null)
+function FinancialOverviewWidget({ data }: { data: DashboardData }) {
+  const [financialData, setFinancialData] = useState<{
+    totalReceita: number
+    totalPendente: number
+    totalAtrasado: number
+  } | null>(null)
+
+  useEffect(() => {
+    async function fetchFinancialData() {
+      try {
+        const res = await fetch('/api/cobrancas?limit=1000')
+        if (res.ok) {
+          const json = await res.json()
+          const items: Array<{
+            status: string
+            totalClientePaga: number
+            valorRecebido: number
+          }> = json.data || []
+
+          let totalReceita = 0
+          let totalPendente = 0
+          let totalAtrasado = 0
+
+          for (const c of items) {
+            if (c.status === 'Pago') {
+              totalReceita += c.valorRecebido || 0
+            } else if (c.status === 'Parcial') {
+              totalReceita += c.valorRecebido || 0
+              totalPendente += (c.totalClientePaga - c.valorRecebido)
+            } else if (c.status === 'Pendente') {
+              totalPendente += c.totalClientePaga
+            } else if (c.status === 'Atrasado') {
+              totalAtrasado += (c.totalClientePaga - c.valorRecebido)
+            }
+          }
+
+          setFinancialData({ totalReceita, totalPendente, totalAtrasado })
+        }
+      } catch {
+        // silently ignore
+      }
+    }
+    fetchFinancialData()
+  }, [data])
+
+  const totalReceita = financialData?.totalReceita ?? data.ganhoAtualMes
+  const totalPendente = financialData?.totalPendente ?? 0
+  const totalAtrasado = financialData?.totalAtrasado ?? data.totalAtrasadoValor
+  const totalGeral = totalReceita + totalPendente + totalAtrasado
+  const inadimplencia = totalGeral > 0 ? (totalAtrasado / totalGeral) * 100 : 0
+  const receivedRatio = totalGeral > 0 ? (totalReceita / totalGeral) * 100 : 0
+  const pendingRatio = totalGeral > 0 ? (totalPendente / totalGeral) * 100 : 0
+
+  const financialMetrics = [
+    {
+      label: 'Total Receita',
+      value: formatarMoeda(totalReceita),
+      icon: <DollarSign className="h-4 w-4" />,
+      iconBg: 'bg-emerald-100 dark:bg-emerald-900',
+      iconColor: 'text-emerald-600 dark:text-emerald-400',
+      accent: 'border-l-4 border-l-emerald-500',
+    },
+    {
+      label: 'Total Pendente',
+      value: formatarMoeda(totalPendente),
+      icon: <Clock className="h-4 w-4" />,
+      iconBg: 'bg-amber-100 dark:bg-amber-900',
+      iconColor: 'text-amber-600 dark:text-amber-400',
+      accent: 'border-l-4 border-l-amber-500',
+    },
+    {
+      label: 'Total Atrasado',
+      value: formatarMoeda(totalAtrasado),
+      icon: <AlertTriangle className="h-4 w-4" />,
+      iconBg: 'bg-red-100 dark:bg-red-900',
+      iconColor: 'text-red-600 dark:text-red-400',
+      accent: 'border-l-4 border-l-red-500',
+    },
+    {
+      label: '% Inadimplência',
+      value: `${inadimplencia.toFixed(1)}%`,
+      icon: <TrendingDown className="h-4 w-4" />,
+      iconBg: 'bg-rose-100 dark:bg-rose-900',
+      iconColor: 'text-rose-600 dark:text-rose-400',
+      accent: 'border-l-4 border-l-rose-500',
+    },
+  ]
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.5, duration: 0.4 }}
+    >
+      <Card className="shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-emerald-600" />
+            Resumo Financeiro
+          </CardTitle>
+          <CardDescription>Visão geral das finanças</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!financialData ? (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 w-full" />
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                {financialMetrics.map((metric) => (
+                  <div
+                    key={metric.label}
+                    className={`p-3 rounded-lg bg-card border ${metric.accent}`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className={`rounded-md p-1.5 ${metric.iconBg}`}>
+                        <span className={metric.iconColor}>{metric.icon}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{metric.label}</p>
+                    </div>
+                    <p className="text-lg font-bold">{metric.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Progress bar showing received vs pending ratio */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Recebido vs. Pendente</span>
+                  <span className="font-medium">
+                    {receivedRatio.toFixed(0)}% recebido
+                  </span>
+                </div>
+                <div className="h-3 w-full bg-muted rounded-full overflow-hidden flex">
+                  {receivedRatio > 0 && (
+                    <div
+                      className="h-full bg-emerald-500 transition-all duration-700"
+                      style={{ width: `${Math.min(receivedRatio, 100)}%`, borderRadius: receivedRatio >= 100 ? '9999px' : '9999px 0 0 9999px' }}
+                    />
+                  )}
+                  {pendingRatio > 0 && (
+                    <div
+                      className="h-full bg-amber-400 transition-all duration-700"
+                      style={{ width: `${Math.min(pendingRatio, 100 - receivedRatio)}%` }}
+                    />
+                  )}
+                  {inadimplencia > 0 && (
+                    <div
+                      className="h-full bg-red-500 transition-all duration-700"
+                      style={{ width: `${Math.min(inadimplencia, 100 - receivedRatio - pendingRatio)}%`, borderRadius: (receivedRatio + pendingRatio + inadimplencia) >= 99.9 ? '0 9999px 9999px 0' : undefined }}
+                    />
+                  )}
+                </div>
+                <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    Recebido
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-amber-400" />
+                    Pendente
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-red-500" />
+                    Atrasado
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
+  )
+}
+
+function MonthlyComparisonWidget() {
+  const [monthData, setMonthData] = useState<{ thisMonth: number; lastMonth: number; thisMonthLabel: string; lastMonthLabel: string } | null>(null)
+  const [hasData, setHasData] = useState(true)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function fetchWeeklyData() {
+    async function fetchMonthlyData() {
       try {
+        // Fetch ALL cobranças and group by dataInicio month
+        const res = await fetch('/api/cobrancas?limit=1000')
+        if (!res.ok) {
+          setHasData(false)
+          return
+        }
+
+        const json = await res.json()
+        const items: Array<{ valorRecebido: number; dataInicio: string }> = json.data || []
+
+        if (items.length === 0) {
+          setHasData(false)
+          return
+        }
+
+        // Group by month from dataInicio
         const now = new Date()
-        // Get start of this week (Monday)
-        const dayOfWeek = now.getDay()
-        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
-        const thisWeekStart = new Date(now)
-        thisWeekStart.setDate(now.getDate() + mondayOffset)
-        thisWeekStart.setHours(0, 0, 0, 0)
+        const thisYear = now.getFullYear()
+        const thisMonth = now.getMonth() // 0-based
 
-        // Last week start (previous Monday)
-        const lastWeekStart = new Date(thisWeekStart)
-        lastWeekStart.setDate(thisWeekStart.getDate() - 7)
+        // Previous month
+        const prevDate = new Date(thisYear, thisMonth - 1, 1)
+        const prevYear = prevDate.getFullYear()
+        const prevMonth = prevDate.getMonth()
 
-        // Last week end (Sunday)
-        const lastWeekEnd = new Date(thisWeekStart)
-        lastWeekEnd.setDate(thisWeekStart.getDate() - 1)
-        lastWeekEnd.setHours(23, 59, 59, 999)
+        const thisMonthKey = `${thisYear}-${String(thisMonth + 1).padStart(2, '0')}`
+        const lastMonthKey = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}`
 
-        const thisWeekStartStr = thisWeekStart.toISOString().split('T')[0]
-        const thisWeekEndStr = now.toISOString().split('T')[0]
-        const lastWeekStartStr = lastWeekStart.toISOString().split('T')[0]
-        const lastWeekEndStr = lastWeekEnd.toISOString().split('T')[0]
+        let thisMonthTotal = 0
+        let lastMonthTotal = 0
 
-        // Fetch paid cobranças for both weeks
-        const [thisWeekRes, lastWeekRes] = await Promise.all([
-          fetch(`/api/cobrancas?status=Pago&periodoInicio=${thisWeekStartStr}&periodoFim=${thisWeekEndStr}&limit=1000`),
-          fetch(`/api/cobrancas?status=Pago&periodoInicio=${lastWeekStartStr}&periodoFim=${lastWeekEndStr}&limit=1000`),
-        ])
-
-        let thisWeekTotal = 0
-        let lastWeekTotal = 0
-
-        if (thisWeekRes.ok) {
-          const data = await thisWeekRes.json()
-          const items = data.data || []
-          thisWeekTotal = items.reduce((sum: number, c: { valorRecebido: number }) => sum + (c.valorRecebido || 0), 0)
+        for (const c of items) {
+          const monthKey = c.dataInicio?.substring(0, 7) // "YYYY-MM"
+          if (monthKey === thisMonthKey) {
+            thisMonthTotal += c.valorRecebido || 0
+          } else if (monthKey === lastMonthKey) {
+            lastMonthTotal += c.valorRecebido || 0
+          }
         }
 
-        if (lastWeekRes.ok) {
-          const data = await lastWeekRes.json()
-          const items = data.data || []
-          lastWeekTotal = items.reduce((sum: number, c: { valorRecebido: number }) => sum + (c.valorRecebido || 0), 0)
+        // If no data for either month, find the two most recent months with data
+        if (thisMonthTotal === 0 && lastMonthTotal === 0) {
+          const monthMap = new Map<string, number>()
+          for (const c of items) {
+            const monthKey = c.dataInicio?.substring(0, 7)
+            if (monthKey) {
+              monthMap.set(monthKey, (monthMap.get(monthKey) || 0) + (c.valorRecebido || 0))
+            }
+          }
+
+          const sortedMonths = Array.from(monthMap.entries()).sort((a, b) => b[0].localeCompare(a[0]))
+
+          if (sortedMonths.length >= 2) {
+            thisMonthTotal = sortedMonths[0][1]
+            lastMonthTotal = sortedMonths[1][1]
+            setMonthData({
+              thisMonth: thisMonthTotal,
+              lastMonth: lastMonthTotal,
+              thisMonthLabel: formatMonthLabel(sortedMonths[0][0]),
+              lastMonthLabel: formatMonthLabel(sortedMonths[1][0]),
+            })
+            return
+          } else if (sortedMonths.length === 1) {
+            setMonthData({
+              thisMonth: sortedMonths[0][1],
+              lastMonth: 0,
+              thisMonthLabel: formatMonthLabel(sortedMonths[0][0]),
+              lastMonthLabel: '—',
+            })
+            return
+          }
+
+          setHasData(false)
+          return
         }
 
-        setWeekData({ thisWeek: thisWeekTotal, lastWeek: lastWeekTotal })
+        const thisMonthLabel = now.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
+        const lastMonthLabel = prevDate.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
+
+        setMonthData({
+          thisMonth: thisMonthTotal,
+          lastMonth: lastMonthTotal,
+          thisMonthLabel,
+          lastMonthLabel,
+        })
       } catch (error) {
-        console.error('Erro ao buscar dados semanais:', error)
+        console.error('Erro ao buscar dados mensais:', error)
+        setHasData(false)
       } finally {
         setLoading(false)
       }
     }
-    fetchWeeklyData()
+
+    fetchMonthlyData()
   }, [])
 
-  const percentageChange = weekData && weekData.lastWeek > 0
-    ? ((weekData.thisWeek - weekData.lastWeek) / weekData.lastWeek) * 100
-    : weekData && weekData.thisWeek > 0 ? 100 : 0
+  const percentageChange = monthData && monthData.lastMonth > 0
+    ? ((monthData.thisMonth - monthData.lastMonth) / monthData.lastMonth) * 100
+    : monthData && monthData.thisMonth > 0 ? 100 : 0
 
   const isUp = percentageChange >= 0
 
   // Bar visualization proportions
-  const maxVal = weekData ? Math.max(weekData.thisWeek, weekData.lastWeek, 1) : 1
-  const thisWeekBarHeight = weekData ? (weekData.thisWeek / maxVal) * 100 : 0
-  const lastWeekBarHeight = weekData ? (weekData.lastWeek / maxVal) * 100 : 0
+  const maxVal = monthData ? Math.max(monthData.thisMonth, monthData.lastMonth, 1) : 1
+  const thisMonthBarHeight = monthData ? (monthData.thisMonth / maxVal) * 100 : 0
+  const lastMonthBarHeight = monthData ? (monthData.lastMonth / maxVal) * 100 : 0
 
   return (
     <motion.div
@@ -1070,11 +1344,11 @@ function WeeklyComparisonWidget() {
                 <CalendarDays className="h-4 w-4 text-teal-600 dark:text-teal-400" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold">Comparativo Semanal</h3>
-                <p className="text-[10px] text-muted-foreground">Receita recebida</p>
+                <h3 className="text-sm font-semibold">Comparativo Mensal</h3>
+                <p className="text-[10px] text-muted-foreground">Receita recebida por mês</p>
               </div>
             </div>
-            {weekData && !loading && (
+            {monthData && !loading && monthData.thisMonth > 0 && (
               <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${
                 isUp
                   ? 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300'
@@ -1091,24 +1365,30 @@ function WeeklyComparisonWidget() {
               <Skeleton className="flex-1 h-full" />
               <Skeleton className="flex-1 h-3/4" />
             </div>
-          ) : weekData ? (
+          ) : !hasData ? (
+            <div className="flex flex-col items-center justify-center py-6 gap-2">
+              <CalendarX className="h-10 w-10 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">Sem dados no período</p>
+              <p className="text-[10px] text-muted-foreground/60">Nenhuma cobrança registrada</p>
+            </div>
+          ) : monthData ? (
             <>
               <div className="flex items-end gap-4 h-20 mb-3">
-                {/* This week bar */}
+                {/* This month bar */}
                 <div className="flex-1 flex flex-col items-center gap-1">
                   <div className="w-full flex items-end justify-center" style={{ height: '60px' }}>
                     <div
                       className="w-full max-w-[60px] rounded-t-md bg-teal-500 dark:bg-teal-600 transition-all duration-700"
-                      style={{ height: `${Math.max(thisWeekBarHeight, 4)}%` }}
+                      style={{ height: `${Math.max(thisMonthBarHeight, 4)}%` }}
                     />
                   </div>
                 </div>
-                {/* Last week bar */}
+                {/* Last month bar */}
                 <div className="flex-1 flex flex-col items-center gap-1">
                   <div className="w-full flex items-end justify-center" style={{ height: '60px' }}>
                     <div
                       className="w-full max-w-[60px] rounded-t-md bg-muted-foreground/20 dark:bg-muted-foreground/30 transition-all duration-700"
-                      style={{ height: `${Math.max(lastWeekBarHeight, 4)}%` }}
+                      style={{ height: `${Math.max(lastMonthBarHeight, 4)}%` }}
                     />
                   </div>
                 </div>
@@ -1118,21 +1398,231 @@ function WeeklyComparisonWidget() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="h-2.5 w-2.5 rounded-full bg-teal-500" />
-                    <span className="text-xs text-muted-foreground">Esta semana</span>
+                    <span className="text-xs text-muted-foreground">{monthData.thisMonthLabel}</span>
                   </div>
-                  <span className="text-sm font-semibold">{formatarMoeda(weekData.thisWeek)}</span>
+                  <span className="text-sm font-semibold">{formatarMoeda(monthData.thisMonth)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="h-2.5 w-2.5 rounded-full bg-muted-foreground/30" />
-                    <span className="text-xs text-muted-foreground">Semana anterior</span>
+                    <span className="text-xs text-muted-foreground">{monthData.lastMonthLabel}</span>
                   </div>
-                  <span className="text-sm font-semibold text-muted-foreground">{formatarMoeda(weekData.lastWeek)}</span>
+                  <span className="text-sm font-semibold text-muted-foreground">{formatarMoeda(monthData.lastMonth)}</span>
                 </div>
               </div>
             </>
           ) : (
             <p className="text-sm text-muted-foreground text-center py-4">Erro ao carregar comparativo</p>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
+  )
+}
+
+function formatMonthLabel(monthKey: string): string {
+  // monthKey is "YYYY-MM"
+  const [year, month] = monthKey.split('-')
+  const date = new Date(parseInt(year), parseInt(month) - 1, 1)
+  return date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
+}
+
+interface AuditLogEntry {
+  id: string
+  acao: string
+  entidade: string
+  entidadeId: string | null
+  entidadeNome: string | null
+  createdAt: string
+  usuario: {
+    id: string
+    nome: string
+    email: string
+  } | null
+}
+
+function getAuditActionLabel(acao: string): string {
+  if (acao.includes('criar') || acao.includes('criacao') || acao.includes('novo')) return 'Criação'
+  if (acao.includes('atualizar') || acao.includes('editar') || acao.includes('alterar')) return 'Atualização'
+  if (acao.includes('excluir') || acao.includes('remover') || acao.includes('deletar')) return 'Exclusão'
+  if (acao.includes('pagamento') || acao.includes('registrar_pagamento')) return 'Pagamento'
+  if (acao.includes('login') || acao.includes('acesso')) return 'Acesso'
+  return 'Ação'
+}
+
+function getAuditEntityLabel(entidade: string): string {
+  const map: Record<string, string> = {
+    cliente: 'Cliente',
+    produto: 'Produto',
+    locacao: 'Locação',
+    cobranca: 'Cobrança',
+    manutencao: 'Manutenção',
+    rota: 'Rota',
+    usuario: 'Usuário',
+    meta: 'Meta',
+    relogio: 'Relógio',
+  }
+  return map[entidade] || entidade
+}
+
+function getAuditIcon(acao: string) {
+  if (acao.includes('criar') || acao.includes('criacao') || acao.includes('novo')) return Plus
+  if (acao.includes('atualizar') || acao.includes('editar') || acao.includes('alterar')) return Pencil
+  if (acao.includes('excluir') || acao.includes('remover') || acao.includes('deletar')) return Trash2
+  if (acao.includes('pagamento') || acao.includes('registrar_pagamento')) return CreditCard
+  return Activity
+}
+
+function getAuditDotColor(acao: string): string {
+  if (acao.includes('criar') || acao.includes('criacao') || acao.includes('novo') || acao.includes('pagamento') || acao.includes('registrar_pagamento')) return 'bg-green-500'
+  if (acao.includes('atualizar') || acao.includes('editar') || acao.includes('alterar')) return 'bg-amber-500'
+  if (acao.includes('excluir') || acao.includes('remover') || acao.includes('deletar')) return 'bg-red-500'
+  return 'bg-slate-400'
+}
+
+function getAuditNavView(entidade: string): string | null {
+  const map: Record<string, string> = {
+    cliente: 'cliente-detalhe',
+    produto: 'produto-detalhe',
+    locacao: 'locacao-detalhe',
+    cobranca: 'cobranca-detalhe',
+    manutencao: 'manutencoes',
+    rota: 'admin-rotas',
+    usuario: 'admin-usuarios',
+    meta: 'admin-metas',
+    relogio: 'relogios',
+  }
+  return map[entidade] || null
+}
+
+function RecentActivityFeed({ navigate }: { navigate: (view: string, id?: string | null) => void }) {
+  const [logs, setLogs] = useState<AuditLogEntry[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchLogs() {
+      try {
+        const res = await fetch('/api/auditoria?limit=10')
+        if (res.ok) {
+          const data = await res.json()
+          setLogs(data.data || [])
+        }
+      } catch {
+        // silently ignore
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchLogs()
+  }, [])
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.5, duration: 0.4 }}
+    >
+      <Card className="shadow-sm">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="rounded-lg bg-violet-100 dark:bg-violet-900 p-2">
+                <Activity className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Atividade Recente</CardTitle>
+                <CardDescription>Últimas ações no sistema</CardDescription>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => navigate('admin-auditoria')}
+            >
+              Ver todas <ArrowRight className="h-3 w-3 ml-1" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+                  <div className="flex-1 space-y-1">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : logs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Inbox className="h-8 w-8 text-muted-foreground/40 mb-2" />
+              <p className="text-sm text-muted-foreground">Nenhuma atividade recente</p>
+            </div>
+          ) : (
+            <div className="space-y-0 max-h-96 overflow-y-auto">
+              {logs.map((log, idx) => {
+                const Icon = getAuditIcon(log.acao)
+                const dotColor = getAuditDotColor(log.acao)
+                const actionLabel = getAuditActionLabel(log.acao)
+                const entityLabel = getAuditEntityLabel(log.entidade)
+                const navView = getAuditNavView(log.entidade)
+                const isLast = idx === logs.length - 1
+
+                return (
+                  <div
+                    key={log.id}
+                    className={`flex items-start gap-3 py-3 ${!isLast ? 'border-b border-border/50' : ''} ${navView && log.entidadeId ? 'cursor-pointer hover:bg-muted/30 -mx-2 px-2 rounded-lg transition-colors' : ''}`}
+                    onClick={() => {
+                      if (navView && log.entidadeId) {
+                        navigate(navView, log.entidadeId)
+                      }
+                    }}
+                  >
+                    {/* Timeline dot and connector */}
+                    <div className="relative flex flex-col items-center shrink-0">
+                      <div className={`h-8 w-8 rounded-full flex items-center justify-center ${dotColor} bg-opacity-20`} style={{ backgroundColor: undefined }}>
+                        <div className={`h-2 w-2 rounded-full ${dotColor}`} />
+                      </div>
+                      {!isLast && (
+                        <div className="w-px h-full absolute top-8 left-1/2 -translate-x-1/2 bg-border/30" />
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <p className="text-sm font-medium truncate">
+                          {actionLabel} em {entityLabel}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {log.entidadeNome && (
+                          <span className="text-xs text-muted-foreground truncate">
+                            {log.entidadeNome}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-muted-foreground">
+                          · {getRelativeTime(log.createdAt)}
+                        </span>
+                      </div>
+                      {log.usuario && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          por {log.usuario.nome}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Right dot indicator */}
+                    <div className={`h-2 w-2 rounded-full ${dotColor} shrink-0 mt-2`} />
+                  </div>
+                )
+              })}
+            </div>
           )}
         </CardContent>
       </Card>

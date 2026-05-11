@@ -6,16 +6,19 @@ import { registrarAuditoria } from '@/lib/auditoria'
 import { calcularCobranca, calcularSaldoDevedor } from '@/lib/cobranca-calculos'
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
   const { id } = await params
+  const { searchParams } = new URL(request.url)
+  const include = searchParams.get('include')
+
   const cobranca = await db.cobranca.findFirst({
     where: { id, deletedAt: null },
-    include: { locacao: true, cliente: true, produto: true },
+    include: { locacao: true, cliente: true, produto: true, pagamentos: include === 'pagamentos' ? { orderBy: { createdAt: 'desc' as const } } : false },
   })
 
   if (!cobranca) return NextResponse.json({ error: 'Cobrança não encontrada' }, { status: 404 })
@@ -111,6 +114,109 @@ export async function PUT(
       return NextResponse.json({ error: 'Dados inválidos', details: (error as { issues: unknown }).issues }, { status: 400 })
     }
     return NextResponse.json({ error: 'Erro ao atualizar cobrança' }, { status: 500 })
+  }
+}
+
+// PATCH /api/cobrancas/[id] — Register a payment for this cobrança
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getAuthSession()
+  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+
+  const { id } = await params
+  const existing = await db.cobranca.findFirst({ where: { id, deletedAt: null } })
+  if (!existing) return NextResponse.json({ error: 'Cobrança não encontrada' }, { status: 404 })
+
+  try {
+    const body = await request.json()
+    const { valor, formaPagamento, dataPagamento, observacao } = body
+
+    if (!valor || valor <= 0) {
+      return NextResponse.json({ error: 'Valor do pagamento deve ser maior que zero' }, { status: 400 })
+    }
+
+    const validFormasPagamento = ['Dinheiro', 'Pix', 'Cartão', 'Transferência']
+    if (!validFormasPagamento.includes(formaPagamento)) {
+      return NextResponse.json({ error: 'Forma de pagamento inválida' }, { status: 400 })
+    }
+
+    // Calculate new valorRecebido (cumulative)
+    const newValorRecebido = existing.valorRecebido + valor
+
+    // Determine new status based on payment
+    let newStatus = existing.status
+    if (newValorRecebido >= existing.totalClientePaga) {
+      newStatus = 'Pago'
+    } else if (newValorRecebido > 0 && newValorRecebido < existing.totalClientePaga) {
+      newStatus = 'Parcial'
+    }
+
+    // Calculate new saldo devedor
+    const { saldoDevedorGerado: newSaldoDevedor } = calcularSaldoDevedor(
+      existing.totalClientePaga,
+      newValorRecebido
+    )
+
+    // Set payment date if first payment
+    const dataPagamentoCobranca = (newStatus === 'Pago' || newStatus === 'Parcial') && !existing.dataPagamento
+      ? (dataPagamento || new Date().toISOString().split('T')[0])
+      : existing.dataPagamento
+
+    // Create the payment record and update cobrança in a transaction
+    const [pagamento] = await db.$transaction([
+      db.pagamentoCobranca.create({
+        data: {
+          cobrancaId: id,
+          valor,
+          formaPagamento,
+          dataPagamento: dataPagamento || new Date().toISOString().split('T')[0],
+          observacao: observacao || null,
+          usuarioId: session.userId,
+          usuarioNome: session.nome || null,
+        },
+      }),
+      db.cobranca.update({
+        where: { id },
+        data: {
+          valorRecebido: newValorRecebido,
+          saldoDevedorGerado: newSaldoDevedor,
+          status: newStatus,
+          dataPagamento: dataPagamentoCobranca,
+          version: { increment: 1 },
+        },
+      }),
+    ])
+
+    // Audit log
+    await registrarAuditoria({
+      usuarioId: session.userId,
+      acao: 'registrar_pagamento',
+      entidade: 'cobranca',
+      entidadeId: id,
+      entidadeNome: `${existing.clienteNome} - ${existing.dataInicio}/${existing.dataFim}`,
+      detalhes: JSON.stringify({
+        valor,
+        formaPagamento,
+        dataPagamento,
+        novoStatus: newStatus,
+        novoValorRecebido: newValorRecebido,
+      }),
+      severidade: 'info',
+    })
+
+    return NextResponse.json({
+      pagamento,
+      cobrancaAtualizada: {
+        valorRecebido: newValorRecebido,
+        saldoDevedorGerado: newSaldoDevedor,
+        status: newStatus,
+      },
+    })
+  } catch (error) {
+    console.error('Erro ao registrar pagamento:', error)
+    return NextResponse.json({ error: 'Erro ao registrar pagamento' }, { status: 500 })
   }
 }
 

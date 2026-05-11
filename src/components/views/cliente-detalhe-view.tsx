@@ -40,6 +40,11 @@ import {
   TrendingUp,
   AlertTriangle,
   CheckCircle,
+  FileText,
+  Wallet,
+  CircleDollarSign,
+  MessageCircle,
+  Plus,
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { toast } from 'sonner'
@@ -97,12 +102,34 @@ interface CobrancaItem {
   status: string
 }
 
+interface FinancialSummary {
+  clienteId: string
+  nomeExibicao: string
+  identificador: string
+  totalCobrancas: number
+  totalPago: number
+  totalPendente: number
+  totalAtrasado: number
+  totalParcial: number
+  averageMonthlyPayment: number
+  saldoDevedorAcumulado: number
+  paymentHistory: Array<{
+    mes: string
+    label: string
+    total: number
+    pago: number
+    quantidade: number
+  }>
+}
+
 export function ClienteDetalheView() {
   const { selectedId, navigate, goBack } = useNavigation()
   const [cliente, setCliente] = useState<ClienteDetalhe | null>(null)
   const [loading, setLoading] = useState(true)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [financialSummary, setFinancialSummary] = useState<FinancialSummary | null>(null)
+  const [financialLoading, setFinancialLoading] = useState(true)
 
   useEffect(() => {
     if (!selectedId) {
@@ -129,6 +156,26 @@ export function ClienteDetalheView() {
     }
     fetchCliente()
   }, [selectedId, navigate])
+
+  // Fetch financial summary from API
+  useEffect(() => {
+    if (!selectedId) return
+
+    async function fetchFinancial() {
+      try {
+        const res = await fetch(`/api/clientes/${selectedId}/financeiro`)
+        if (res.ok) {
+          const data = await res.json()
+          setFinancialSummary(data)
+        }
+      } catch {
+        // silently ignore
+      } finally {
+        setFinancialLoading(false)
+      }
+    }
+    fetchFinancial()
+  }, [selectedId])
 
   const handleDelete = async () => {
     if (!selectedId) return
@@ -224,6 +271,26 @@ export function ClienteDetalheView() {
           <p className="text-muted-foreground text-sm">{cliente.identificador}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {(financialSummary?.saldoDevedorAcumulado ?? (totalAtrasado + totalPendente)) > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950"
+              onClick={() => {
+                const saldoDevedor = formatarMoeda(financialSummary?.saldoDevedorAcumulado ?? (totalAtrasado + totalPendente))
+                const phone = cliente.telefonePrincipal.replace(/[()\-\s]/g, '').replace(/^0+/, '')
+                const phoneWithCountry = phone.startsWith('55') ? phone : `55${phone}`
+                const message = encodeURIComponent(
+                  `Olá, ${cliente.nomeExibicao}! \n\nTemos cobranças pendentes em aberto no valor de R$ ${saldoDevedor}.\n\nPor favor, entre em contato para regularizar.\n\nApp Cobranças - Sistema de Gestão`
+                )
+                window.open(`https://web.whatsapp.com/send?phone=${phoneWithCountry}&text=${message}`, '_blank')
+                toast.success('Lembrete aberto no WhatsApp')
+              }}
+            >
+              <MessageCircle className="h-4 w-4" />
+              Enviar Lembrete
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -326,54 +393,105 @@ export function ClienteDetalheView() {
         </Card>
       </div>
 
-      {/* Financial Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="shadow-sm border-l-4 border-l-green-500">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg p-2 bg-green-100 dark:bg-green-900">
-                <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+      {/* Resumo Financeiro - KPI Cards */}
+      <Card className="shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-emerald-600" />
+            Resumo Financeiro
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {/* Total de Cobranças */}
+            <div className="p-3 rounded-lg border border-l-4 border-l-slate-500 bg-card">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="rounded-md p-1.5 bg-slate-100 dark:bg-slate-900">
+                  <FileText className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
+                </div>
+                <p className="text-xs text-muted-foreground">Cobranças</p>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Total Recebido</p>
-                <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                  {formatarMoeda(totalRecebido)}
-                </p>
-              </div>
+              <p className="text-xl font-bold">
+                {financialLoading ? (
+                  <Skeleton className="h-7 w-12" />
+                ) : (
+                  financialSummary?.totalCobrancas ?? cliente.cobrancas?.length ?? 0
+                )}
+              </p>
             </div>
-          </CardContent>
-        </Card>
-        <Card className="shadow-sm border-l-4 border-l-yellow-500">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg p-2 bg-yellow-100 dark:bg-yellow-900">
-                <DollarSign className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+
+            {/* Total Pago */}
+            <div className="p-3 rounded-lg border border-l-4 border-l-emerald-500 bg-card">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="rounded-md p-1.5 bg-emerald-100 dark:bg-emerald-900">
+                  <CheckCircle className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <p className="text-xs text-muted-foreground">Total Pago</p>
               </div>
-              <div>
+              <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                {financialLoading ? (
+                  <Skeleton className="h-7 w-20" />
+                ) : (
+                  formatarMoeda(financialSummary?.totalPago ?? totalRecebido)
+                )}
+              </p>
+            </div>
+
+            {/* Total Pendente */}
+            <div className="p-3 rounded-lg border border-l-4 border-l-amber-500 bg-card">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="rounded-md p-1.5 bg-amber-100 dark:bg-amber-900">
+                  <DollarSign className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                </div>
                 <p className="text-xs text-muted-foreground">Total Pendente</p>
-                <p className="text-lg font-bold text-yellow-600 dark:text-yellow-400">
-                  {formatarMoeda(totalPendente)}
-                </p>
               </div>
+              <p className="text-xl font-bold text-amber-600 dark:text-amber-400">
+                {financialLoading ? (
+                  <Skeleton className="h-7 w-20" />
+                ) : (
+                  formatarMoeda(financialSummary?.totalPendente ?? totalPendente)
+                )}
+              </p>
             </div>
-          </CardContent>
-        </Card>
-        <Card className="shadow-sm border-l-4 border-l-red-500">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg p-2 bg-red-100 dark:bg-red-900">
-                <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+
+            {/* Saldo Devedor */}
+            <div className={`p-3 rounded-lg border bg-card ${
+              (financialSummary?.saldoDevedorAcumulado ?? (totalAtrasado + totalPendente)) > 0
+                ? 'border-l-4 border-l-red-500'
+                : 'border-l-4 border-l-green-500'
+            }`}>
+              <div className="flex items-center gap-2 mb-1">
+                <div className={`rounded-md p-1.5 ${
+                  (financialSummary?.saldoDevedorAcumulado ?? (totalAtrasado + totalPendente)) > 0
+                    ? 'bg-red-100 dark:bg-red-900'
+                    : 'bg-green-100 dark:bg-green-900'
+                }`}>
+                  <CircleDollarSign className={`h-3.5 w-3.5 ${
+                    (financialSummary?.saldoDevedorAcumulado ?? (totalAtrasado + totalPendente)) > 0
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-green-600 dark:text-green-400'
+                  }`} />
+                </div>
+                <p className="text-xs text-muted-foreground">Saldo Devedor</p>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Total Atrasado</p>
-                <p className="text-lg font-bold text-red-600 dark:text-red-400">
-                  {formatarMoeda(totalAtrasado)}
-                </p>
-              </div>
+              <p className={`text-xl font-bold ${
+                (financialSummary?.saldoDevedorAcumulado ?? (totalAtrasado + totalPendente)) > 0
+                  ? 'text-red-600 dark:text-red-400'
+                  : 'text-green-600 dark:text-green-400'
+              }`}>
+                {financialLoading ? (
+                  <Skeleton className="h-7 w-20" />
+                ) : (
+                  formatarMoeda(financialSummary?.saldoDevedorAcumulado ?? (totalAtrasado + totalPendente))
+                )}
+              </p>
+              {(financialSummary?.saldoDevedorAcumulado ?? (totalAtrasado + totalPendente)) <= 0 && (
+                <p className="text-[10px] text-green-600 dark:text-green-400 mt-0.5">Sem dívidas</p>
+              )}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Financial Summary Chart */}
       {chartData.length > 0 && (
@@ -470,6 +588,20 @@ export function ClienteDetalheView() {
         {/* Cobranças Tab */}
         <TabsContent value="cobrancas">
           <Card className="shadow-sm">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">Cobranças</CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs h-7"
+                  onClick={() => navigate('cobranca-nova', null, { clienteId: cliente.id })}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Nova Cobrança
+                </Button>
+              </div>
+            </CardHeader>
             <CardContent className="p-0">
               {!cliente.cobrancas || cliente.cobrancas.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -495,7 +627,13 @@ export function ClienteDetalheView() {
                     {cliente.cobrancas.map((cob) => (
                       <TableRow
                         key={cob.id}
-                        className="cursor-pointer"
+                        className={`cursor-pointer hover:bg-muted/50 transition-colors ${
+                          cob.status === 'Pago' ? 'border-l-4 border-l-green-500' :
+                          cob.status === 'Pendente' ? 'border-l-4 border-l-yellow-500' :
+                          cob.status === 'Atrasado' ? 'border-l-4 border-l-red-500' :
+                          cob.status === 'Parcial' ? 'border-l-4 border-l-orange-500' :
+                          ''
+                        }`}
                         onClick={() => navigate('cobranca-detalhe', cob.id)}
                       >
                         <TableCell className="font-medium">{cob.produtoIdentificador}</TableCell>
@@ -514,7 +652,28 @@ export function ClienteDetalheView() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <StatusBadge status={cob.status} />
+                          <div className="flex items-center gap-2">
+                            <StatusBadge status={cob.status} />
+                            {(cob.status === 'Pendente' || cob.status === 'Atrasado' || cob.status === 'Parcial') && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  const saldoDevedor = formatarMoeda(cob.saldoDevedorGerado || cob.totalClientePaga - cob.valorRecebido)
+                                  const phone = cliente.telefonePrincipal.replace(/[()\-\s]/g, '').replace(/^0+/, '')
+                                  const phoneWithCountry = phone.startsWith('55') ? phone : `55${phone}`
+                                  const message = encodeURIComponent(
+                                    `Olá, ${cliente.nomeExibicao}! \n\nTemos cobranças pendentes em aberto no valor de R$ ${saldoDevedor}.\n\nPor favor, entre em contato para regularizar.\n\nApp Cobranças - Sistema de Gestão`
+                                  )
+                                  window.open(`https://web.whatsapp.com/send?phone=${phoneWithCountry}&text=${message}`, '_blank')
+                                }}
+                              >
+                                <MessageCircle className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

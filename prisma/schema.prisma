@@ -188,11 +188,27 @@ model Cobranca {
   version               Int       @default(1)
   deletedAt             DateTime?
 
-  locacao               Locacao   @relation(fields: [locacaoId], references: [id])
-  cliente               Cliente   @relation(fields: [clienteId], references: [id])
-  produto               Produto?  @relation(fields: [produtoId], references: [id])
+  locacao               Locacao             @relation(fields: [locacaoId], references: [id])
+  cliente               Cliente             @relation(fields: [clienteId], references: [id])
+  produto               Produto?            @relation(fields: [produtoId], references: [id])
+  pagamentos            PagamentoCobranca[]
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+}
+
+model PagamentoCobranca {
+  id              String    @id @default(cuid())
+  cobrancaId      String
+  valor           Float
+  formaPagamento  String    @default("Pix")  // Dinheiro, Pix, Cartão, Transferência
+  dataPagamento   String
+  observacao      String?
+  usuarioId       String?
+  usuarioNome     String?
+
+  cobranca        Cobranca  @relation(fields: [cobrancaId], references: [id])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 // ============================================

@@ -169,3 +169,107 @@
 
 /* Gradient text */
 .gradient-text { background: linear-gradient(135deg, oklch(0.55 0.15 160), oklch(0.45 0.12 180)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+/* Status badge utility */
+.status-badge {
+  @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold;
+}
+.status-badge-pago { @apply bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300; }
+.status-badge-pendente { @apply bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300; }
+.status-badge-atrasado { @apply bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300; }
+.status-badge-parcial { @apply bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300; }
+.status-badge-ativo { @apply bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300; }
+.status-badge-inativo { @apply bg-gray-100 text-gray-700 dark:bg-gray-800/50 dark:text-gray-300; }
+
+/* Gradient border utility - cards with gradient top border */
+.gradient-border {
+  position: relative;
+  overflow: hidden;
+}
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, oklch(0.55 0.15 160), oklch(0.50 0.12 180), oklch(0.55 0.18 200));
+  border-radius: 999px 999px 0 0;
+}
+.gradient-border-emerald::before { background: linear-gradient(90deg, #059669, #10b981, #34d399); }
+.gradient-border-sky::before { background: linear-gradient(90deg, #0284c7, #0ea5e9, #38bdf8); }
+.gradient-border-amber::before { background: linear-gradient(90deg, #d97706, #f59e0b, #fbbf24); }
+.gradient-border-rose::before { background: linear-gradient(90deg, #e11d48, #f43f5e, #fb7185); }
+.gradient-border-teal::before { background: linear-gradient(90deg, #0d9488, #14b8a6, #2dd4bf); }
+
+/* Shimmer card animation for loading states */
+@keyframes shimmer-card {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer-card {
+  background: linear-gradient(
+    90deg,
+    oklch(0.97 0 0) 25%,
+    oklch(0.94 0 0) 50%,
+    oklch(0.97 0 0) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-card 1.8s ease-in-out infinite;
+}
+.dark .shimmer-card {
+  background: linear-gradient(
+    90deg,
+    oklch(0.22 0 0) 25%,
+    oklch(0.28 0 0) 50%,
+    oklch(0.22 0 0) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-card 1.8s ease-in-out infinite;
+}
+
+/* Hover lift utility for consistent hover effects on cards */
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 12px 28px -6px rgb(0 0 0 / 12%), 0 4px 10px -4px rgb(0 0 0 / 6%);
+}
+.dark .hover-lift:hover {
+  box-shadow: 0 12px 28px -6px rgb(0 0 0 / 35%), 0 4px 10px -4px rgb(0 0 0 / 15%);
+}
+
+/* Progress bar animation */
+@keyframes progress-fill {
+  from { width: 0%; }
+}
+.progress-animated {
+  animation: progress-fill 1s ease-out;
+}
+
+/* Floating shapes animation for login */
+@keyframes float-shape {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-20px) rotate(5deg); }
+  50% { transform: translateY(-10px) rotate(-3deg); }
+  75% { transform: translateY(-25px) rotate(2deg); }
+}
+.float-shape-1 { animation: float-shape 8s ease-in-out infinite; }
+.float-shape-2 { animation: float-shape 10s ease-in-out infinite 1s; }
+.float-shape-3 { animation: float-shape 12s ease-in-out infinite 2s; }
+.float-shape-4 { animation: float-shape 9s ease-in-out infinite 3s; }
+.float-shape-5 { animation: float-shape 11s ease-in-out infinite 0.5s; }
+
+/* Gradient line utility */
+.gradient-line {
+  height: 3px;
+  background: linear-gradient(90deg, oklch(0.55 0.15 160), oklch(0.50 0.12 180), transparent);
+  border-radius: 999px;
+}
+
+/* Subtle backdrop blur bar */
+.backdrop-blur-bar {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}

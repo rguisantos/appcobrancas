@@ -398,14 +398,14 @@ export function CobrancasView() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {summaryCards.map((card) => (
-          <Card key={card.title} className={`shadow-sm ${card.accent} bg-gradient-to-br ${card.gradient}`}>
+          <Card key={card.title} className={`shadow-sm hover:shadow-md transition-shadow ${card.accent} bg-gradient-to-br ${card.gradient}`}>
             <CardContent className="p-5">
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground font-medium">{card.title}</p>
-                  <p className="text-2xl font-bold">{card.value}</p>
+                  <p className="text-3xl font-extrabold tracking-tight">{card.value}</p>
                 </div>
-                <div className={`rounded-xl p-2.5 ${card.iconBg} shadow-sm`}>
+                <div className={`rounded-full p-2.5 shadow-md ${card.iconBg}`}>
                   <span className={card.iconColor}>{card.icon}</span>
                 </div>
               </div>
@@ -415,11 +415,11 @@ export function CobrancasView() {
       </div>
 
       {/* Filters */}
-      <Card className="shadow-sm bg-muted/30">
+      <Card className="shadow-sm bg-muted/30 border-dashed">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <Select value={status} onValueChange={handleStatusChange}>
-              <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px] rounded-lg">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -436,7 +436,7 @@ export function CobrancasView() {
                 value={dataInicio}
                 onChange={(e) => setDataInicio(e.target.value)}
                 placeholder="Data início"
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto rounded-lg"
               />
               <span className="text-muted-foreground text-sm">a</span>
               <Input
@@ -444,14 +444,14 @@ export function CobrancasView() {
                 value={dataFim}
                 onChange={(e) => setDataFim(e.target.value)}
                 placeholder="Data fim"
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto rounded-lg"
               />
             </div>
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="ID do cliente..."
-                className="pl-9"
+                className="pl-9 rounded-lg"
                 value={clienteInput}
                 onChange={(e) => setClienteInput(e.target.value)}
               />
@@ -557,7 +557,7 @@ export function CobrancasView() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={cobranca.status} />
+                      <StatusBadge status={cobranca.status} size="pill" />
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">
                       {cobranca.dataPagamento ? formatDate(cobranca.dataPagamento) : '—'}
@@ -646,16 +646,15 @@ export function CobrancasView() {
 
       {/* Floating Batch Action Bar */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300">
-          <div className="flex items-center gap-3 bg-foreground text-background px-5 py-3 rounded-xl shadow-xl">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300 backdrop-blur-bar">
+          <div className="flex items-center gap-3 bg-foreground/95 text-background px-5 py-3 rounded-xl shadow-xl ring-1 ring-white/10">
             <span className="text-sm font-medium whitespace-nowrap">
               {selectedIds.size} cobrança{selectedIds.size !== 1 ? 's' : ''} selecionada{selectedIds.size !== 1 ? 's' : ''}
             </span>
             <div className="h-6 w-px bg-background/20" />
             <Button
-              variant="secondary"
               size="sm"
-              className="gap-1.5 h-8 text-xs"
+              className="gap-1.5 h-8 text-xs bg-amber-500 hover:bg-amber-600 text-white"
               disabled={batchLoading}
               onClick={() => handleBatchAction('marcar-atrasado')}
             >
@@ -663,9 +662,8 @@ export function CobrancasView() {
               Marcar como Atrasado
             </Button>
             <Button
-              variant="secondary"
               size="sm"
-              className="gap-1.5 h-8 text-xs"
+              className="gap-1.5 h-8 text-xs bg-emerald-500 hover:bg-emerald-600 text-white"
               disabled={batchLoading}
               onClick={() => handleBatchAction('enviar-lembrete')}
             >

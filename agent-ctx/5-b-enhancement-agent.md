@@ -1,51 +1,60 @@
-# Task 5-b - Enhancement Agent (Round 2) Work Record
+# Task 5-b - Enhancement Agent Work Record
 
-## Task: Add keyboard shortcuts, CSV import API, and dashboard weekly comparison
+## Summary
+Implemented 4 new features for the App Cobranças billing management system as specified in Task 5-b.
 
-## Completed Items
+## Features Implemented
 
-### 1. Keyboard Shortcuts Panel
-- **File**: `/home/z/my-project/src/components/shared/keyboard-shortcuts.tsx` (NEW)
-- Floating overlay panel triggered by `?` key
-- 3 categories: Navegação, Ações, Sistema
-- Animated with framer-motion, backdrop blur
-- Integrated in `/home/z/my-project/src/components/layout/app-shell.tsx`
+### 1. WhatsApp Payment Reminder Integration
+**File**: `src/components/views/cliente-detalhe-view.tsx`
+- Added "Enviar Lembrete" button with `MessageCircle` icon in the header action buttons area
+- Only shown when client has pending cobranças (saldoDevedor > 0)
+- Opens WhatsApp Web with pre-filled Portuguese template message including client name and debt amount
+- Phone number formatting: removes parentheses, dashes, spaces, adds country code 55
+- Added small WhatsApp button on each cobrança row in the table (for Pendente/Atrasado/Parcial statuses)
+- Cobrança rows now have colored left borders by status (green=Pago, yellow=Pendente, red=Atrasado, orange=Parcial)
 
-### 2. CSV Import API - Clientes
-- **File**: `/home/z/my-project/src/app/api/import/clientes/route.ts` (NEW)
-- POST endpoint with multipart form data
-- ViaCEP API integration for address auto-fill
-- Batch processing (10 per batch)
-- Duplicate detection, validation, audit logging
+### 2. Quick Client Status Toggle
+**Files**: `src/components/views/clientes-view.tsx`, `src/app/api/clientes/[id]/route.ts`
+- Added `Switch` component from shadcn/ui on each client row
+- Switch is green when Ativo, red when Inativo
+- Optimistic update: row border color updates immediately on toggle
+- Calls `PATCH /api/clientes/[id]` with `{ status: 'Ativo' | 'Inativo' }`
+- Switch is disabled (greyed out) while API call is in progress
+- Toast confirmation on success, reverts on failure
+- Added new PATCH handler to clientes API route for partial updates (only `status` field allowed)
 
-### 3. CSV Import API - Produtos
-- **File**: `/home/z/my-project/src/app/api/import/produtos/route.ts` (NEW)
-- POST endpoint with multipart form data
-- Auto-create TipoProduto, DescricaoProduto, TamanhoProduto
-- Batch processing, validation, audit logging
+### 3. Client Cobrança Quick-Create from Detail Page
+**Files**: `src/components/views/cliente-detalhe-view.tsx`, `src/components/views/cobranca-form-view.tsx`
+- Added "Nova Cobrança" button with Plus icon in the Cobranças tab header
+- When clicked, navigates to `cobranca-nova` with `clienteId` passed via navigation params
+- Cobrança form reads `navParams.clienteId` on mount
+- Auto-selects the first matching locação for the pre-selected client
+- Navigation store already supported `params` (Record<string, string>), no changes needed
 
-### 4. Dashboard Weekly Comparison Widget
-- **File**: `/home/z/my-project/src/components/views/dashboard-view.tsx` (MODIFIED)
-- Added `WeeklyComparisonWidget` component between Quick Actions and Charts
-- Week-over-week comparison with percentage change badge
-- Sparkline bar visualization
-- Teal color scheme
+### 4. Dashboard Recent Activity Feed
+**File**: `src/components/views/dashboard-view.tsx`
+- Added "Atividade Recente" card below Quick Actions section
+- Fetches last 10 audit log entries from `/api/auditoria?limit=10`
+- Timeline display with:
+  - Action icon (Plus=create, Pencil=update, Trash2=delete, CreditCard=payment)
+  - Description: "{ação} em {entidade}" (e.g., "Criação em Cliente")
+  - User who performed the action
+  - Relative time ("há 5 min", "há 2h")
+- Color-coded dots: green for create/payment, amber for update, red for delete
+- Click to navigate to relevant entity detail view
+- Loading skeleton while fetching
+- Empty state when no activity
+- "Ver todas" link to full auditoria page
 
-### 5. Import UI Button - Clientes
-- **File**: `/home/z/my-project/src/components/views/clientes-view.tsx` (MODIFIED)
-- "Importar CSV" button with hidden file input
-- Loading spinner, toast notifications
-
-### 6. Import UI Button - Produtos
-- **File**: `/home/z/my-project/src/components/views/produtos-view.tsx` (MODIFIED)
-- Same pattern as Clientes view
-
-### 7. Top Bar Enhancements
-- **File**: `/home/z/my-project/src/components/layout/top-bar.tsx` (MODIFIED)
-- `shadow-sm` on header
-- "?" keyboard shortcut hint
-- `animate-pulse` on Bell icon for unread notifications
+## Files Modified
+1. `src/components/views/cliente-detalhe-view.tsx` - WhatsApp button, cobrança row WhatsApp, Nova Cobrança button, cobrança row styling
+2. `src/components/views/clientes-view.tsx` - Status toggle Switch
+3. `src/app/api/clientes/[id]/route.ts` - New PATCH handler
+4. `src/components/views/cobranca-form-view.tsx` - Auto-select locação from nav params
+5. `src/components/views/dashboard-view.tsx` - RecentActivityFeed component + new icon imports
 
 ## Verification
-- `bun run lint`: Zero errors
-- Dev server: Running normally
+- Zero lint errors
+- Dev server running normally
+- All existing functionality preserved

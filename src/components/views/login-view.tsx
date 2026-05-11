@@ -62,6 +62,13 @@ export function LoginView() {
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700">
         {/* Decorative elements */}
         <div className="absolute inset-0">
+          {/* Animated floating geometric shapes */}
+          <div className="absolute top-[15%] left-[10%] w-16 h-16 rounded-2xl bg-white/10 float-shape-1" />
+          <div className="absolute top-[60%] right-[15%] w-12 h-12 rounded-full bg-white/10 float-shape-2" />
+          <div className="absolute bottom-[20%] left-[25%] w-20 h-20 rounded-xl bg-white/[0.07] float-shape-3" />
+          <div className="absolute top-[35%] right-[30%] w-10 h-10 rounded-lg bg-white/10 float-shape-4 rotate-45" />
+          <div className="absolute bottom-[40%] left-[50%] w-14 h-14 rounded-full bg-white/[0.06] float-shape-5" />
+
           {/* Large decorative circles */}
           <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/5" />
           <div className="absolute top-1/3 -right-16 w-72 h-72 rounded-full bg-white/5" />
@@ -165,7 +172,7 @@ export function LoginView() {
             </div>
 
             {/* Login card */}
-            <div className="bg-card rounded-2xl shadow-xl border border-border/50 p-6 sm:p-8">
+            <div className="bg-card rounded-2xl shadow-xl border border-border/50 p-6 sm:p-8 gradient-border-teal">
               <div className="mb-6">
                 <h2 className="text-2xl font-bold tracking-tight">Entrar</h2>
                 <p className="text-muted-foreground mt-1.5 text-sm">
@@ -192,7 +199,7 @@ export function LoginView() {
                       onChange={(e) => setEmail(e.target.value)}
                       required
                       disabled={loading}
-                      className="h-11 pl-10"
+                      className="h-11 pl-10 focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
                     />
                   </div>
                 </div>
@@ -209,7 +216,7 @@ export function LoginView() {
                       onChange={(e) => setSenha(e.target.value)}
                       required
                       disabled={loading}
-                      className="h-11 pl-10 pr-10"
+                      className="h-11 pl-10 pr-10 focus:border-emerald-500 focus:ring-emerald-500/20 transition-colors"
                     />
                     <Button
                       type="button"
@@ -265,7 +272,7 @@ export function LoginView() {
               </div>
 
               {/* Demo credentials */}
-              <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+              <div className="rounded-xl border-2 border-dashed border-border/60 bg-muted/20 p-4">
                 <p className="text-xs font-medium text-muted-foreground mb-2">Credenciais de demonstração:</p>
                 <div className="flex flex-col gap-1.5 text-xs text-muted-foreground/80">
                   <div className="flex items-center gap-2">

@@ -68,7 +68,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   },
 }
 
-export function StatusBadge({ status, className }: { status: string; className?: string }) {
+export function StatusBadge({ status, className, size }: { status: string; className?: string; size?: 'default' | 'pill' }) {
   const config = statusConfig[status]
 
   if (!config) {
@@ -76,6 +76,31 @@ export function StatusBadge({ status, className }: { status: string; className?:
       <Badge variant="outline" className={cn('text-xs', className)}>
         {status}
       </Badge>
+    )
+  }
+
+  if (size === 'pill') {
+    const dotColors: Record<string, string> = {
+      Pago: 'bg-green-500',
+      Pendente: 'bg-yellow-500',
+      Parcial: 'bg-orange-500',
+      Atrasado: 'bg-red-500',
+      Ativa: 'bg-green-500',
+      Encerrada: 'bg-gray-400',
+      Ativo: 'bg-green-500',
+      Inativo: 'bg-red-500',
+      'Manutenção': 'bg-purple-500',
+      EmAndamento: 'bg-orange-500',
+      Concluida: 'bg-green-500',
+      Cancelada: 'bg-gray-400',
+      ativa: 'bg-green-500',
+      concluida: 'bg-blue-500',
+    }
+    return (
+      <span className={cn('status-badge border-0', config.className, className)}>
+        <span className={cn('h-1.5 w-1.5 rounded-full', dotColors[status] || 'bg-gray-400')} />
+        {config.label}
+      </span>
     )
   }
 

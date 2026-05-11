@@ -6,9 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { Progress } from '@/components/ui/progress'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
 import { format, parseISO } from 'date-fns'
 import {
@@ -42,9 +50,30 @@ import {
   DollarSign,
   Loader2,
   Printer,
+  Banknote,
+  QrCode,
+  CreditCard as CardIcon,
+  ArrowRightLeft,
+  Clock,
+  CheckCircle2,
+  CircleDot,
+  Info,
+  History,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Breadcrumb } from '@/components/layout/breadcrumb'
+
+interface Pagamento {
+  id: string
+  cobrancaId: string
+  valor: number
+  formaPagamento: string
+  dataPagamento: string
+  observacao: string | null
+  usuarioId: string | null
+  usuarioNome: string | null
+  createdAt: string
+}
 
 interface Cobranca {
   id: string
@@ -99,15 +128,40 @@ interface Cobranca {
   } | null
 }
 
+function getFormaPagamentoIcon(fp: string) {
+  switch (fp) {
+    case 'Dinheiro': return <Banknote className="h-4 w-4 text-green-600" />
+    case 'Pix': return <QrCode className="h-4 w-4 text-teal-600" />
+    case 'Cartão': return <CardIcon className="h-4 w-4 text-sky-600" />
+    case 'Transferência': return <ArrowRightLeft className="h-4 w-4 text-violet-600" />
+    default: return <CreditCard className="h-4 w-4" />
+  }
+}
+
+function getFormaPagamentoLabel(fp: string) {
+  const map: Record<string, string> = {
+    'Dinheiro': 'Dinheiro',
+    'Pix': 'Pix',
+    'Cartão': 'Cartão',
+    'Transferência': 'Transferência',
+  }
+  return map[fp] || fp
+}
+
 export function CobrancaDetalheView() {
   const { selectedId, navigate, goBack } = useNavigation()
 
   const [cobranca, setCobranca] = useState<Cobranca | null>(null)
+  const [pagamentos, setPagamentos] = useState<Pagamento[]>([])
   const [loading, setLoading] = useState(true)
+  const [pagamentosLoading, setPagamentosLoading] = useState(true)
 
   // Payment dialog state
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
   const [paymentValue, setPaymentValue] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('Pix')
+  const [paymentDate, setPaymentDate] = useState('')
+  const [paymentObs, setPaymentObs] = useState('')
   const [paymentSubmitting, setPaymentSubmitting] = useState(false)
 
   // Delete dialog state
@@ -119,10 +173,11 @@ export function CobrancaDetalheView() {
     if (selectedId) {
       async function fetchCobranca() {
         try {
-          const res = await fetch(`/api/cobrancas/${selectedId}`)
+          const res = await fetch(`/api/cobrancas/${selectedId}?include=pagamentos`)
           if (res.ok) {
             const data = await res.json()
             setCobranca(data)
+            setPagamentos(data.pagamentos || [])
           } else {
             toast.error('Cobrança não encontrada')
             navigate('cobrancas')
@@ -138,10 +193,34 @@ export function CobrancaDetalheView() {
     }
   }, [selectedId, navigate])
 
+  // Fetch payment history (fallback - also loaded with cobranca)
+  useEffect(() => {
+    if (selectedId) {
+      async function fetchPagamentos() {
+        try {
+          const res = await fetch(`/api/cobrancas/${selectedId}?include=pagamentos`)
+          if (res.ok) {
+            const data = await res.json()
+            setPagamentos(data.pagamentos || [])
+          }
+        } catch {
+          // silently ignore
+        } finally {
+          setPagamentosLoading(false)
+        }
+      }
+      fetchPagamentos()
+    }
+  }, [selectedId])
+
   // Open payment dialog
   const openPaymentDialog = () => {
     if (!cobranca) return
-    setPaymentValue(cobranca.totalClientePaga.toString())
+    const remaining = cobranca.totalClientePaga - cobranca.valorRecebido
+    setPaymentValue(remaining > 0 ? remaining.toFixed(2) : '0')
+    setPaymentMethod('Pix')
+    setPaymentDate(new Date().toISOString().split('T')[0])
+    setPaymentObs('')
     setPaymentDialogOpen(true)
   }
 
@@ -149,36 +228,44 @@ export function CobrancaDetalheView() {
   const handlePayment = async () => {
     if (!cobranca) return
 
+    const valor = parseFloat(paymentValue)
+    if (!valor || valor <= 0) {
+      toast.error('Valor do pagamento deve ser maior que zero')
+      return
+    }
+
+    const remaining = cobranca.totalClientePaga - cobranca.valorRecebido
+    if (valor > remaining + 0.01) {
+      toast.warning(`Valor excede o saldo devedor de ${formatarMoeda(remaining)}`)
+    }
+
     setPaymentSubmitting(true)
     try {
-      const valorRecebido = parseFloat(paymentValue) || 0
-      const newStatus = valorRecebido >= cobranca.totalClientePaga ? 'Pago' : 'Parcial'
-
       const res = await fetch(`/api/cobrancas/${cobranca.id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          locacaoId: cobranca.locacaoId,
-          dataInicio: cobranca.dataInicio,
-          dataFim: cobranca.dataFim,
-          relogioAnterior: cobranca.relogioAnterior,
-          relogioAtual: cobranca.relogioAtual,
-          descontoPartidasQtd: cobranca.descontoPartidasQtd,
-          descontoPartidasValor: cobranca.descontoPartidasValor,
-          descontoDinheiro: cobranca.descontoDinheiro,
-          valorRecebido,
-          status: newStatus,
-          observacao: cobranca.observacao,
+          valor,
+          formaPagamento: paymentMethod,
+          dataPagamento: paymentDate || new Date().toISOString().split('T')[0],
+          observacao: paymentObs || undefined,
         }),
       })
 
       if (res.ok) {
         toast.success('Pagamento registrado com sucesso')
         setPaymentDialogOpen(false)
-        // Refresh data
-        const updated = await fetch(`/api/cobrancas/${cobranca.id}`)
-        if (updated.ok) {
-          setCobranca(await updated.json())
+        // Refresh cobranca and pagamentos
+        const [cobrancaRes, pagamentosRes] = await Promise.all([
+          fetch(`/api/cobrancas/${cobranca.id}`),
+          fetch(`/api/cobrancas/${cobranca.id}?include=pagamentos`),
+        ])
+        if (cobrancaRes.ok) {
+          setCobranca(await cobrancaRes.json())
+        }
+        if (pagamentosRes.ok) {
+          const pagData = await pagamentosRes.json()
+          setPagamentos(pagData.pagamentos || [])
         }
       } else {
         const data = await res.json()
@@ -226,6 +313,11 @@ export function CobrancaDetalheView() {
     ? cobranca.totalClientePaga > 0
       ? Math.min(100, (cobranca.valorRecebido / cobranca.totalClientePaga) * 100)
       : 0
+    : 0
+
+  // Remaining balance for payment dialog
+  const remainingBalance = cobranca
+    ? Math.max(0, cobranca.totalClientePaga - cobranca.valorRecebido)
     : 0
 
   if (loading) {
@@ -288,6 +380,8 @@ export function CobrancaDetalheView() {
           .financial-total { font-weight: bold; font-size: 15px; border-top: 2px solid #333; margin-top: 8px; padding-top: 8px; }
           .observation { margin-top: 15px; padding: 10px; background: #f9f9f9; border-radius: 4px; font-size: 12px; }
           .footer { margin-top: 40px; text-align: center; font-size: 11px; color: #999; border-top: 1px solid #ddd; padding-top: 15px; }
+          .payment-history { margin-top: 15px; }
+          .payment-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 12px; border-bottom: 1px dotted #ddd; }
         </style>
       </head>
       <body>
@@ -398,6 +492,18 @@ export function CobrancaDetalheView() {
           </div>
         </div>
 
+        ${pagamentos.length > 0 ? `
+          <div class="section-title">Histórico de Pagamentos</div>
+          <div class="payment-history">
+            ${pagamentos.map((p: Pagamento) => `
+              <div class="payment-row">
+                <span>${formatDate(p.dataPagamento)} — ${p.formaPagamento}</span>
+                <span>${formatCurrency(p.valor)}</span>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+
         ${cobranca.observacao ? `
           <div class="observation">
             <strong>Observação:</strong> ${cobranca.observacao}
@@ -442,6 +548,16 @@ export function CobrancaDetalheView() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {cobranca.status !== 'Pago' && (
+            <Button
+              size="sm"
+              className="gap-2"
+              onClick={openPaymentDialog}
+            >
+              <CreditCard className="h-4 w-4" />
+              Registrar Pagamento
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -534,12 +650,12 @@ export function CobrancaDetalheView() {
           </div>
 
           {/* Saldo Devedor */}
-          {cobranca.saldoDevedorGerado > 0 && (
+          {remainingBalance > 0 && (
             <div className="p-3 bg-red-50 dark:bg-red-950 rounded-lg flex items-center justify-between">
               <div>
                 <p className="text-sm text-red-600 dark:text-red-400">Saldo Devedor</p>
                 <p className="text-xl font-bold text-red-700 dark:text-red-300">
-                  {formatarMoeda(cobranca.saldoDevedorGerado)}
+                  {formatarMoeda(remainingBalance)}
                 </p>
               </div>
               <Button
@@ -551,6 +667,19 @@ export function CobrancaDetalheView() {
                 <CreditCard className="h-4 w-4" />
                 Registrar Pagamento
               </Button>
+            </div>
+          )}
+
+          {/* Fully paid indicator */}
+          {cobranca.status === 'Pago' && (
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-950 rounded-lg flex items-center gap-3">
+              <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+              <div>
+                <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Cobrança Quitada</p>
+                <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                  Pagamento completo registrado em {formatDate(cobranca.dataPagamento)}
+                </p>
+              </div>
             </div>
           )}
         </CardContent>
@@ -686,55 +815,245 @@ export function CobrancaDetalheView() {
         )}
       </div>
 
-      {/* Registrar Pagamento Button (for non-paid cobranças) */}
-      {cobranca.status !== 'Pago' && (
-        <div className="flex justify-end">
-          <Button onClick={openPaymentDialog} className="gap-2">
-            <CreditCard className="h-4 w-4" />
-            Registrar Pagamento
-          </Button>
-        </div>
-      )}
+      {/* Payment History Timeline */}
+      <Card className="shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <History className="h-4 w-4 text-teal-600" />
+            Histórico de Pagamentos
+          </CardTitle>
+          <CardDescription>
+            {pagamentos.length} pagamento{pagamentos.length !== 1 ? 's' : ''} registrado{pagamentos.length !== 1 ? 's' : ''}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {pagamentosLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : pagamentos.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <div className="rounded-full bg-muted p-3 mb-3">
+                <CircleDot className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium">Nenhum pagamento registrado</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {cobranca.status !== 'Pago'
+                  ? 'Clique em "Registrar Pagamento" para adicionar'
+                  : 'Esta cobrança foi marcada como paga sem registro detalhado'
+                }
+              </p>
+            </div>
+          ) : (
+            <div className="relative">
+              {/* Timeline line */}
+              <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-teal-200 dark:bg-teal-900" />
 
-      {/* Payment Dialog */}
+              <div className="space-y-4">
+                {pagamentos.map((pag, index) => (
+                  <div key={pag.id} className="relative flex gap-4 pl-2">
+                    {/* Timeline dot */}
+                    <div className={`
+                      relative z-10 mt-1 h-6 w-6 rounded-full flex items-center justify-center shrink-0
+                      ${index === 0
+                        ? 'bg-teal-500 text-white'
+                        : 'bg-teal-100 dark:bg-teal-900 text-teal-600 dark:text-teal-400'
+                      }
+                    `}>
+                      {index === 0 ? (
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      ) : (
+                        <CircleDot className="h-3.5 w-3.5" />
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div className={`flex-1 p-3 rounded-lg border ${index === 0 ? 'border-teal-200 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-950/30' : 'border-border bg-card'}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {getFormaPagamentoIcon(pag.formaPagamento)}
+                          <span className="text-sm font-medium">
+                            {formatarMoeda(pag.valor)}
+                          </span>
+                          <span className="text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
+                            {getFormaPagamentoLabel(pag.formaPagamento)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          {formatDate(pag.dataPagamento)}
+                        </div>
+                      </div>
+                      {pag.observacao && (
+                        <p className="text-xs text-muted-foreground mt-1.5 pl-0.5">
+                          <Info className="h-3 w-3 inline mr-1" />
+                          {pag.observacao}
+                        </p>
+                      )}
+                      {pag.usuarioNome && (
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          Registrado por: {pag.usuarioNome}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {cobranca.status !== 'Pago' && pagamentos.length > 0 && (
+            <div className="mt-4 pt-4 border-t">
+              <Button variant="outline" size="sm" className="gap-2" onClick={openPaymentDialog}>
+                <CreditCard className="h-4 w-4" />
+                Registrar Novo Pagamento
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Enhanced Payment Dialog */}
       <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Registrar Pagamento</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-primary" />
+              Registrar Pagamento
+            </DialogTitle>
             <DialogDescription>
               Registre o pagamento para a cobrança de {cobranca?.clienteNome}
             </DialogDescription>
           </DialogHeader>
           {cobranca && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Valor Total</p>
+              {/* Summary */}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="p-2.5 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground">Valor Total</p>
                   <p className="font-semibold">{formatarMoeda(cobranca.totalClientePaga)}</p>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Valor Já Recebido</p>
-                  <p className="font-semibold text-green-600">{formatarMoeda(cobranca.valorRecebido)}</p>
+                <div className="p-2.5 bg-green-50 dark:bg-green-950/50 rounded-lg">
+                  <p className="text-xs text-green-600 dark:text-green-400">Já Recebido</p>
+                  <p className="font-semibold text-green-700 dark:text-green-300">{formatarMoeda(cobranca.valorRecebido)}</p>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Saldo Devedor</p>
-                  <p className="font-semibold text-red-600">{formatarMoeda(cobranca.saldoDevedorGerado)}</p>
+                <div className="p-2.5 bg-red-50 dark:bg-red-950/50 rounded-lg">
+                  <p className="text-xs text-red-600 dark:text-red-400">Saldo Devedor</p>
+                  <p className="font-semibold text-red-700 dark:text-red-300">{formatarMoeda(remainingBalance)}</p>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Status Atual</p>
+                <div className="p-2.5 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground">Status Atual</p>
                   <StatusBadge status={cobranca.status} />
                 </div>
               </div>
+
+              {/* Payment Amount */}
               <div className="space-y-2">
                 <Label htmlFor="paymentValue">Valor do Pagamento (R$)</Label>
                 <Input
                   id="paymentValue"
                   type="number"
                   step="0.01"
-                  min="0"
+                  min="0.01"
+                  max={remainingBalance > 0 ? (remainingBalance + 1).toFixed(2) : undefined}
                   value={paymentValue}
                   onChange={(e) => setPaymentValue(e.target.value)}
                   placeholder="0,00"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-7"
+                    onClick={() => setPaymentValue(remainingBalance.toFixed(2))}
+                  >
+                    Valor integral
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-7"
+                    onClick={() => setPaymentValue((remainingBalance / 2).toFixed(2))}
+                  >
+                    Metade
+                  </Button>
+                </div>
+                {/* Remaining balance preview */}
+                {paymentValue && (
+                  <div className="p-2 bg-muted/50 rounded text-xs">
+                    <span className="text-muted-foreground">Saldo após pagamento: </span>
+                    <span className={`font-semibold ${remainingBalance - parseFloat(paymentValue) <= 0.01 ? 'text-green-600' : 'text-amber-600'}`}>
+                      {formatarMoeda(Math.max(0, remainingBalance - parseFloat(paymentValue)))}
+                    </span>
+                    {remainingBalance - parseFloat(paymentValue) <= 0.01 && parseFloat(paymentValue) > 0 && (
+                      <span className="text-green-600 ml-1">(Cobrança será quitada)</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Method */}
+              <div className="space-y-2">
+                <Label>Forma de Pagamento</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Dinheiro">
+                      <span className="flex items-center gap-2">
+                        <Banknote className="h-4 w-4 text-green-600" />
+                        Dinheiro
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="Pix">
+                      <span className="flex items-center gap-2">
+                        <QrCode className="h-4 w-4 text-teal-600" />
+                        Pix
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="Cartão">
+                      <span className="flex items-center gap-2">
+                        <CardIcon className="h-4 w-4 text-sky-600" />
+                        Cartão
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="Transferência">
+                      <span className="flex items-center gap-2">
+                        <ArrowRightLeft className="h-4 w-4 text-violet-600" />
+                        Transferência
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Payment Date */}
+              <div className="space-y-2">
+                <Label htmlFor="paymentDate">Data do Pagamento</Label>
+                <Input
+                  id="paymentDate"
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
+                />
+                <p className="text-xs text-muted-foreground">Padrão: data de hoje</p>
+              </div>
+
+              {/* Observation */}
+              <div className="space-y-2">
+                <Label htmlFor="paymentObs">Observação (opcional)</Label>
+                <Textarea
+                  id="paymentObs"
+                  value={paymentObs}
+                  onChange={(e) => setPaymentObs(e.target.value)}
+                  placeholder="Notas sobre o pagamento..."
+                  rows={2}
                 />
               </div>
             </div>

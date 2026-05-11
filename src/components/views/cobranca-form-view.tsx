@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ArrowLeft, Loader2, Save, Search, Calculator } from 'lucide-react'
+import { ArrowLeft, Loader2, Save, Search, Calculator, Info, Lightbulb } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatarMoeda, calcularCobranca, determinarStatusPagamento, type CobrancaCalcResult } from '@/lib/cobranca-calculos'
 import { Breadcrumb } from '@/components/layout/breadcrumb'
@@ -91,7 +91,7 @@ const initialFormData: CobrancaFormData = {
 }
 
 export function CobrancaFormView() {
-  const { selectedId, currentView, navigate, goBack } = useNavigation()
+  const { selectedId, currentView, navigate, goBack, params: navParams } = useNavigation()
   const isEditing = currentView === 'cobranca-editar' && !!selectedId
 
   const [formData, setFormData] = useState<CobrancaFormData>(initialFormData)
@@ -140,14 +140,25 @@ export function CobrancaFormView() {
         const res = await fetch(`/api/locacoes?status=Ativa&limit=50`)
         if (res.ok) {
           const data = await res.json()
-          setLocacoes(data.data || [])
+          const locacoesData = data.data || []
+          setLocacoes(locacoesData)
+
+          // Auto-select locação if clienteId is provided via navigation params
+          if (!isEditing && navParams?.clienteId) {
+            const matching = locacoesData.find(
+              (l: Locacao) => l.clienteId === navParams.clienteId
+            )
+            if (matching) {
+              handleSelectLocacao(matching)
+            }
+          }
         }
       } catch (error) {
         console.error('Erro ao buscar locações:', error)
       }
     }
     fetchLocacoes()
-  }, [])
+  }, [isEditing, navParams?.clienteId])
 
   // Click outside to close dropdown
   useEffect(() => {
@@ -588,47 +599,130 @@ export function CobrancaFormView() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Calculator className="h-4 w-4 text-primary" />
-                  Prévia do Cálculo
+                  Cálculo Automático
                 </CardTitle>
                 <CardDescription>Cálculo automático baseado nos dados informados</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-3 bg-muted/50 rounded-lg">
-                    <p className="text-xs text-muted-foreground">Fichas Rodadas</p>
-                    <p className="text-lg font-bold">{calcResult.fichasRodadas}</p>
-                  </div>
-                  <div className="p-3 bg-muted/50 rounded-lg">
-                    <p className="text-xs text-muted-foreground">Total Bruto</p>
-                    <p className="text-lg font-bold">{formatarMoeda(calcResult.totalBruto)}</p>
-                  </div>
-                  <div className="p-3 bg-muted/50 rounded-lg">
-                    <p className="text-xs text-muted-foreground">Descontos</p>
-                    <p className="text-lg font-bold text-red-600">
-                      -{formatarMoeda(calcResult.descontoPartidasValorTotal + calcResult.descontoDinheiroTotal)}
-                    </p>
-                  </div>
-                  <div className="p-3 bg-muted/50 rounded-lg">
-                    <p className="text-xs text-muted-foreground">Subtotal</p>
-                    <p className="text-lg font-bold">{formatarMoeda(calcResult.subtotalAposDescontos)}</p>
-                  </div>
-                  {formData.formaPagamento !== 'Periodo' && (
-                    <>
-                      <div className="p-3 bg-muted/50 rounded-lg">
-                        <p className="text-xs text-muted-foreground">
-                          Valor Percentual ({formData.percentualEmpresa}%)
-                        </p>
-                        <p className="text-lg font-bold">{formatarMoeda(calcResult.valorPercentual)}</p>
-                      </div>
-                    </>
-                  )}
-                  <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg col-span-2">
-                    <p className="text-xs text-green-600 dark:text-green-400">Total Cliente Paga</p>
-                    <p className="text-2xl font-bold text-green-700 dark:text-green-300">
-                      {formatarMoeda(calcResult.totalClientePaga)}
-                    </p>
+              <CardContent className="space-y-4">
+                {/* Payment form explanation */}
+                <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <Lightbulb className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      {formData.formaPagamento === 'Periodo' && (
+                        <>
+                          <p className="font-medium text-foreground">Forma de Pagamento: Período (Valor Fixo)</p>
+                          <p>O cliente paga um valor fixo por período, independentemente do uso do produto. O valor é definido na locação e não depende de leitura de relógio.</p>
+                        </>
+                      )}
+                      {formData.formaPagamento === 'PercentualPagar' && (
+                        <>
+                          <p className="font-medium text-foreground">Forma de Pagamento: % Pagar</p>
+                          <p>O cliente paga um percentual do faturamento para a empresa. O cálculo é: Fichas Rodadas × Valor Ficha = Total Bruto. Após descontos, aplica-se o percentual da empresa para obter o valor que o cliente paga.</p>
+                        </>
+                      )}
+                      {formData.formaPagamento === 'PercentualReceber' && (
+                        <>
+                          <p className="font-medium text-foreground">Forma de Pagamento: % Receber</p>
+                          <p>O cliente recebe um percentual do faturamento e paga o restante. O cálculo é: Fichas Rodadas × Valor Ficha = Total Bruto. Após descontos, a empresa recebe o percentual e o cliente paga o valor restante.</p>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
+
+                {/* Calculation breakdown */}
+                {formData.formaPagamento === 'Periodo' ? (
+                  <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
+                    <p className="text-sm text-green-600 dark:text-green-400 mb-1">Valor Fixo (Período)</p>
+                    <p className="text-2xl font-bold text-green-700 dark:text-green-300">
+                      {formatarMoeda(formData.valorFixo ?? 0)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Valor definido na locação — não depende de leitura de relógio
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Step 1: Fichas Rodadas */}
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-full bg-primary/10 p-1.5 text-primary shrink-0">
+                        <span className="text-xs font-bold">1</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground">Fichas Rodadas = Relógio Atual − Relógio Anterior</p>
+                        <p className="text-sm font-medium">
+                          {formData.relogioAtual} − {formData.relogioAnterior} = <span className="font-bold text-primary">{calcResult.fichasRodadas}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Step 2: Total Bruto */}
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-full bg-primary/10 p-1.5 text-primary shrink-0">
+                        <span className="text-xs font-bold">2</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground">Total Bruto = Fichas Rodadas × Valor Ficha</p>
+                        <p className="text-sm font-medium">
+                          {calcResult.fichasRodadas} × {formatarMoeda(formData.precoFicha)} = <span className="font-bold text-primary">{formatarMoeda(calcResult.totalBruto)}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Step 3: Descontos */}
+                    {((calcResult.descontoPartidasValorTotal + calcResult.descontoDinheiroTotal) > 0) && (
+                      <div className="flex items-center gap-3">
+                        <div className="rounded-full bg-red-100 dark:bg-red-900 p-1.5 text-red-600 dark:text-red-400 shrink-0">
+                          <span className="text-xs font-bold">3</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs text-muted-foreground">Descontos</p>
+                          <p className="text-sm font-medium text-red-600 dark:text-red-400">
+                            -{formatarMoeda(calcResult.descontoPartidasValorTotal + calcResult.descontoDinheiroTotal)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Subtotal: {formatarMoeda(calcResult.subtotalAposDescontos)}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 4: Percentual split */}
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-full bg-primary/10 p-1.5 text-primary shrink-0">
+                        <span className="text-xs font-bold">{(calcResult.descontoPartidasValorTotal + calcResult.descontoDinheiroTotal) > 0 ? '4' : '3'}</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground">
+                          Percentual Empresa ({formData.percentualEmpresa}%)
+                        </p>
+                        <p className="text-sm font-medium">
+                          {formatarMoeda(calcResult.subtotalAposDescontos)} × {formData.percentualEmpresa}% = <span className="font-bold text-primary">{formatarMoeda(calcResult.valorPercentual)}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Final result */}
+                    <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
+                      <p className="text-sm text-green-600 dark:text-green-400 mb-1">
+                        {formData.formaPagamento === 'PercentualPagar'
+                          ? 'Total Cliente Paga (percentual da empresa)'
+                          : 'Total Cliente Paga (subtotal − percentual da empresa)'
+                        }
+                      </p>
+                      <p className="text-2xl font-bold text-green-700 dark:text-green-300">
+                        {formatarMoeda(calcResult.totalClientePaga)}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {formData.formaPagamento === 'PercentualPagar'
+                          ? `${formatarMoeda(calcResult.valorPercentual)} (empresa recebe ${formData.percentualEmpresa}%)`
+                          : `${formatarMoeda(calcResult.subtotalAposDescontos)} − ${formatarMoeda(calcResult.valorPercentual)} = ${formatarMoeda(calcResult.totalClientePaga)}`
+                        }
+                      </p>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
