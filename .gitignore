@@ -51,4 +51,9 @@ prompt
 
 server.log
 # Skills directory
-/skills/
+.zscripts/dev.pid
+.zscripts/dev.log
+*.db
+*.db-journal
+skills/
+.seed-done
