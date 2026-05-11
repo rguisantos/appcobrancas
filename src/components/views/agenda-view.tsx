@@ -173,7 +173,7 @@ export function AgendaView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Agenda</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Agenda</h1>
           <p className="text-muted-foreground text-sm">
             Acompanhe cobranças por data de vencimento e pagamento
           </p>

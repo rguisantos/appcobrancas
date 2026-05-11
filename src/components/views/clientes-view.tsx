@@ -239,15 +239,15 @@ export function ClientesView() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Clientes</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Clientes</h1>
           <div className="gradient-line mt-2 w-32" />
           <p className="text-muted-foreground text-sm mt-1">
             {total} cliente{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <input
             ref={fileInputRef}
             type="file"
@@ -257,25 +257,27 @@ export function ClientesView() {
           />
           <Button
             variant="outline"
-            className="gap-2"
+            size="sm"
+            className="gap-1.5 h-8 text-xs sm:h-auto sm:text-sm sm:gap-2"
             disabled={importLoading}
             onClick={() => fileInputRef.current?.click()}
           >
-            {importLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            {importLoading ? 'Importando...' : 'Importar CSV'}
+            {importLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+            <span className="hidden sm:inline">{importLoading ? 'Importando...' : 'Importar CSV'}</span>
+            <span className="sm:hidden">Importar</span>
           </Button>
-          <Button variant="outline" className="gap-2" onClick={() => {
+          <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs sm:h-auto sm:text-sm sm:gap-2" onClick={() => {
             toast.info('Exportação iniciada...')
             window.open('/api/clientes?export=csv', '_blank')
           }}>
-            <Download className="h-4 w-4" />
-            Exportar
+            <Download className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Exportar</span>
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <FileDown className="h-4 w-4" />
-                Exportar Relatório
+              <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs sm:h-auto sm:text-sm sm:gap-2">
+                <FileDown className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Exportar Relatório</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -295,28 +297,29 @@ export function ClientesView() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button onClick={() => navigate('cliente-novo')} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Novo Cliente
+          <Button onClick={() => navigate('cliente-novo')} size="sm" className="gap-1.5 h-8 text-xs sm:h-auto sm:text-sm sm:gap-2">
+            <Plus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Novo Cliente</span>
+            <span className="sm:hidden">Novo</span>
           </Button>
         </div>
       </div>
 
       {/* Filters */}
       <Card className="shadow-sm bg-muted/30">
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nome ou identificador..."
-                className="pl-9"
+                className="pl-8 h-9 text-sm"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
               />
             </div>
             <Select value={rotaId} onValueChange={(v) => { setRotaId(v); setPage(1) }}>
-              <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px] h-9 text-sm">
                 <SelectValue placeholder="Todas as rotas" />
               </SelectTrigger>
               <SelectContent>
@@ -329,7 +332,7 @@ export function ClientesView() {
               </SelectContent>
             </Select>
             <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1) }}>
-              <SelectTrigger className="w-full sm:w-[160px]">
+              <SelectTrigger className="w-full sm:w-[160px] h-9 text-sm">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>

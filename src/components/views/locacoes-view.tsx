@@ -276,24 +276,25 @@ export function LocacoesView() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Locações</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Locações</h1>
           <p className="text-muted-foreground text-sm">
             {total} locaç{total !== 1 ? 'ões' : 'ão'} encontrada{total !== 1 ? 's' : ''}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" className="gap-2" onClick={() => {
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs sm:h-auto sm:text-sm sm:gap-2" onClick={() => {
             toast.info('Exportação iniciada...')
             window.open('/api/locacoes?export=csv', '_blank')
           }}>
-            <Download className="h-4 w-4" />
-            Exportar
+            <Download className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Exportar</span>
           </Button>
-          <Button onClick={() => navigate('locacao-nova')} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Nova Locação
+          <Button onClick={() => navigate('locacao-nova')} size="sm" className="gap-1.5 h-8 text-xs sm:h-auto sm:text-sm sm:gap-2">
+            <Plus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Nova Locação</span>
+            <span className="sm:hidden">Nova</span>
           </Button>
         </div>
       </div>
@@ -302,13 +303,13 @@ export function LocacoesView() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {summaryCards.map((card) => (
           <Card key={card.title} className={`shadow-sm ${card.accent} bg-gradient-to-br ${card.gradient}`}>
-            <CardContent className="p-5">
+            <CardContent className="p-3 sm:p-5">
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground font-medium">{card.title}</p>
-                  <p className="text-2xl font-bold">{card.value}</p>
+                  <p className="text-xl sm:text-2xl font-bold">{card.value}</p>
                 </div>
-                <div className={`rounded-xl p-2.5 ${card.iconBg} shadow-sm`}>
+                <div className={`rounded-xl p-2 sm:p-2.5 ${card.iconBg} shadow-sm`}>
                   <span className={card.iconColor}>{card.icon}</span>
                 </div>
               </div>
@@ -332,10 +333,10 @@ export function LocacoesView() {
 
       {/* Filters */}
       <Card className="shadow-sm bg-muted/30">
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <Select value={status} onValueChange={handleStatusChange}>
-              <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px] h-9 text-sm">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -346,19 +347,19 @@ export function LocacoesView() {
               </SelectContent>
             </Select>
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nome do cliente..."
-                className="pl-9"
+                className="pl-8 h-9 text-sm"
                 value={clienteInput}
                 onChange={(e) => setClienteInput(e.target.value)}
               />
             </div>
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Buscar por produto..."
-                className="pl-9"
+                className="pl-8 h-9 text-sm"
                 value={produtoInput}
                 onChange={(e) => setProdutoInput(e.target.value)}
               />

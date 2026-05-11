@@ -382,16 +382,17 @@ export function ManutencoesView() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Manutenções</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Manutenções</h1>
           <p className="text-muted-foreground text-sm">
             {total} manutenç{total !== 1 ? 'ões' : 'ão'} encontrada{total !== 1 ? 's' : ''}
           </p>
         </div>
-        <Button onClick={() => { resetForm(); setDialogOpen(true) }} className="gap-2">
-          <CalendarPlus className="h-4 w-4" />
-          Agendar Manutenção
+        <Button onClick={() => { resetForm(); setDialogOpen(true) }} size="sm" className="gap-1.5 h-8 text-xs sm:h-auto sm:text-sm sm:gap-2">
+          <CalendarPlus className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Agendar Manutenção</span>
+          <span className="sm:hidden">Agendar</span>
         </Button>
       </div>
 
@@ -399,13 +400,13 @@ export function ManutencoesView() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {statsCards.map((card) => (
           <Card key={card.title} className={`shadow-sm ${card.accent || ''} ${card.cardClass || ''}`}>
-            <CardContent className="p-4">
+            <CardContent className="p-3 sm:p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground font-medium">{card.title}</p>
-                  <p className="text-2xl font-bold">{card.value}</p>
+                  <p className="text-xl sm:text-2xl font-bold">{card.value}</p>
                 </div>
-                <div className={`rounded-lg p-2.5 ${card.iconBg} ${card.pulse ? 'status-pulse' : ''}`}>
+                <div className={`rounded-lg p-2 sm:p-2.5 ${card.iconBg} ${card.pulse ? 'status-pulse' : ''}`}>
                   <span className={card.iconColor}>{card.icon}</span>
                 </div>
               </div>
@@ -440,10 +441,10 @@ export function ManutencoesView() {
         <>
           {/* Filters */}
           <Card className="shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex flex-col sm:flex-row gap-3">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1) }}>
-                  <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[180px] h-9 text-sm">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -454,7 +455,7 @@ export function ManutencoesView() {
                   </SelectContent>
                 </Select>
                 <Select value={tipoFilter} onValueChange={(v) => { setTipoFilter(v); setPage(1) }}>
-                  <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[180px] h-9 text-sm">
                     <SelectValue placeholder="Tipo" />
                   </SelectTrigger>
                   <SelectContent>

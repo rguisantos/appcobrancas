@@ -240,27 +240,28 @@ export function RelogiosView() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Histórico de Relógio</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Histórico de Relógio</h1>
           <p className="text-muted-foreground text-sm">
             {historicos.length} registro{historicos.length !== 1 ? 's' : ''} encontrado{historicos.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <Button onClick={() => { resetForm(); setDialogOpen(true) }} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Registrar Alteração
+        <Button onClick={() => { resetForm(); setDialogOpen(true) }} size="sm" className="gap-1.5 h-8 text-xs sm:h-auto sm:text-sm sm:gap-2">
+          <Plus className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Registrar Alteração</span>
+          <span className="sm:hidden">Registrar</span>
         </Button>
       </div>
 
       {/* Filter */}
       <Card className="shadow-sm">
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <div className="relative flex-1" ref={filterDropdownRef}>
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
-                className="pl-9"
+                className="pl-8 h-9 text-sm"
                 placeholder="Filtrar por produto..."
                 value={produtoIdFilter ? `✓ ${produtoInputFilter}` : produtoInputFilter}
                 onChange={(e) => {

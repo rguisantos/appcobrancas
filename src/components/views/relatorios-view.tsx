@@ -362,9 +362,9 @@ export function RelatoriosView() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Relatórios</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Relatórios</h1>
           <p className="text-muted-foreground text-sm">
             Análises e relatórios do sistema de cobranças
           </p>
@@ -395,15 +395,15 @@ export function RelatoriosView() {
 
       {/* Date Range Filter */}
       <Card className="shadow-sm">
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row items-end gap-3">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row items-end gap-2 sm:gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Data Início</Label>
               <Input
                 type="date"
                 value={dataInicio}
                 onChange={(e) => setDataInicio(e.target.value)}
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto h-9 text-sm"
               />
             </div>
             <div className="space-y-1">
@@ -412,7 +412,7 @@ export function RelatoriosView() {
                 type="date"
                 value={dataFim}
                 onChange={(e) => setDataFim(e.target.value)}
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto h-9 text-sm"
               />
             </div>
             <div className="text-sm text-muted-foreground">

@@ -234,9 +234,9 @@ export function MapaView() {
   return (
     <div className="p-6 space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Mapa de Rotas</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Mapa de Rotas</h1>
           <p className="text-muted-foreground text-sm">
             Visualize clientes e rotas no mapa
           </p>
@@ -264,35 +264,36 @@ export function MapaView() {
       {/* Search Bar + Location Buttons */}
       {!loading && (
         <Card className="shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row gap-3">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               {/* Search input */}
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Buscar cliente pelo nome ou ID..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-4"
+                  className="pl-8 pr-4 h-9 text-sm"
                 />
               </div>
               {/* Localizar button */}
               <button
                 onClick={handleLocalizar}
                 disabled={!searchLower}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <LocateFixed className="h-4 w-4" />
-                Localizar
+                <LocateFixed className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Localizar</span>
               </button>
               {/* Minha Localização button */}
               <button
                 onClick={handleMinhaLocalizacao}
                 disabled={locatingUser}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-border bg-background hover:bg-muted transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border border-border bg-background hover:bg-muted transition-colors disabled:opacity-50"
               >
-                <Crosshair className={`h-4 w-4 ${locatingUser ? 'animate-spin' : ''}`} />
-                {locatingUser ? 'Localizando...' : 'Minha Localização'}
+                <Crosshair className={`h-3.5 w-3.5 ${locatingUser ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">{locatingUser ? 'Localizando...' : 'Minha Localização'}</span>
+                <span className="sm:hidden">{locatingUser ? '...' : 'Localização'}</span>
               </button>
             </div>
             {searchLower && matchingClientIds && (
@@ -311,16 +312,16 @@ export function MapaView() {
       {/* Route Filter + Status Legend */}
       {!loading && (
         <Card className="shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
               {/* Route Filter */}
-              <div className="flex items-center gap-3 shrink-0">
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                 <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-semibold text-muted-foreground">Filtrar Rota:</span>
+                  <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs sm:text-sm font-semibold text-muted-foreground">Filtrar Rota:</span>
                 </div>
                 <Select value={selectedRotaId} onValueChange={setSelectedRotaId}>
-                  <SelectTrigger className="w-[200px]">
+                  <SelectTrigger className="w-full sm:w-[200px] h-9 text-sm">
                     <SelectValue placeholder="Todas as Rotas" />
                   </SelectTrigger>
                   <SelectContent>
@@ -345,8 +346,8 @@ export function MapaView() {
 
               {/* Status Legend */}
               <div className="flex flex-col gap-1.5">
-                <span className="text-sm font-semibold text-muted-foreground">Status dos Pins:</span>
-                <div className="flex flex-wrap items-center gap-3">
+                <span className="text-xs sm:text-sm font-semibold text-muted-foreground">Status dos Pins:</span>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <div className="flex items-center gap-1.5">
                     <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: '#22c55e' }} />
                     <span className="text-xs font-medium">Pago</span>
@@ -391,13 +392,13 @@ export function MapaView() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {statsCards.map((card) => (
             <Card key={card.title} className={`shadow-sm ${card.accent} ${card.gradient}`}>
-              <CardContent className="p-5">
+              <CardContent className="p-3 sm:p-5">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground font-medium">{card.title}</p>
-                    <p className="text-2xl font-bold">{card.value}</p>
+                    <p className="text-xl sm:text-2xl font-bold">{card.value}</p>
                   </div>
-                  <div className={`rounded-lg p-2.5 ${card.iconBg}`}>
+                  <div className={`rounded-lg p-2 sm:p-2.5 ${card.iconBg}`}>
                     <span className={card.iconColor}>{card.icon}</span>
                   </div>
                 </div>
@@ -482,9 +483,9 @@ export function MapaView() {
       {/* Legend */}
       {!loading && rotas.length > 0 && selectedRotaId === 'all' && (
         <Card className="shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="text-sm font-semibold text-muted-foreground mr-1">Rotas:</span>
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <span className="text-xs sm:text-sm font-semibold text-muted-foreground mr-1">Rotas:</span>
               {rotas.map((rota) => (
                 <button
                   key={rota.id}

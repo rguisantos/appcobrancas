@@ -1333,3 +1333,143 @@ The App Cobranças system is a comprehensive, production-ready billing managemen
 4. Performance optimization for large datasets (virtual scrolling)
 5. Add real-time notifications via WebSocket
 6. Add data import from Excel/CSV for bulk operations
+
+---
+Task ID: 2
+Agent: Mobile Compact UI Agent
+Task: Make search/filter fields compact and responsive on mobile across all views
+
+Work Log:
+Applied mobile-responsive compact improvements across 10 view files:
+
+1. **clientes-view.tsx**:
+   - Header: flex-col/flex-row responsive, text-xl/text-2xl title
+   - Action buttons: size="sm" h-8, hidden sm:inline for text labels, flex-wrap
+   - Filter Card: p-3 sm:p-4, gap-2 sm:gap-3
+   - Search Input: h-9 text-sm, pl-8, h-3.5 search icon, left-2.5
+   - SelectTriggers: h-9 text-sm
+
+2. **cobrancas-view.tsx**:
+   - Header: flex-col/flex-row responsive, text-xl/text-2xl title
+   - Action buttons: size="sm" h-8, hidden sm:inline text labels
+   - Summary Cards: p-3 sm:p-5, text-xl/text-3xl values, p-2/p-2.5 icon containers
+   - Filter Card: p-3 sm:p-4, gap-2 sm:gap-3
+   - Date inputs: h-9 text-sm, text-xs "a" separator
+   - Search Input: h-9 text-sm, pl-8, h-3.5 search icon
+   - SelectTrigger: h-9 text-sm
+
+3. **locacoes-view.tsx**:
+   - Header: flex-col/flex-row responsive, text-xl/text-2xl title
+   - Action buttons: size="sm" h-8, hidden sm:inline text labels
+   - Summary Cards: p-3 sm:p-5, text-xl/text-2xl values, p-2/p-2.5 icon containers
+   - Filter Card: p-3 sm:p-4, gap-2 sm:gap-3
+   - Search Inputs: h-9 text-sm, pl-8, h-3.5 search icon
+   - SelectTrigger: h-9 text-sm
+
+4. **produtos-view.tsx**:
+   - Header: flex-col/flex-row responsive, text-xl/text-2xl title
+   - Action buttons: size="sm" h-8, hidden sm:inline text labels
+   - Summary Cards: p-3 sm:p-5, text-xl/text-2xl values, p-2/p-2.5 icon containers
+   - Filter Card: p-3 sm:p-4, gap-2 sm:gap-3
+   - Search Input: h-9 text-sm, pl-8, h-3.5 search icon
+   - SelectTriggers: h-9 text-sm
+
+5. **manutencoes-view.tsx**:
+   - Header: flex-col/flex-row responsive, text-xl/text-2xl title
+   - Action button: size="sm" h-8, hidden sm:inline text label
+   - Stats Cards: p-3 sm:p-4, text-xl/text-2xl values, p-2/p-2.5 icon containers
+   - Filter Card: p-3 sm:p-4, gap-2 sm:gap-3
+   - SelectTriggers: h-9 text-sm
+
+6. **mapa-view.tsx**:
+   - Header: flex-col/flex-row responsive, text-xl/text-2xl title
+   - Search Card: p-3 sm:p-4, gap-2 sm:gap-3
+   - Search Input: h-9 text-sm, pl-8, h-3.5 search icon
+   - Localizar/Minha Localização buttons: compact text-xs, hidden sm:inline labels
+   - Route Filter Card: p-3 sm:p-4, gap-3/gap-4, h-9 text-sm SelectTrigger
+   - Filter label: text-xs/text-sm, h-3.5 Filter icon
+   - Status legend: text-xs/text-sm labels, gap-2/gap-3
+   - Stats Cards: p-3 sm:p-5, text-xl/text-2xl values, p-2/p-2.5 icons
+   - Legend Card: p-3 sm:p-4, text-xs/text-sm, gap-2/gap-3
+
+7. **relatorios-view.tsx**:
+   - Header: gap-4 → gap-3, text-xl/text-2xl title
+   - Date Range Filter: p-3 sm:p-4, gap-2 sm:gap-3, h-9 text-sm date inputs
+
+8. **relogios-view.tsx**:
+   - Header: flex-col/flex-row responsive, text-xl/text-2xl title
+   - Action button: size="sm" h-8, hidden sm:inline text label
+   - Filter Card: p-3 sm:p-4, gap-2 sm:gap-3
+   - Search Input: h-9 text-sm, pl-8, h-3.5 search icon
+
+9. **admin-usuarios-view.tsx**:
+   - Header: flex-col/flex-row responsive, text-xl/text-2xl title
+   - Action button: size="sm" h-8, hidden sm:inline text label
+
+10. **admin-auditoria-view.tsx**:
+    - Header: text-xl/text-2xl title
+    - Filter Card: p-3 sm:p-4, gap-2 sm:gap-3
+    - All SelectTriggers: h-9 text-sm
+    - Date inputs: h-9 text-sm
+
+11. **agenda-view.tsx**:
+    - Header: text-xl/text-2xl title (already had responsive flex-col)
+
+Consistent Mobile Pattern Applied:
+- Filter Card padding: p-4 → p-3 sm:p-4
+- Filter row gap: gap-3 → gap-2 sm:gap-3
+- Input height: added h-9 text-sm
+- SelectTrigger: added h-9 text-sm
+- Search icon: h-4 w-4 left-3 → h-3.5 w-3.5 left-2.5
+- Input with icon: pl-9 → pl-8
+- Headers: flex items-center → flex flex-col sm:flex-row sm:items-center justify-between gap-3
+- Title: text-2xl → text-xl sm:text-2xl
+- Action buttons: gap-2 → gap-1.5, h-8 text-xs sm:h-auto sm:text-sm sm:gap-2, hidden sm:inline for text
+- Summary cards: p-5 → p-3 sm:p-5, text-3xl/text-2xl → text-xl sm:text-3xl/text-2xl, p-2.5 → p-2 sm:p-2.5
+
+Lint Results:
+- Zero lint errors, zero warnings
+
+Stage Summary:
+- 10 view files updated with compact mobile-responsive filters/search/headers
+- Consistent pattern applied across all views
+- All action buttons now show only icons on mobile with text hidden
+- All filter inputs/selects are 36px (h-9) on mobile instead of 40px (h-10)
+- Summary cards are more compact with smaller text and padding on mobile
+- Zero lint errors
+
+---
+Task ID: 1
+Agent: Main Agent
+Task: Switch database from SQLite to PostgreSQL (Neon) + Fix mobile search/filter fields + Create cron job
+
+Work Log:
+1. Updated prisma/schema.prisma: Changed provider from "sqlite" to "postgresql"
+2. Updated .env with Neon PostgreSQL connection string: postgresql://neondb_owner:npg_pi6qTMJUg5yk@ep-misty-dew-acdbyy9l-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require
+3. Discovered system-level DATABASE_URL env var (file:/home/z/my-project/db/custom.db) overrides .env file
+4. Updated src/lib/db.ts to detect and override SQLite URLs with Neon PostgreSQL URL at runtime
+5. Reduced Prisma logging from ['query'] to ['error', 'warn'] to reduce noise
+6. Ran prisma db push --accept-data-loss to create all tables in Neon PostgreSQL
+7. Ran db:seed to populate initial data (admin, rotas, tipos, clientes, produtos, locações, cobranças)
+8. Verified PostgreSQL connection works: API routes return correct data, login succeeds
+9. Admin credentials: admin@locacao.com / admin123
+10. Fixed mobile responsiveness for search/filter fields across 10 view files:
+    - Filter Card padding: p-4 → p-3 sm:p-4
+    - Filter row gap: gap-3 → gap-2 sm:gap-3
+    - Input height: Added h-9 text-sm (36px instead of 40px)
+    - SelectTrigger: Added h-9 text-sm
+    - Search icon: h-4 w-4 + left-3 → h-3.5 w-3.5 + left-2.5
+    - Input with icon: pl-9 → pl-8
+    - Headers: flex items-center → flex flex-col sm:flex-row sm:items-center justify-between gap-3
+    - Title: text-2xl → text-xl sm:text-2xl
+    - Action buttons: size="sm" with responsive sizing
+    - Summary cards: p-5 → p-3 sm:p-5, values text-xl sm:text-3xl, icons p-2 sm:p-2.5
+11. Created scheduled cron job (ID: 143665) for webDevReview every 15 minutes
+
+Stage Summary:
+- Database successfully migrated from SQLite to PostgreSQL (Neon cloud)
+- All 10 view files updated with compact mobile filter/search patterns
+- Zero lint errors
+- Dev server running and functional with PostgreSQL
+- Cron job created for automated QA and development every 15 minutes
+- Login verified working: admin@locacao.com / admin123
