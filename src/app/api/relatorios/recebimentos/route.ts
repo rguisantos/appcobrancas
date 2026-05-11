@@ -1,0 +1,25 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getAuthSession } from '@/lib/auth-jwt'
+import { db } from '@/lib/db'
+
+export async function GET(request: NextRequest) {
+  const session = await getAuthSession()
+  if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+
+  const cobrancas = await db.cobranca.findMany({
+    where: { deletedAt: null, status: { in: ['Pago', 'Parcial'] } },
+    orderBy: { dataPagamento: 'desc' },
+  })
+
+  const porMes: Record<string, number> = {}
+  cobrancas.forEach(c => {
+    const month = c.dataPagamento?.substring(0, 7) || 'unknown'
+    porMes[month] = (porMes[month] || 0) + c.valorRecebido
+  })
+
+  return NextResponse.json({
+    cobrancas: cobrancas.slice(0, 200),
+    porMes: Object.entries(porMes).map(([mes, total]) => ({ mes, total })).sort((a, b) => a.mes.localeCompare(b.mes)),
+    totalRecebido: cobrancas.reduce((s, c) => s + c.valorRecebido, 0),
+  })
+}

@@ -1,0 +1,145 @@
+import { NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+import { getAuthSession } from '@/lib/auth-jwt'
+
+export async function GET() {
+  const session = await getAuthSession()
+  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+
+  try {
+    const now = new Date()
+    const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+    const fimMes = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+
+    // Total clientes ativos
+    const totalClientes = await db.cliente.count({
+      where: { deletedAt: null, status: 'Ativo' },
+    })
+
+    // Locações ativas
+    const locacoesAtivas = await db.locacao.count({
+      where: { deletedAt: null, status: 'Ativa' },
+    })
+
+    // Produtos locados (produtos que possuem locações ativas)
+    const produtosLocadosResult = await db.produto.findMany({
+      where: {
+        deletedAt: null,
+        locacoes: { some: { deletedAt: null, status: 'Ativa' } },
+      },
+      select: { id: true },
+    })
+    const produtosLocados = produtosLocadosResult.length
+
+    // Total de produtos ativos
+    const totalProdutos = await db.produto.count({
+      where: { deletedAt: null, statusProduto: 'Ativo' },
+    })
+
+    // Ganho atual do mês (cobranças pagas ou parciais no mês)
+    const cobrancasMes = await db.cobranca.findMany({
+      where: {
+        deletedAt: null,
+        status: { in: ['Pago', 'Parcial'] },
+        dataPagamento: { gte: inicioMes, lte: fimMes },
+      },
+      select: { valorRecebido: true },
+    })
+    const ganhoAtualMes = cobrancasMes.reduce((acc, c) => acc + c.valorRecebido, 0)
+
+    // Cobranças pendentes e atrasadas
+    const cobrancasPendentes = await db.cobranca.count({
+      where: { deletedAt: null, status: { in: ['Pendente', 'Atrasado'] } },
+    })
+
+    // Clientes sem cobranças recentes (últimos 30 dias)
+    const trintaDiasAtras = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+    const clientesComCobrancaRecente = await db.cobranca.findMany({
+      where: {
+        deletedAt: null,
+        dataInicio: { gte: trintaDiasAtras },
+      },
+      select: { clienteId: true },
+      distinct: ['clienteId'],
+    })
+
+    const clienteIdsComCobranca = clientesComCobrancaRecente.map(c => c.clienteId)
+
+    const clientesNaoCobradosResult = await db.cliente.findMany({
+      where: {
+        deletedAt: null,
+        status: 'Ativo',
+        id: { notIn: clienteIdsComCobranca.length > 0 ? clienteIdsComCobranca : undefined },
+      },
+      select: { id: true, identificador: true, nomeExibicao: true, telefonePrincipal: true, rota: true },
+      take: 20,
+    })
+
+    // Chart: Monthly revenue (last 6 months)
+    const receitaMensal = []
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const mesInicio = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0]
+      const mesFim = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0]
+      const mesLabel = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')
+
+      const cobrancasDoMes = await db.cobranca.findMany({
+        where: {
+          deletedAt: null,
+          status: { in: ['Pago', 'Parcial'] },
+          dataPagamento: { gte: mesInicio, lte: mesFim },
+        },
+        select: { valorRecebido: true },
+      })
+      const totalMes = cobrancasDoMes.reduce((acc, c) => acc + c.valorRecebido, 0)
+
+      receitaMensal.push({ mes: mesLabel, valor: totalMes })
+    }
+
+    // Chart: Cobranças by status
+    const cobrancasByStatusRaw = await db.cobranca.groupBy({
+      by: ['status'],
+      where: { deletedAt: null },
+      _count: { status: true },
+    })
+
+    const cobrancasByStatus = cobrancasByStatusRaw.map(s => ({
+      status: s.status,
+      quantidade: s._count.status,
+    }))
+
+    // Recent cobranças (last 10)
+    const cobrancasRecentes = await db.cobranca.findMany({
+      where: { deletedAt: null },
+      select: {
+        id: true,
+        clienteNome: true,
+        produtoIdentificador: true,
+        totalClientePaga: true,
+        status: true,
+        createdAt: true,
+        dataInicio: true,
+        dataFim: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    })
+
+    return NextResponse.json({
+      ganhoAtualMes,
+      totalClientes,
+      produtosLocados,
+      totalProdutos,
+      locacoesAtivas,
+      cobrancasPendentes,
+      clientesNaoCobrados: clientesNaoCobradosResult,
+      receitaMensal,
+      cobrancasByStatus,
+      cobrancasRecentes,
+    })
+  } catch (error) {
+    console.error('Erro ao buscar dados do dashboard:', error)
+    return NextResponse.json({ error: 'Erro ao buscar dados do dashboard' }, { status: 500 })
+  }
+}
