@@ -180,6 +180,19 @@ export function AgendaView() {
         </div>
         <div className="flex items-center gap-2">
           <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+            onClick={() => {
+              setCurrentDate(new Date())
+              setSelectedDate(new Date())
+            }}
+          >
+            <CalendarIcon className="h-4 w-4" />
+            Hoje
+          </Button>
+          <div className="h-5 w-px bg-border" />
+          <Button
             variant={viewMode === 'calendar' ? 'secondary' : 'ghost'}
             size="sm"
             onClick={() => setViewMode('calendar')}
@@ -270,6 +283,10 @@ export function AgendaView() {
           <span>Atrasado</span>
         </div>
         <div className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-orange-400" />
+          <span>Parcial</span>
+        </div>
+        <div className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
           <span>Vence hoje</span>
         </div>
@@ -334,20 +351,27 @@ export function AgendaView() {
                           {format(day, 'd')}
                         </div>
                         {counts.total > 0 && (
-                          <div className="flex flex-wrap gap-0.5">
-                            {counts.pago > 0 && (
-                              <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-green-100 dark:bg-green-900 text-[9px] font-bold text-green-700 dark:text-green-300">
-                                {counts.pago}
-                              </span>
-                            )}
-                            {counts.pendente > 0 && (
-                              <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-yellow-100 dark:bg-yellow-900 text-[9px] font-bold text-yellow-700 dark:text-yellow-300">
-                                {counts.pendente}
-                              </span>
-                            )}
-                            {counts.atrasado > 0 && (
-                              <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-red-100 dark:bg-red-900 text-[9px] font-bold text-red-700 dark:text-red-300">
-                                {counts.atrasado}
+                          <div className="flex flex-col gap-0.5">
+                            <div className="flex flex-wrap gap-0.5">
+                              {counts.pago > 0 && (
+                                <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-green-100 dark:bg-green-900 text-[9px] font-bold text-green-700 dark:text-green-300">
+                                  {counts.pago}
+                                </span>
+                              )}
+                              {counts.pendente > 0 && (
+                                <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-yellow-100 dark:bg-yellow-900 text-[9px] font-bold text-yellow-700 dark:text-yellow-300">
+                                  {counts.pendente}
+                                </span>
+                              )}
+                              {counts.atrasado > 0 && (
+                                <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-red-100 dark:bg-red-900 text-[9px] font-bold text-red-700 dark:text-red-300">
+                                  {counts.atrasado}
+                                </span>
+                              )}
+                            </div>
+                            {counts.total > 1 && (
+                              <span className="text-[8px] text-muted-foreground font-medium text-center">
+                                {counts.total} total
                               </span>
                             )}
                           </div>
@@ -385,39 +409,54 @@ export function AgendaView() {
                       </p>
                     ) : (
                       <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                        {selectedCobrancas.map((c) => (
-                          <div
-                            key={c.id}
-                            className="rounded-lg border p-3 hover:bg-muted/50 cursor-pointer transition-colors"
-                            onClick={() => navigate('cobranca-detalhe', c.id)}
-                          >
-                            <div className="flex items-start justify-between mb-1">
-                              <p className="text-sm font-medium leading-tight">
-                                {c.clienteNome || c.cliente?.nomeExibicao}
+                        {selectedCobrancas.map((c) => {
+                          const isOverdue = c.status === 'Atrasado'
+                          const isPaid = c.status === 'Pago'
+                          const isParcial = c.status === 'Parcial'
+                          const isPending = c.status === 'Pendente'
+                          const colorClasses = isPaid
+                            ? 'bg-emerald-100 dark:bg-emerald-900/30 border-l-4 border-l-emerald-500'
+                            : isOverdue
+                              ? 'bg-red-100 dark:bg-red-900/30 border-l-4 border-l-red-500'
+                              : isPending
+                                ? 'bg-yellow-100 dark:bg-yellow-900/30 border-l-4 border-l-yellow-500'
+                                : isParcial
+                                  ? 'bg-orange-100 dark:bg-orange-900/30 border-l-4 border-l-orange-500'
+                                  : 'bg-card border-l-4 border-l-gray-400'
+                          return (
+                            <div
+                              key={c.id}
+                              className={`rounded-lg border p-3 hover:opacity-90 cursor-pointer transition-opacity ${colorClasses}`}
+                              onClick={() => navigate('cobranca-detalhe', c.id)}
+                            >
+                              <div className="flex items-start justify-between mb-1">
+                                <p className="text-sm font-medium leading-tight">
+                                  {c.clienteNome || c.cliente?.nomeExibicao}
+                                </p>
+                                <StatusBadge status={c.status} />
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {c.produtoIdentificador} • {c.locacao?.produtoTipo || c.formaPagamento}
                               </p>
-                              <StatusBadge status={c.status} />
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              {c.produtoIdentificador} • {c.locacao?.produtoTipo || c.formaPagamento}
-                            </p>
-                            <div className="flex items-center justify-between mt-2">
-                              <span className="text-sm font-semibold">
-                                {formatarMoeda(c.totalClientePaga)}
-                              </span>
-                              {c.valorRecebido > 0 && (
-                                <span className="text-xs text-green-600">
-                                  Pago: {formatarMoeda(c.valorRecebido)}
+                              <div className="flex items-center justify-between mt-2">
+                                <span className="text-sm font-semibold">
+                                  {formatarMoeda(c.totalClientePaga)}
                                 </span>
+                                {c.valorRecebido > 0 && (
+                                  <span className="text-xs text-green-600">
+                                    Pago: {formatarMoeda(c.valorRecebido)}
+                                  </span>
+                                )}
+                              </div>
+                              {c.dataVencimento && (
+                                <p className="text-[10px] text-muted-foreground mt-1">
+                                  Venc: {formatDate(c.dataVencimento)}
+                                  {c.dataPagamento && ` • Pgto: ${formatDate(c.dataPagamento)}`}
+                                </p>
                               )}
                             </div>
-                            {c.dataVencimento && (
-                              <p className="text-[10px] text-muted-foreground mt-1">
-                                Venc: {formatDate(c.dataVencimento)}
-                                {c.dataPagamento && ` • Pgto: ${formatDate(c.dataPagamento)}`}
-                              </p>
-                            )}
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     )}
                   </div>
@@ -623,33 +662,49 @@ export function AgendaView() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        {dayCobrancas.map((c) => (
-                          <div
-                            key={c.id}
-                            className="rounded-lg border p-3 hover:bg-muted/50 cursor-pointer transition-colors"
-                            onClick={() => navigate('cobranca-detalhe', c.id)}
-                          >
-                            <div className="flex items-start justify-between mb-1">
-                              <p className="text-sm font-medium leading-tight">
-                                {c.clienteNome || c.cliente?.nomeExibicao}
+                        {dayCobrancas.map((c) => {
+                          const isOverdue = c.status === 'Atrasado'
+                          const isPaid = c.status === 'Pago'
+                          const isParcial = c.status === 'Parcial'
+                          const isPending = c.status === 'Pendente'
+                          // Color coding per spec: green=paid, red=overdue, yellow=pending, orange=partial
+                          const colorClasses = isPaid
+                            ? 'bg-emerald-100 dark:bg-emerald-900/30 border-l-4 border-l-emerald-500'
+                            : isOverdue
+                              ? 'bg-red-100 dark:bg-red-900/30 border-l-4 border-l-red-500'
+                              : isPending
+                                ? 'bg-yellow-100 dark:bg-yellow-900/30 border-l-4 border-l-yellow-500'
+                                : isParcial
+                                  ? 'bg-orange-100 dark:bg-orange-900/30 border-l-4 border-l-orange-500'
+                                  : 'bg-card border-l-4 border-l-gray-400'
+                          return (
+                            <div
+                              key={c.id}
+                              className={`rounded-lg border p-3 hover:opacity-90 cursor-pointer transition-opacity ${colorClasses}`}
+                              onClick={() => navigate('cobranca-detalhe', c.id)}
+                            >
+                              <div className="flex items-start justify-between mb-1">
+                                <p className="text-sm font-medium leading-tight">
+                                  {c.clienteNome || c.cliente?.nomeExibicao}
+                                </p>
+                                <StatusBadge status={c.status} />
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {c.produtoIdentificador} • {c.locacao?.produtoTipo || c.formaPagamento}
                               </p>
-                              <StatusBadge status={c.status} />
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              {c.produtoIdentificador} • {c.locacao?.produtoTipo || c.formaPagamento}
-                            </p>
-                            <div className="flex items-center justify-between mt-2">
-                              <span className="text-sm font-semibold">
-                                {formatarMoeda(c.totalClientePaga)}
-                              </span>
-                              {c.valorRecebido > 0 && (
-                                <span className="text-xs text-green-600">
-                                  Pago: {formatarMoeda(c.valorRecebido)}
+                              <div className="flex items-center justify-between mt-2">
+                                <span className="text-sm font-semibold">
+                                  {formatarMoeda(c.totalClientePaga)}
                                 </span>
-                              )}
+                                {c.valorRecebido > 0 && (
+                                  <span className="text-xs text-green-600">
+                                    Pago: {formatarMoeda(c.valorRecebido)}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     </div>
                   )

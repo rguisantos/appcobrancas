@@ -751,6 +751,9 @@ export function DashboardView() {
       <div className="section-divider" />
       <MonthlyComparisonWidget />
 
+      {/* Próximos Vencimentos Widget */}
+      <ProximosVencimentosWidget navigate={navigate} />
+
       {/* Atividade Recente */}
       <RecentActivityFeed navigate={navigate} />
 
@@ -1498,6 +1501,155 @@ function FinancialOverviewWidget({ data }: { data: DashboardData }) {
   )
 }
 
+function ProximosVencimentosWidget({ navigate }: { navigate: (view: string, id?: string | null) => void }) {
+  const [vencimentos, setVencimentos] = useState<Array<{
+    id: string
+    clienteNome: string
+    produtoIdentificador: string
+    totalClientePaga: number
+    valorRecebido: number
+    status: string
+    dataVencimento: string | null
+  }> | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchVencimentos() {
+      try {
+        const res = await fetch('/api/cobrancas?limit=500')
+        if (res.ok) {
+          const json = await res.json()
+          const items: Array<{
+            id: string
+            clienteNome: string
+            produtoIdentificador: string
+            totalClientePaga: number
+            valorRecebido: number
+            status: string
+            dataVencimento: string | null
+          }> = json.data || []
+
+          const now = new Date()
+          const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+
+          const upcoming = items
+            .filter((c) => {
+              if (c.status === 'Pago') return false
+              if (!c.dataVencimento) return false
+              try {
+                const vencDate = new Date(c.dataVencimento)
+                return vencDate >= now && vencDate <= sevenDaysFromNow
+              } catch {
+                return false
+              }
+            })
+            .sort((a, b) => {
+              if (!a.dataVencimento || !b.dataVencimento) return 0
+              return new Date(a.dataVencimento).getTime() - new Date(b.dataVencimento).getTime()
+            })
+            .slice(0, 5)
+
+          setVencimentos(upcoming)
+        }
+      } catch {
+        // silently ignore
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchVencimentos()
+  }, [])
+
+  const getDaysUntil = (dateStr: string): number => {
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+    const target = new Date(dateStr)
+    target.setHours(0, 0, 0, 0)
+    return Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  }
+
+  const getUrgencyColor = (days: number) => {
+    if (days <= 1) return 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/50'
+    if (days <= 3) return 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50'
+    return 'text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/50'
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.4, duration: 0.4 }}
+    >
+      <Card className="shadow-sm">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="rounded-lg bg-amber-100 dark:bg-amber-900 p-2">
+                <CalendarDays className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Próximos Vencimentos</CardTitle>
+                <CardDescription>Cobranças vencendo nos próximos 7 dias</CardDescription>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => navigate('agenda')}
+            >
+              Ver agenda <ArrowRight className="h-3 w-3 ml-1" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : !vencimentos || vencimentos.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <CalendarX className="h-8 w-8 text-muted-foreground/40 mb-2" />
+              <p className="text-sm text-muted-foreground">Nenhum vencimento nos próximos 7 dias</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Tudo em dia por enquanto</p>
+            </div>
+          ) : (
+            <div className="space-y-1.5 max-h-64 overflow-y-auto">
+              {vencimentos.map((c) => {
+                const daysUntil = c.dataVencimento ? getDaysUntil(c.dataVencimento) : 0
+                const urgencyClass = getUrgencyColor(daysUntil)
+                const saldo = c.totalClientePaga - c.valorRecebido
+
+                return (
+                  <div
+                    key={c.id}
+                    className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => navigate('cobranca-detalhe', c.id)}
+                  >
+                    <div className={`shrink-0 px-2 py-1 rounded-md text-xs font-bold ${urgencyClass}`}>
+                      {daysUntil === 0 ? 'Hoje' : daysUntil === 1 ? 'Amanhã' : `${daysUntil}d`}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{c.clienteNome}</p>
+                      <p className="text-xs text-muted-foreground">{c.produtoIdentificador}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-semibold">{formatarMoeda(saldo)}</p>
+                      <StatusBadgePill status={c.status} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
+  )
+}
+
 function MonthlyComparisonWidget() {
   const [monthData, setMonthData] = useState<{ thisMonth: number; lastMonth: number; thisMonthLabel: string; lastMonthLabel: string } | null>(null)
   const [hasData, setHasData] = useState(true)
@@ -1855,6 +2007,25 @@ function RecentActivityFeed({ navigate }: { navigate: (view: string, id?: string
                 const navView = getAuditNavView(log.entidade)
                 const isLast = idx === logs.length - 1
 
+                const avatarBg = log.acao.includes('criar') || log.acao.includes('criacao') || log.acao.includes('novo')
+                  ? 'bg-emerald-100 dark:bg-emerald-900/60'
+                  : log.acao.includes('pagamento') || log.acao.includes('registrar_pagamento')
+                    ? 'bg-teal-100 dark:bg-teal-900/60'
+                    : log.acao.includes('atualizar') || log.acao.includes('editar') || log.acao.includes('alterar')
+                      ? 'bg-amber-100 dark:bg-amber-900/60'
+                      : log.acao.includes('excluir') || log.acao.includes('remover') || log.acao.includes('deletar')
+                        ? 'bg-red-100 dark:bg-red-900/60'
+                        : 'bg-slate-100 dark:bg-slate-800/60'
+                const avatarIconColor = log.acao.includes('criar') || log.acao.includes('criacao') || log.acao.includes('novo')
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : log.acao.includes('pagamento') || log.acao.includes('registrar_pagamento')
+                    ? 'text-teal-600 dark:text-teal-400'
+                    : log.acao.includes('atualizar') || log.acao.includes('editar') || log.acao.includes('alterar')
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : log.acao.includes('excluir') || log.acao.includes('remover') || log.acao.includes('deletar')
+                        ? 'text-red-600 dark:text-red-400'
+                        : 'text-slate-600 dark:text-slate-400'
+
                 return (
                   <div
                     key={log.id}
@@ -1865,20 +2036,19 @@ function RecentActivityFeed({ navigate }: { navigate: (view: string, id?: string
                       }
                     }}
                   >
-                    {/* Timeline dot and connector */}
-                    <div className="relative flex flex-col items-center shrink-0">
-                      <div className={`h-8 w-8 rounded-full flex items-center justify-center ${dotColor} bg-opacity-20`} style={{ backgroundColor: undefined }}>
-                        <div className={`h-2 w-2 rounded-full ${dotColor}`} />
+                    {/* Avatar with icon */}
+                    <div className="relative shrink-0">
+                      <div className={`h-8 w-8 rounded-full flex items-center justify-center ${avatarBg}`}>
+                        <Icon className={`h-3.5 w-3.5 ${avatarIconColor}`} />
                       </div>
                       {!isLast && (
-                        <div className="w-px h-full absolute top-8 left-1/2 -translate-x-1/2 bg-border/30" />
+                        <div className="absolute top-8 left-1/2 -translate-x-1/2 w-px h-[calc(100%+0px)] bg-border/30" style={{ height: 'calc(100% + 12px)' }} />
                       )}
                     </div>
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                         <p className="text-sm font-medium truncate">
                           {actionLabel} em {entityLabel}
                         </p>
@@ -1894,14 +2064,19 @@ function RecentActivityFeed({ navigate }: { navigate: (view: string, id?: string
                         </span>
                       </div>
                       {log.usuario && (
-                        <p className="text-[10px] text-muted-foreground mt-0.5">
-                          por {log.usuario.nome}
-                        </p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <div className="h-4 w-4 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span className="text-[8px] font-bold text-primary">{log.usuario.nome?.charAt(0) || '?'}</span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            por {log.usuario.nome}
+                          </p>
+                        </div>
                       )}
                     </div>
 
                     {/* Right dot indicator */}
-                    <div className={`h-2 w-2 rounded-full ${dotColor} shrink-0 mt-2`} />
+                    <div className={`h-2 w-2 rounded-full ${dotColor} shrink-0 mt-3`} />
                   </div>
                 )
               })}

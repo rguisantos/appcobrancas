@@ -59,6 +59,8 @@ import {
   CircleDot,
   Info,
   History,
+  Map as MapIcon,
+  MessageCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Breadcrumb } from '@/components/layout/breadcrumb'
@@ -547,7 +549,7 @@ export function CobrancaDetalheView() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {cobranca.status !== 'Pago' && (
             <Button
               size="sm"
@@ -558,6 +560,34 @@ export function CobrancaDetalheView() {
               Registrar Pagamento
             </Button>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => {
+              if (cobranca.cliente) {
+                const phone = cobranca.cliente.telefonePrincipal?.replace(/\D/g, '')
+                const message = encodeURIComponent(
+                  `Olá ${cobranca.cliente.nomeExibicao}! Confirmamos o recebimento do pagamento de ${formatarMoeda(cobranca.valorRecebido)} referente à cobrança ${cobranca.produtoIdentificador} (${formatDate(cobranca.dataInicio)} a ${formatDate(cobranca.dataFim)}). Status atual: ${cobranca.status}.${cobranca.status !== 'Pago' ? ` Saldo devedor: ${formatarMoeda(remainingBalance)}.` : ''} Obrigado!`
+                )
+                const whatsappUrl = `https://wa.me/55${phone}?text=${message}`
+                window.open(whatsappUrl, '_blank')
+                toast.success('Mensagem aberta no WhatsApp')
+              }
+            }}
+          >
+            <MessageCircle className="h-4 w-4 text-green-600" />
+            WhatsApp
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => navigate('mapa')}
+          >
+            <MapIcon className="h-4 w-4" />
+            Ver no Mapa
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -849,57 +879,84 @@ export function CobrancaDetalheView() {
           ) : (
             <div className="relative">
               {/* Timeline line */}
-              <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-teal-200 dark:bg-teal-900" />
+              <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-gradient-to-b from-emerald-300 via-teal-300 to-teal-100 dark:from-emerald-700 dark:via-teal-700 dark:to-teal-900" />
 
-              <div className="space-y-4">
-                {pagamentos.map((pag, index) => (
-                  <div key={pag.id} className="relative flex gap-4 pl-2">
-                    {/* Timeline dot */}
-                    <div className={`
-                      relative z-10 mt-1 h-6 w-6 rounded-full flex items-center justify-center shrink-0
-                      ${index === 0
-                        ? 'bg-teal-500 text-white'
-                        : 'bg-teal-100 dark:bg-teal-900 text-teal-600 dark:text-teal-400'
-                      }
-                    `}>
-                      {index === 0 ? (
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                      ) : (
-                        <CircleDot className="h-3.5 w-3.5" />
-                      )}
-                    </div>
+              <div className="space-y-5">
+                {pagamentos.map((pag, index) => {
+                  const isLatest = index === 0
+                  const fpIcon = getFormaPagamentoIcon(pag.formaPagamento)
 
-                    {/* Content */}
-                    <div className={`flex-1 p-3 rounded-lg border ${index === 0 ? 'border-teal-200 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-950/30' : 'border-border bg-card'}`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {getFormaPagamentoIcon(pag.formaPagamento)}
-                          <span className="text-sm font-medium">
-                            {formatarMoeda(pag.valor)}
-                          </span>
-                          <span className="text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
-                            {getFormaPagamentoLabel(pag.formaPagamento)}
-                          </span>
+                  return (
+                    <div key={pag.id} className="relative flex gap-4 pl-2">
+                      {/* Timeline dot with glow */}
+                      <div className={`
+                        relative z-10 mt-1 h-8 w-8 rounded-full flex items-center justify-center shrink-0 shadow-sm
+                        ${isLatest
+                          ? 'bg-emerald-500 text-white shadow-emerald-200 dark:shadow-emerald-900'
+                          : 'bg-teal-100 dark:bg-teal-900 text-teal-600 dark:text-teal-400'
+                        }
+                      `}>
+                        {isLatest ? (
+                          <CheckCircle2 className="h-4 w-4" />
+                        ) : (
+                          <CircleDot className="h-4 w-4" />
+                        )}
+                      </div>
+
+                      {/* Content card */}
+                      <div className={`flex-1 p-4 rounded-xl border transition-colors ${
+                        isLatest
+                          ? 'border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50/80 to-teal-50/50 dark:from-emerald-950/40 dark:to-teal-950/30 shadow-sm'
+                          : 'border-border bg-card hover:border-teal-200 dark:hover:border-teal-800'
+                      }`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`rounded-lg p-1.5 ${isLatest ? 'bg-emerald-100 dark:bg-emerald-900' : 'bg-muted'}`}>
+                              {fpIcon}
+                            </div>
+                            <div>
+                              <span className="text-base font-bold">
+                                {formatarMoeda(pag.valor)}
+                              </span>
+                              <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-medium ${
+                                isLatest
+                                  ? 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300'
+                                  : 'bg-muted text-muted-foreground'
+                              }`}>
+                                {isLatest ? 'Mais recente' : getFormaPagamentoLabel(pag.formaPagamento)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Clock className="h-3.5 w-3.5" />
+                            {formatDate(pag.dataPagamento)}
+                          </div>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          {formatDate(pag.dataPagamento)}
+                          <span className="px-1.5 py-0.5 rounded bg-muted">
+                            {getFormaPagamentoLabel(pag.formaPagamento)}
+                          </span>
+                          {pag.observacao && (
+                            <span className="flex items-center gap-1">
+                              <Info className="h-3 w-3" />
+                              {pag.observacao}
+                            </span>
+                          )}
                         </div>
+                        {pag.usuarioNome && (
+                          <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-border/50">
+                            <div className="h-4 w-4 rounded-full bg-primary/10 flex items-center justify-center">
+                              <span className="text-[8px] font-bold text-primary">{pag.usuarioNome.charAt(0)}</span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">
+                              Registrado por: {pag.usuarioNome}
+                            </p>
+                          </div>
+                        )}
                       </div>
-                      {pag.observacao && (
-                        <p className="text-xs text-muted-foreground mt-1.5 pl-0.5">
-                          <Info className="h-3 w-3 inline mr-1" />
-                          {pag.observacao}
-                        </p>
-                      )}
-                      {pag.usuarioNome && (
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                          Registrado por: {pag.usuarioNome}
-                        </p>
-                      )}
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}

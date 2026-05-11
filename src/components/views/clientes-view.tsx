@@ -38,7 +38,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, ChevronLeft, ChevronRight, Download, Users, Upload, Loader2 } from 'lucide-react'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, ChevronLeft, ChevronRight, Download, Users, Upload, Loader2, FileDown, FileText } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 
@@ -265,6 +271,30 @@ export function ClientesView() {
             <Download className="h-4 w-4" />
             Exportar
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <FileDown className="h-4 w-4" />
+                Exportar Relatório
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => {
+                toast.info('Exportando CSV...')
+                window.open('/api/clientes?export=csv', '_blank')
+              }}>
+                <FileText className="mr-2 h-4 w-4" />
+                Exportar CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => {
+                toast.info('Gerando relatório PDF...')
+                window.open('/api/relatorios/clientes?format=pdf', '_blank')
+              }}>
+                <FileDown className="mr-2 h-4 w-4" />
+                Exportar PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={() => navigate('cliente-novo')} className="gap-2">
             <Plus className="h-4 w-4" />
             Novo Cliente
@@ -311,6 +341,67 @@ export function ClientesView() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Clientes por Rota Summary Bar */}
+      {rotas.length > 0 && (
+        <TooltipProvider>
+          <Card className="shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Clientes por Rota</span>
+                <span className="text-xs text-muted-foreground">({total} total)</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Sem rota */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-muted/50 hover:bg-muted transition-colors cursor-default">
+                      <span className="h-3 w-3 rounded-full bg-gray-400" />
+                      <span className="text-xs font-medium text-muted-foreground">Sem rota</span>
+                      <span className="badge-count-amber text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">
+                        {clientes.filter((c) => !c.rota).length}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Clientes sem rota atribuída</p>
+                  </TooltipContent>
+                </Tooltip>
+                {rotas.map((rota) => {
+                  const count = clientes.filter((c) => c.rota?.id === rota.id).length
+                  return (
+                    <Tooltip key={rota.id}>
+                      <TooltipTrigger asChild>
+                        <div
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full hover:opacity-80 transition-opacity cursor-default"
+                          style={{ backgroundColor: `${rota.cor}15` }}
+                        >
+                          <span
+                            className="h-3 w-3 rounded-full shrink-0"
+                            style={{ backgroundColor: rota.cor }}
+                          />
+                          <span className="text-xs font-medium truncate max-w-[100px]" style={{ color: rota.cor }}>
+                            {rota.descricao}
+                          </span>
+                          <span className="text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1"
+                            style={{ backgroundColor: `${rota.cor}20`, color: rota.cor }}
+                          >
+                            {count}
+                          </span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{rota.descricao}: {count} cliente{count !== 1 ? 's' : ''}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </TooltipProvider>
+      )}
 
       {/* Data Table */}
       <Card className="shadow-sm">

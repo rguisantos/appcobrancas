@@ -523,3 +523,63 @@
 .dark .mini-progress {
   background: oklch(0.3 0 0 / 50%);
 }
+
+/* Card hover scale - subtle scale on hover */
+.card-hover-scale {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover-scale:hover {
+  transform: scale(1.01);
+  box-shadow: 0 4px 16px -2px rgb(0 0 0 / 10%), 0 2px 6px -2px rgb(0 0 0 / 6%);
+}
+.dark .card-hover-scale:hover {
+  box-shadow: 0 4px 16px -2px rgb(0 0 0 / 30%), 0 2px 6px -2px rgb(0 0 0 / 15%);
+}
+
+/* Gradient emerald text */
+.text-gradient-emerald {
+  background: linear-gradient(135deg, #059669, #10b981, #34d399);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Gradient border using background-clip technique */
+.border-gradient {
+  position: relative;
+  border: none !important;
+  background-clip: padding-box;
+}
+.border-gradient::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  margin: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #059669, #0ea5e9, #f59e0b);
+}
+
+/* Badge count - circular count badge for navigation items */
+.badge-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0 5px;
+  background: #ef4444;
+  color: white;
+}
+.badge-count-amber {
+  background: #f59e0b;
+  color: #78350f;
+}
+.badge-count-emerald {
+  background: #10b981;
+  color: #064e3b;
+}

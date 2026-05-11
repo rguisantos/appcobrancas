@@ -38,10 +38,11 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from '@/components/ui/toggle-group'
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Repeat, Warehouse, ChevronLeft, ChevronRight, Download, DollarSign, CheckCircle, XCircle, PauseCircle, Table2, Music, Gamepad2, Wind, CircleDot, ChevronDown, ChevronRight as ChevronRightIcon, LayoutList, FolderTree, MapPin, User, Package } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Repeat, Warehouse, ChevronLeft, ChevronRight, Download, DollarSign, CheckCircle, XCircle, PauseCircle, Table2, Music, Gamepad2, Wind, CircleDot, ChevronDown, ChevronRight as ChevronRightIcon, LayoutList, FolderTree, MapPin, User, Package, Expand, Shrink, BarChart3 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
 import { format } from 'date-fns'
+import { Badge } from '@/components/ui/badge'
 
 interface Locacao {
   id: string
@@ -589,6 +590,7 @@ function GroupedLocacoesView({
 }) {
   const [openRotas, setOpenRotas] = useState<Record<string, boolean>>({})
   const [openClientes, setOpenClientes] = useState<Record<string, boolean>>({})
+  const [allExpanded, setAllExpanded] = useState(false)
 
   if (loading) {
     return (
@@ -620,6 +622,13 @@ function GroupedLocacoesView({
     )
   }
 
+  // Compute overall summary stats
+  const totalRoutes = data.length
+  const totalClients = data.reduce((acc, rg) => acc + rg.clientes.length, 0)
+  const totalLocacoes = data.reduce(
+    (acc, rg) => acc + rg.clientes.reduce((a, c) => a + c.locacoes.length, 0), 0
+  )
+
   const toggleRota = (rotaId: string) => {
     setOpenRotas(prev => ({ ...prev, [rotaId]: !prev[rotaId] }))
   }
@@ -628,15 +637,83 @@ function GroupedLocacoesView({
     setOpenClientes(prev => ({ ...prev, [clienteId]: !prev[clienteId] }))
   }
 
+  const toggleAllExpanded = () => {
+    if (allExpanded) {
+      setOpenRotas({})
+      setOpenClientes({})
+      setAllExpanded(false)
+    } else {
+      const newRotas: Record<string, boolean> = {}
+      const newClientes: Record<string, boolean> = {}
+      data.forEach(rg => {
+        newRotas[rg.rota.id] = true
+        rg.clientes.forEach(c => {
+          newClientes[c.cliente.id] = true
+        })
+      })
+      setOpenRotas(newRotas)
+      setOpenClientes(newClientes)
+      setAllExpanded(true)
+    }
+  }
+
   return (
     <div className="space-y-3">
+      {/* Expand/Collapse All + Summary Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 rounded-lg border bg-muted/30">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Resumo</span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="secondary" className="gap-1 text-xs">
+              <MapPin className="h-3 w-3" />
+              {totalRoutes} {totalRoutes === 1 ? 'rota' : 'rotas'}
+            </Badge>
+            <Badge variant="secondary" className="gap-1 text-xs">
+              <User className="h-3 w-3" />
+              {totalClients} {totalClients === 1 ? 'cliente' : 'clientes'}
+            </Badge>
+            <Badge variant="secondary" className="gap-1 text-xs">
+              <Package className="h-3 w-3" />
+              {totalLocacoes} locaç{totalLocacoes === 1 ? 'ão' : 'ões'}
+            </Badge>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 text-xs"
+          onClick={toggleAllExpanded}
+        >
+          {allExpanded ? (
+            <>
+              <Shrink className="h-3.5 w-3.5" />
+              Recolher Tudo
+            </>
+          ) : (
+            <>
+              <Expand className="h-3.5 w-3.5" />
+              Expandir Tudo
+            </>
+          )}
+        </Button>
+      </div>
+
       {data.map((rotaGroup) => {
         const rotaId = rotaGroup.rota.id
         const isRotaOpen = openRotas[rotaId] ?? false
-        const totalLocacoes = rotaGroup.clientes.reduce(
+        const totalLocacoesRota = rotaGroup.clientes.reduce(
           (acc, c) => acc + c.locacoes.length, 0
         )
         const clientCount = rotaGroup.clientes.length
+
+        // Status counts for this route
+        const allLocacoes = rotaGroup.clientes.flatMap(c => c.locacoes)
+        const ativasCount = allLocacoes.filter(l => l.status === 'Ativa').length
+        const finalizadasCount = allLocacoes.filter(l => l.status === 'Finalizada').length
+        const canceladasCount = allLocacoes.filter(l => l.status === 'Cancelada').length
 
         return (
           <Collapsible
@@ -644,12 +721,12 @@ function GroupedLocacoesView({
             open={isRotaOpen}
             onOpenChange={() => toggleRota(rotaId)}
           >
-            <Card className="shadow-sm overflow-hidden">
-              {/* Route header */}
+            <Card className="shadow-sm overflow-hidden" style={{ borderLeftWidth: '4px', borderLeftColor: rotaGroup.rota.cor }}>
+              {/* Route header with gradient background */}
               <CollapsibleTrigger asChild>
                 <div
                   className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/30 transition-colors"
-                  style={{ borderLeftWidth: '4px', borderLeftColor: rotaGroup.rota.cor }}
+                  style={{ background: `linear-gradient(to right, ${rotaGroup.rota.cor}10, transparent)` }}
                 >
                   <div className="flex items-center gap-3">
                     <div
@@ -659,9 +736,30 @@ function GroupedLocacoesView({
                     <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
                     <div>
                       <h3 className="font-semibold text-sm">{rotaGroup.rota.descricao}</h3>
-                      <p className="text-xs text-muted-foreground">
-                        {clientCount} cliente{clientCount !== 1 ? 's' : ''} • {totalLocacoes} locação{totalLocacoes !== 1 ? 'ões' : ''}
-                      </p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <p className="text-xs text-muted-foreground">
+                          {clientCount} cliente{clientCount !== 1 ? 's' : ''} • {totalLocacoesRota} locação{totalLocacoesRota !== 1 ? 'ões' : ''}
+                        </p>
+                        {/* Status count badges */}
+                        {ativasCount > 0 && (
+                          <Badge className="gap-1 text-[10px] px-1.5 py-0 h-5 bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 border-green-200 dark:border-green-800">
+                            <CheckCircle className="h-2.5 w-2.5" />
+                            {ativasCount}
+                          </Badge>
+                        )}
+                        {finalizadasCount > 0 && (
+                          <Badge className="gap-1 text-[10px] px-1.5 py-0 h-5 bg-gray-100 text-gray-600 dark:bg-gray-800/50 dark:text-gray-400 border-gray-200 dark:border-gray-700">
+                            <PauseCircle className="h-2.5 w-2.5" />
+                            {finalizadasCount}
+                          </Badge>
+                        )}
+                        {canceladasCount > 0 && (
+                          <Badge className="gap-1 text-[10px] px-1.5 py-0 h-5 bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400 border-red-200 dark:border-red-800">
+                            <XCircle className="h-2.5 w-2.5" />
+                            {canceladasCount}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -679,6 +777,14 @@ function GroupedLocacoesView({
                   {rotaGroup.clientes.map((clienteGroup) => {
                     const clId = clienteGroup.cliente.id
                     const isClienteOpen = openClientes[clId] ?? false
+
+                    // Compute financial summary for this client group
+                    const totalValorFixo = clienteGroup.locacoes
+                      .filter(l => l.formaPagamento === 'Periodo' && l.valorFixo)
+                      .reduce((acc, l) => acc + (l.valorFixo || 0), 0)
+                    const totalPercentual = clienteGroup.locacoes
+                      .filter(l => l.formaPagamento !== 'Periodo')
+                      .reduce((acc, l) => acc + l.percentualEmpresa, 0)
 
                     return (
                       <Collapsible
@@ -698,6 +804,17 @@ function GroupedLocacoesView({
                                 </span>
                               </div>
                               <div className="flex items-center gap-2">
+                                {/* Financial summary per client */}
+                                {totalValorFixo > 0 && (
+                                  <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                                    Fixo: {formatarMoedaProp(totalValorFixo)}
+                                  </span>
+                                )}
+                                {totalPercentual > 0 && (
+                                  <span className="text-xs text-sky-600 dark:text-sky-400 font-medium">
+                                    %: {totalPercentual}%
+                                  </span>
+                                )}
                                 {isClienteOpen ? (
                                   <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                                 ) : (

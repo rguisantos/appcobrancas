@@ -77,8 +77,13 @@ import {
   MapPin,
   Package,
   User,
+  Expand,
+  Shrink,
+  BarChart3,
+  CheckCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
 
 interface Cobranca {
   id: string
@@ -1095,6 +1100,7 @@ function GroupedCobrancasView({
   const [openRotas, setOpenRotas] = useState<Record<string, boolean>>({})
   const [openClientes, setOpenClientes] = useState<Record<string, boolean>>({})
   const [openLocacoes, setOpenLocacoes] = useState<Record<string, boolean>>({})
+  const [allExpanded, setAllExpanded] = useState(false)
 
   if (loading) {
     return (
@@ -1126,6 +1132,22 @@ function GroupedCobrancasView({
     )
   }
 
+  // Compute overall summary stats
+  const totalRoutes = data.length
+  const totalClients = data.reduce((acc, rg) => acc + rg.clientes.length, 0)
+  const totalCobrancasAll = data.reduce(
+    (acc, rg) => acc + rg.clientes.reduce(
+      (a, c) => a + c.locacoes.reduce((b, l) => b + l.cobrancas.length, 0), 0
+    ), 0
+  )
+  const totalAmountAll = data.reduce(
+    (acc, rg) => acc + rg.clientes.reduce(
+      (a, c) => a + c.locacoes.reduce(
+        (b, l) => b + l.cobrancas.reduce((s, cob) => s + cob.totalClientePaga, 0), 0
+      ), 0
+    ), 0
+  )
+
   const toggleRota = (rotaId: string) => {
     setOpenRotas(prev => ({ ...prev, [rotaId]: !prev[rotaId] }))
   }
@@ -1138,8 +1160,80 @@ function GroupedCobrancasView({
     setOpenLocacoes(prev => ({ ...prev, [locacaoId]: !prev[locacaoId] }))
   }
 
+  const toggleAllExpanded = () => {
+    if (allExpanded) {
+      setOpenRotas({})
+      setOpenClientes({})
+      setOpenLocacoes({})
+      setAllExpanded(false)
+    } else {
+      const newRotas: Record<string, boolean> = {}
+      const newClientes: Record<string, boolean> = {}
+      const newLocacoes: Record<string, boolean> = {}
+      data.forEach(rg => {
+        newRotas[rg.rota.id] = true
+        rg.clientes.forEach(c => {
+          newClientes[c.cliente.id] = true
+          c.locacoes.forEach(l => {
+            newLocacoes[l.locacaoId] = true
+          })
+        })
+      })
+      setOpenRotas(newRotas)
+      setOpenClientes(newClientes)
+      setOpenLocacoes(newLocacoes)
+      setAllExpanded(true)
+    }
+  }
+
   return (
     <div className="space-y-3">
+      {/* Expand/Collapse All + Summary Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 rounded-lg border bg-muted/30">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Resumo</span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="secondary" className="gap-1 text-xs">
+              <MapPin className="h-3 w-3" />
+              {totalRoutes} {totalRoutes === 1 ? 'rota' : 'rotas'}
+            </Badge>
+            <Badge variant="secondary" className="gap-1 text-xs">
+              <User className="h-3 w-3" />
+              {totalClients} {totalClients === 1 ? 'cliente' : 'clientes'}
+            </Badge>
+            <Badge variant="secondary" className="gap-1 text-xs">
+              <CreditCard className="h-3 w-3" />
+              {totalCobrancasAll} cobrança{totalCobrancasAll !== 1 ? 's' : ''}
+            </Badge>
+            <Badge variant="outline" className="gap-1 text-xs font-semibold">
+              <DollarSign className="h-3 w-3" />
+              {formatarMoedaStatic(totalAmountAll)}
+            </Badge>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 text-xs"
+          onClick={toggleAllExpanded}
+        >
+          {allExpanded ? (
+            <>
+              <Shrink className="h-3.5 w-3.5" />
+              Recolher Tudo
+            </>
+          ) : (
+            <>
+              <Expand className="h-3.5 w-3.5" />
+              Expandir Tudo
+            </>
+          )}
+        </Button>
+      </div>
+
       {data.map((rotaGroup) => {
         const rotaId = rotaGroup.rota.id
         const isRotaOpen = openRotas[rotaId] ?? false
@@ -1153,18 +1247,33 @@ function GroupedCobrancasView({
         )
         const clientCount = rotaGroup.clientes.length
 
+        // Status breakdown for this route
+        const allCobrancas = rotaGroup.clientes.flatMap(c => c.locacoes.flatMap(l => l.cobrancas))
+        const pagoCount = allCobrancas.filter(c => c.status === 'Pago').length
+        const parcialCount = allCobrancas.filter(c => c.status === 'Parcial').length
+        const pendenteCount = allCobrancas.filter(c => c.status === 'Pendente').length
+        const atrasadoCount = allCobrancas.filter(c => c.status === 'Atrasado').length
+
+        // Total pendente/atrasado amounts
+        const totalPendente = allCobrancas
+          .filter(c => c.status === 'Pendente' || c.status === 'Parcial')
+          .reduce((acc, c) => acc + (c.totalClientePaga - c.valorRecebido), 0)
+        const totalAtrasado = allCobrancas
+          .filter(c => c.status === 'Atrasado')
+          .reduce((acc, c) => acc + (c.totalClientePaga - c.valorRecebido), 0)
+
         return (
           <Collapsible
             key={rotaId}
             open={isRotaOpen}
             onOpenChange={() => toggleRota(rotaId)}
           >
-            <Card className="shadow-sm overflow-hidden">
-              {/* Route header */}
+            <Card className="shadow-sm overflow-hidden" style={{ borderLeftWidth: '4px', borderLeftColor: rotaGroup.rota.cor }}>
+              {/* Route header with gradient background */}
               <CollapsibleTrigger asChild>
                 <div
                   className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/30 transition-colors"
-                  style={{ borderLeftWidth: '4px', borderLeftColor: rotaGroup.rota.cor }}
+                  style={{ background: `linear-gradient(to right, ${rotaGroup.rota.cor}10, transparent)` }}
                 >
                   <div className="flex items-center gap-3">
                     <div
@@ -1174,13 +1283,53 @@ function GroupedCobrancasView({
                     <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
                     <div>
                       <h3 className="font-semibold text-sm">{rotaGroup.rota.descricao}</h3>
-                      <p className="text-xs text-muted-foreground">
-                        {clientCount} cliente{clientCount !== 1 ? 's' : ''} • {totalCobrancas} cobrança{totalCobrancas !== 1 ? 's' : ''}
-                      </p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <p className="text-xs text-muted-foreground">
+                          {clientCount} cliente{clientCount !== 1 ? 's' : ''} • {totalCobrancas} cobrança{totalCobrancas !== 1 ? 's' : ''}
+                        </p>
+                        {/* Status count badges */}
+                        {pagoCount > 0 && (
+                          <Badge className="gap-1 text-[10px] px-1.5 py-0 h-5 bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 border-green-200 dark:border-green-800">
+                            <CheckCircle className="h-2.5 w-2.5" />
+                            {pagoCount}
+                          </Badge>
+                        )}
+                        {parcialCount > 0 && (
+                          <Badge className="gap-1 text-[10px] px-1.5 py-0 h-5 bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400 border-orange-200 dark:border-orange-800">
+                            <Clock className="h-2.5 w-2.5" />
+                            {parcialCount}
+                          </Badge>
+                        )}
+                        {pendenteCount > 0 && (
+                          <Badge className="gap-1 text-[10px] px-1.5 py-0 h-5 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800">
+                            <Wallet className="h-2.5 w-2.5" />
+                            {pendenteCount}
+                          </Badge>
+                        )}
+                        {atrasadoCount > 0 && (
+                          <Badge className="gap-1 text-[10px] px-1.5 py-0 h-5 bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400 border-red-200 dark:border-red-800">
+                            <AlertTriangle className="h-2.5 w-2.5" />
+                            {atrasadoCount}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-bold">{formatarMoedaStatic(totalAmount)}</span>
+                    <div className="flex flex-col items-end gap-0.5">
+                      <span className="text-sm font-bold">{formatarMoedaStatic(totalAmount)}</span>
+                      {/* Highlighted pendente/atrasado amounts */}
+                      {totalPendente > 0 && (
+                        <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                          Pendente: {formatarMoedaStatic(totalPendente)}
+                        </span>
+                      )}
+                      {totalAtrasado > 0 && (
+                        <span className="text-[10px] font-medium text-red-600 dark:text-red-400">
+                          Atrasado: {formatarMoedaStatic(totalAtrasado)}
+                        </span>
+                      )}
+                    </div>
                     {isRotaOpen ? (
                       <ChevronDown className="h-4 w-4 text-muted-foreground" />
                     ) : (
@@ -1221,6 +1370,19 @@ function GroupedCobrancasView({
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-semibold">{formatarMoedaStatic(clienteTotal)}</span>
+                                {/* Nova Cobrança button */}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 gap-1 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/50"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    navigate('cobranca-nova')
+                                  }}
+                                >
+                                  <Plus className="h-3 w-3" />
+                                  Nova
+                                </Button>
                                 {isClienteOpen ? (
                                   <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                                 ) : (

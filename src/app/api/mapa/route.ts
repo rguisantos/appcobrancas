@@ -40,6 +40,19 @@ export async function GET(request: NextRequest) {
             id: true,
             produtoIdentificador: true,
             produtoTipo: true,
+            cobrancas: {
+              where: { deletedAt: null },
+              select: {
+                id: true,
+                status: true,
+                totalClientePaga: true,
+                valorRecebido: true,
+                dataVencimento: true,
+                dataFim: true,
+              },
+              orderBy: { dataFim: 'desc' },
+              take: 1,
+            },
           },
         },
         cobrancas: {
@@ -95,6 +108,27 @@ export async function GET(request: NextRequest) {
       return dataFim.getMonth() === currentMonth && dataFim.getFullYear() === currentYear
     })
 
+    // Build detailed locações info with last cobrança
+    const locacoesDetalhes = c.locacoes.map((l) => {
+      const lastCobranca = l.cobrancas[0] || null
+      return {
+        id: l.id,
+        produtoIdentificador: l.produtoIdentificador,
+        produtoTipo: l.produtoTipo,
+        ultimaCobranca: lastCobranca
+          ? {
+              id: lastCobranca.id,
+              status: lastCobranca.status,
+              totalClientePaga: lastCobranca.totalClientePaga,
+              valorRecebido: lastCobranca.valorRecebido,
+              saldoDevedor: lastCobranca.totalClientePaga - lastCobranca.valorRecebido,
+              dataVencimento: lastCobranca.dataVencimento,
+              dataFim: lastCobranca.dataFim,
+            }
+          : null,
+      }
+    })
+
     return {
       id: c.id,
       identificador: c.identificador,
@@ -105,6 +139,7 @@ export async function GET(request: NextRequest) {
       rotaId: c.rotaId,
       rota: c.rota,
       locacoesAtivas: c.locacoes.map((l) => l.produtoIdentificador),
+      locacoesDetalhes,
       cobrancasResumo: {
         pendente: cobrancasPendentes,
         atrasado: cobrancasAtrasadas,

@@ -1,12 +1,13 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
-import { MapPin, Users, TrendingUp, AlertTriangle, Layers, Navigation, MapPinned, Route, ChevronDown, ChevronUp, Filter } from 'lucide-react'
+import { MapPin, Users, TrendingUp, AlertTriangle, Layers, Navigation, MapPinned, Route, ChevronDown, ChevronUp, Filter, Search, Crosshair, LocateFixed } from 'lucide-react'
 
 const MapInner = dynamic(() => import('./map-inner'), {
   ssr: false,
@@ -19,6 +20,23 @@ const MapInner = dynamic(() => import('./map-inner'), {
     </div>
   ),
 })
+
+interface UltimaCobranca {
+  id: string
+  status: string
+  totalClientePaga: number
+  valorRecebido: number
+  saldoDevedor: number
+  dataVencimento: string | null
+  dataFim: string
+}
+
+interface LocacaoDetalhe {
+  id: string
+  produtoIdentificador: string
+  produtoTipo: string
+  ultimaCobranca: UltimaCobranca | null
+}
 
 interface CobrancasResumo {
   pendente: number
@@ -37,6 +55,7 @@ interface ClienteMapa {
   rotaId: string | null
   rota: { id: string; descricao: string; cor: string } | null
   locacoesAtivas: string[]
+  locacoesDetalhes: LocacaoDetalhe[]
   cobrancasResumo: CobrancasResumo
   totalRecebido: number
   totalPendente: number
@@ -86,6 +105,10 @@ export function MapaView() {
   const [showRouteLines, setShowRouteLines] = useState(false)
   const [showSemCoordenadas, setShowSemCoordenadas] = useState(false)
   const [selectedRotaId, setSelectedRotaId] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [locateClientId, setLocateClientId] = useState<string | null>(null)
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [locatingUser, setLocatingUser] = useState(false)
 
   useEffect(() => {
     async function fetchData() {
@@ -124,6 +147,48 @@ export function MapaView() {
     (c) => c.latitude != null && c.longitude != null && !hiddenRotas.has(c.rotaId || '')
   )
 
+  // Search matching
+  const searchLower = searchQuery.toLowerCase().trim()
+  const matchingClientIds = searchLower
+    ? new Set(
+        filteredClientes
+          .filter((c) => c.nomeExibicao.toLowerCase().includes(searchLower) || c.identificador.toLowerCase().includes(searchLower))
+          .map((c) => c.id)
+      )
+    : null // null means no search active (all visible)
+
+  const handleLocalizar = useCallback(() => {
+    if (!searchLower) return
+    const firstMatch = filteredClientes.find(
+      (c) => c.nomeExibicao.toLowerCase().includes(searchLower) || c.identificador.toLowerCase().includes(searchLower)
+    )
+    if (firstMatch) {
+      setLocateClientId(firstMatch.id)
+      // Reset after a short delay so it can be triggered again
+      setTimeout(() => setLocateClientId(null), 2000)
+    }
+  }, [searchLower, filteredClientes])
+
+  const handleMinhaLocalizacao = useCallback(() => {
+    if (!navigator.geolocation) {
+      return
+    }
+    setLocatingUser(true)
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        })
+        setLocatingUser(false)
+      },
+      () => {
+        setLocatingUser(false)
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    )
+  }, [])
+
   // All active clients for route stats (includes those without coordinates)
   const allClientesForStats = [...clientes, ...clientesSemCoordenadas]
 
@@ -133,6 +198,7 @@ export function MapaView() {
       value: stats.totalClientes.toString(),
       icon: <Users className="h-5 w-5" />,
       accent: 'border-l-4 border-l-blue-500',
+      gradient: 'stat-card-blue',
       iconBg: 'bg-blue-100 dark:bg-blue-900',
       iconColor: 'text-blue-600 dark:text-blue-400',
     },
@@ -140,15 +206,17 @@ export function MapaView() {
       title: 'Com Coordenadas',
       value: stats.clientesComCoordenadas.toString(),
       icon: <MapPin className="h-5 w-5" />,
-      accent: 'border-l-4 border-l-green-500',
-      iconBg: 'bg-green-100 dark:bg-green-900',
-      iconColor: 'text-green-600 dark:text-green-400',
+      accent: 'border-l-4 border-l-emerald-500',
+      gradient: 'stat-card-emerald',
+      iconBg: 'bg-emerald-100 dark:bg-emerald-900',
+      iconColor: 'text-emerald-600 dark:text-emerald-400',
     },
     {
       title: 'Total Recebido',
       value: formatarMoeda(stats.totalRecebido),
       icon: <TrendingUp className="h-5 w-5" />,
       accent: 'border-l-4 border-l-emerald-500',
+      gradient: 'stat-card-emerald',
       iconBg: 'bg-emerald-100 dark:bg-emerald-900',
       iconColor: 'text-emerald-600 dark:text-emerald-400',
     },
@@ -156,9 +224,10 @@ export function MapaView() {
       title: 'Total Pendente',
       value: formatarMoeda(stats.totalPendente),
       icon: <AlertTriangle className="h-5 w-5" />,
-      accent: 'border-l-4 border-l-yellow-500',
-      iconBg: 'bg-yellow-100 dark:bg-yellow-900',
-      iconColor: 'text-yellow-600 dark:text-yellow-400',
+      accent: 'border-l-4 border-l-red-500',
+      gradient: 'stat-card-red',
+      iconBg: 'bg-red-100 dark:bg-red-900',
+      iconColor: 'text-red-600 dark:text-red-400',
     },
   ]
 
@@ -191,6 +260,53 @@ export function MapaView() {
           </div>
         </div>
       </div>
+
+      {/* Search Bar + Location Buttons */}
+      {!loading && (
+        <Card className="shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              {/* Search input */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar cliente pelo nome ou ID..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-4"
+                />
+              </div>
+              {/* Localizar button */}
+              <button
+                onClick={handleLocalizar}
+                disabled={!searchLower}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <LocateFixed className="h-4 w-4" />
+                Localizar
+              </button>
+              {/* Minha Localização button */}
+              <button
+                onClick={handleMinhaLocalizacao}
+                disabled={locatingUser}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-border bg-background hover:bg-muted transition-colors disabled:opacity-50"
+              >
+                <Crosshair className={`h-4 w-4 ${locatingUser ? 'animate-spin' : ''}`} />
+                {locatingUser ? 'Localizando...' : 'Minha Localização'}
+              </button>
+            </div>
+            {searchLower && matchingClientIds && (
+              <div className="mt-2 text-xs text-muted-foreground">
+                {matchingClientIds.size === 0 ? (
+                  <span className="text-amber-600 dark:text-amber-400">Nenhum cliente encontrado</span>
+                ) : (
+                  <span>{matchingClientIds.size} cliente{matchingClientIds.size !== 1 ? 's' : ''} encontrado{matchingClientIds.size !== 1 ? 's' : ''}</span>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Route Filter + Status Legend */}
       {!loading && (
@@ -274,7 +390,7 @@ export function MapaView() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {statsCards.map((card) => (
-            <Card key={card.title} className={`shadow-sm ${card.accent}`}>
+            <Card key={card.title} className={`shadow-sm ${card.accent} ${card.gradient}`}>
               <CardContent className="p-5">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
@@ -495,7 +611,16 @@ export function MapaView() {
 
       {/* Map */}
       {!loading && (
-        <MapInner clientes={filteredClientes} rotas={rotas} stats={stats} showRouteLines={showRouteLines} selectedRotaId={selectedRotaId} />
+        <MapInner
+          clientes={filteredClientes}
+          rotas={rotas}
+          stats={stats}
+          showRouteLines={showRouteLines}
+          selectedRotaId={selectedRotaId}
+          matchingClientIds={matchingClientIds}
+          locateClientId={locateClientId}
+          userLocation={userLocation}
+        />
       )}
     </div>
   )
