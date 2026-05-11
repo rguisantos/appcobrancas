@@ -175,7 +175,7 @@ export function CobrancasView() {
   })
 
   // View mode
-  const [viewMode, setViewMode] = useState<'flat' | 'agrupado'>('flat')
+  const [viewMode, setViewMode] = useState<'flat' | 'agrupado'>('agrupado')
   const [groupedData, setGroupedData] = useState<GroupedData[]>([])
   const [groupedLoading, setGroupedLoading] = useState(false)
 
@@ -658,15 +658,16 @@ export function CobrancasView() {
             if (value) setViewMode(value as 'flat' | 'agrupado')
           }}
           variant="outline"
-          size="sm"
         >
-          <ToggleGroupItem value="flat" className="gap-1.5 px-3">
-            <LayoutList className="h-3.5 w-3.5" />
-            <span className="text-xs">Lista</span>
+          <ToggleGroupItem value="flat" className="gap-2 px-4 py-2">
+            <LayoutList className="h-4 w-4" />
+            <span className="text-sm font-medium">Lista</span>
+            <span className="inline-flex items-center justify-center rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">{total}</span>
           </ToggleGroupItem>
-          <ToggleGroupItem value="agrupado" className="gap-1.5 px-3">
-            <FolderTree className="h-3.5 w-3.5" />
-            <span className="text-xs">Agrupado</span>
+          <ToggleGroupItem value="agrupado" className="gap-2 px-4 py-2">
+            <FolderTree className="h-4 w-4" />
+            <span className="text-sm font-medium">Agrupado</span>
+            <span className="inline-flex items-center justify-center rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">{groupedData.length} {groupedData.length === 1 ? 'rota' : 'rotas'}</span>
           </ToggleGroupItem>
         </ToggleGroup>
         {viewMode === 'agrupado' && (

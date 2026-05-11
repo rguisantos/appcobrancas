@@ -907,3 +907,174 @@ The App Cobranças system continues to be a comprehensive billing management app
 4. Add PWA support for mobile install
 5. Performance optimization for large datasets (virtual scrolling)
 6. Add real-time notifications via WebSocket
+
+---
+Task ID: 1
+Agent: Grouped View Fix Agent
+Task: Fix Grouped Views for Locações and Cobranças — change default to 'agrupado', make toggle more prominent
+
+Work Log:
+1. Cobranças View (cobrancas-view.tsx):
+   - Changed default viewMode from 'flat' to 'agrupado' (line 178)
+   - Removed `size="sm"` from ToggleGroup component
+   - Increased toggle item styling: `gap-1.5 px-3` → `gap-2 px-4 py-2`, icon size `h-3.5 w-3.5` → `h-4 w-4`, text `text-xs` → `text-sm font-medium`
+   - Added count badges to each toggle option:
+     - "Lista" shows total cobrança count in a rounded pill badge
+     - "Agrupado" shows route count with pluralization ("X rota" / "X rotas")
+   - Verified `formatarMoedaStatic` function exists at line 1330 in the same file — no changes needed
+
+2. Locações View (locacoes-view.tsx):
+   - Changed default viewMode from 'flat' to 'agrupado' (line 108)
+   - Removed `size="sm"` from ToggleGroup component
+   - Increased toggle item styling: same changes as cobrancas (larger padding, icons, text)
+   - Added count badges to each toggle option:
+     - "Lista" shows total locação count
+     - "Agrupado" shows route count with pluralization
+
+Lint Results:
+- Zero lint errors, zero warnings
+
+Stage Summary:
+- Both views now default to 'agrupado' (grouped by route) instead of 'flat' (list)
+- ToggleGroup is more prominent with default size, larger icons/text, and count badges
+- No functional changes to grouped view rendering logic
+- Zero lint errors
+
+---
+Task ID: 2
+Agent: Map Redesign Agent
+Task: Redesign Route Map with Route Filter and Color-Coded Status Pins
+
+Work Log:
+1. API Enhancement (src/app/api/mapa/route.ts):
+   - Added optional `rotaId` query parameter to filter clients by route
+   - Changed function signature to accept `NextRequest` for URL param parsing
+   - Added `pendenteCobranca` boolean field to each client in the response
+   - Added `dataFim` to cobranças select for pendente cobrança determination
+   - Logic: client is "pendente de cobrança" if they have active locações but no cobrança with dataFim in the current month/year
+   - When rotaId is provided, only clients in that route are returned (rotas still return all for the filter dropdown)
+
+2. Mapa View - Route Filter + Legend (src/components/views/mapa-view.tsx):
+   - Added `selectedRotaId` state (default 'all')
+   - Added `pendenteCobranca` field to ClienteMapa and ClienteSemCoordenada interfaces
+   - Added Select dropdown with "Todas as Rotas" option + route list with color dots
+   - API fetch now includes `?rotaId=XXX` when a specific route is selected
+   - Added status legend card below header showing 4 color-coded statuses:
+     - Green (#22c55e) = Pago
+     - Red (#ef4444) = Devendo/Atrasado
+     - Orange (#f97316) = Pagamento Parcial
+     - Yellow (#eab308, larger indicator) = Pendente de Cobrança
+   - Route legend and stats cards hidden when a specific route is filtered (single route view)
+   - Clients without coordinates now show "Pend. cobrança" badge
+   - Route stats cards now show "pend. cobrança" count per route
+   - Passes `selectedRotaId` prop to MapInner
+
+3. Map Inner - Status-Based Pins (src/components/views/map-inner.tsx):
+   - Replaced route-color-based pin coloring with status-based coloring
+   - Added `getPinStatus()` function with priority logic:
+     1. pendenteCobranca (highest) — has active locações but no cobrança this month → Yellow (#eab308)
+     2. atrasado — any cobrança is Atrasado → Red (#ef4444)
+     3. parcial — any cobrança is Parcial → Orange (#f97316)
+     4. pago — all cobranças are Pago → Green (#22c55e)
+     5. pendente — all cobranças are Pendente → Yellow (#eab308, smaller)
+     6. neutro — no cobranças and no active locações → Gray (#6b7280)
+   - Pendente de cobrança pins use radius 14 (larger than others)
+   - Atrasado pins use radius 12 with pulsing ring animation
+   - Parcial pins radius 10, Pago radius 8, Pendente radius 9, Neutro radius 7
+   - Added pulsing ring animation for pendenteCobrança pins (yellow)
+   - Improved popup with status badge in header (color-coded with label)
+   - Added "Pendente de Cobrança" warning box in popup for yellow pins
+   - Reordered cobrança badges in popup: atrasado first, then parcial, pendente, pago
+   - Changed parcial badge color from blue to orange (matching pin color scheme)
+   - Added mini status summary bar above map showing counts per status
+   - Accepts `selectedRotaId` prop and shows "Filtrado por rota" indicator when filtering
+   - Added `pendenteCobranca` to ClienteMapa interface
+
+Lint Results:
+- Zero lint errors, zero warnings
+
+Stage Summary:
+- Route filter dropdown added with "Todas as Rotas" option
+- Status-based pin coloring with 4 priority levels: pendenteCobranca > atrasado > parcial > pago
+- Pendente de cobrança (yellow, larger pins) takes highest priority
+- Status legend card with 4 color-coded statuses
+- Improved popup with status badge, warning box, and reordered cobrança details
+- Mini status summary bar above map
+- API supports rotaId query parameter for route filtering
+- pendenteCobranca boolean field added to API response
+- Zero lint errors
+---
+Task ID: grouped-views + map-redesign
+Agent: Main Agent
+Task: Fix grouped views visibility, redesign route map with filter and status-colored pins
+
+Work Log:
+1. Grouped Views Fix (cobrancas-view.tsx + locacoes-view.tsx):
+   - Changed default viewMode from 'flat' to 'agrupado' in both views
+   - Made ToggleGroup more prominent: removed size="sm", increased padding/icon/text sizes
+   - Added count badges to toggle options: "Lista (X)" and "Agrupado (X rotas)"
+   - User had complained they couldn't find grouped views — now they show by default
+
+2. Route Map Redesign - API (api/mapa/route.ts):
+   - Added optional `rotaId` query parameter to filter clients by route
+   - Added `pendenteCobranca` boolean field: true if client has active locações but no cobrança for current month
+   - Added `dataFim` to cobranças select for pendente cobrança calculation
+
+3. Route Map Redesign - View (mapa-view.tsx):
+   - Added Select dropdown for route filtering ("Todas as Rotas" + route options)
+   - When a route is selected, filters API call with ?rotaId=XXX
+   - Added status legend card showing 4 color-coded statuses
+   - Added "Pend. cobrança" badge for clients without coordinates
+   - Route stats cards include pendente cobrança count
+   - Passes selectedRotaId to MapInner
+
+4. Route Map Redesign - Map Inner (map-inner.tsx):
+   - Replaced route-color-based pin coloring with status-based coloring:
+     - 🟡 Pendente de Cobrança (highest priority, radius=14, yellow #eab308) — pulsing ring
+     - 🔴 Atrasado (radius=12, red #ef4444) — pulsing ring
+     - 🟠 Parcial (radius=10, orange #f97316)
+     - 🟢 Pago (radius=8, green #22c55e)
+     - 🟡 Pendente (radius=9, yellow smaller)
+     - ⚪ Neutro (radius=7, gray) — no cobranças
+   - Improved popup with status badge, warning box for pendenteCobrança
+   - Added mini status summary bar above the map
+   - Shows "Filtrado por rota" indicator when route filter is active
+
+5. Created cron job for periodic web dev review (every 15 minutes)
+
+Stage Summary:
+- Grouped views now show by default (agrupado mode)
+- Route map has route filter dropdown
+- Pins are color-coded by cobrança status (green/red/orange/yellow)
+- Yellow "pendente de cobrança" pins are larger with pulsing animation
+- PendenteCobranca API field identifies clients needing billing
+- Zero lint errors, dev server running normally
+
+## Current Project Status
+
+### Assessment
+The App Cobranças system is a comprehensive billing management application. All previously requested features have been implemented including grouped views, route map with status-colored pins, FIFO payment logic, and various UI fixes.
+
+### Current Goals/Completed Modifications/Verification Results
+- ✅ Grouped views: default mode changed to 'agrupado', toggle more prominent
+- ✅ Route map: route filter dropdown added
+- ✅ Route map: status-colored pins (green=pago, red=atrasado, orange=parcial, yellow=pendente cobrança)
+- ✅ Route map: pendenteCobranca detection (active locações without current month billing)
+- ✅ FIFO payment, auto-fill dates, auto-pay implemented
+- ✅ Sidebar mobile scroll, calendar flickering fixed
+- ✅ WhatsApp "Enviar Mensagem", contacts JSON display fixed
+- ✅ Product establishment dropdown, client GPS, IBGE city cascade
+- ✅ Cron job for periodic web dev review
+
+### Unresolved Issues or Risks
+1. **Map data**: Most seed clients lack latitude/longitude — GPS auto-fill helps new clients
+2. **Pendente cobrança logic**: Currently checks if any cobrança has dataFim in current month; may need refinement for different periodicities
+3. **Dev server stability**: Turbopack dev server can OOM; production build works fine
+
+### Priority Recommendations for Next Phase
+1. Test all new features via preview panel
+2. Add more client coordinates for better map visualization
+3. Refine pendente cobrança detection for different billing periodicities
+4. Add PWA support for mobile install
+5. Add PDF generation for cobrança receipts
+6. Performance optimization for large datasets

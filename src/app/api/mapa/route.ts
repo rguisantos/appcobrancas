@@ -1,17 +1,30 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  const { searchParams } = new URL(request.url)
+  const rotaId = searchParams.get('rotaId') || undefined
+
+  const now = new Date()
+  const currentMonth = now.getMonth()
+  const currentYear = now.getFullYear()
+
+  const whereCliente: Record<string, unknown> = {
+    deletedAt: null,
+    status: 'Ativo',
+  }
+
+  if (rotaId) {
+    whereCliente.rotaId = rotaId
+  }
+
   const [clientes, rotas] = await Promise.all([
     db.cliente.findMany({
-      where: {
-        deletedAt: null,
-        status: 'Ativo',
-      },
+      where: whereCliente,
       select: {
         id: true,
         identificador: true,
@@ -38,6 +51,7 @@ export async function GET() {
             status: true,
             produtoIdentificador: true,
             dataVencimento: true,
+            dataFim: true,
           },
         },
       },
@@ -75,6 +89,12 @@ export async function GET() {
       .filter((cb) => cb.status === 'Pendente' || cb.status === 'Atrasado' || cb.status === 'Parcial')
       .reduce((s, cb) => s + (cb.totalClientePaga - cb.valorRecebido), 0)
 
+    // Determine pendenteCobranca: client has active locações but no cobrança for the current month
+    const pendenteCobranca = c.locacoes.length > 0 && !c.cobrancas.some(cb => {
+      const dataFim = new Date(cb.dataFim)
+      return dataFim.getMonth() === currentMonth && dataFim.getFullYear() === currentYear
+    })
+
     return {
       id: c.id,
       identificador: c.identificador,
@@ -94,6 +114,7 @@ export async function GET() {
       totalRecebido: c.cobrancas.filter((cb) => cb.status === 'Pago' || cb.status === 'Parcial').reduce((s, cb) => s + cb.valorRecebido, 0),
       totalPendente: totalPendenteCliente,
       temAtrasado: cobrancasAtrasadas > 0,
+      pendenteCobranca,
     }
   })
 

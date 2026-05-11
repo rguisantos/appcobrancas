@@ -17,6 +17,16 @@ const defaultIcon = L.icon({
 })
 L.Marker.prototype.options.icon = defaultIcon
 
+// Status color constants
+const STATUS_COLORS = {
+  pago: '#22c55e',       // Green
+  atrasado: '#ef4444',   // Red
+  parcial: '#f97316',    // Orange
+  pendenteCobranca: '#eab308', // Yellow
+  pendente: '#eab308',   // Yellow (smaller)
+  neutro: '#6b7280',     // Gray
+} as const
+
 interface CobrancasResumo {
   pendente: number
   atrasado: number
@@ -38,6 +48,7 @@ interface ClienteMapa {
   totalRecebido: number
   totalPendente: number
   temAtrasado: boolean
+  pendenteCobranca: boolean
 }
 
 interface RotaMapa {
@@ -59,9 +70,54 @@ interface MapInnerProps {
   rotas: RotaMapa[]
   stats: StatsMapa
   showRouteLines?: boolean
+  selectedRotaId?: string
 }
 
-export default function MapInner({ clientes, rotas, showRouteLines = false }: MapInnerProps) {
+type PinStatus = 'pendenteCobranca' | 'atrasado' | 'parcial' | 'pago' | 'pendente' | 'neutro'
+
+/**
+ * Determine pin status with priority:
+ * 1. pendenteCobranca (has active locações but no cobrança this month) — HIGHEST
+ * 2. atrasado (any cobrança is Atrasado)
+ * 3. parcial (any cobrança is Parcial)
+ * 4. pago (all cobranças are Pago)
+ * 5. pendente (all cobranças are Pendente, not yet due)
+ * 6. neutro (no cobranças and no active locações)
+ */
+function getPinStatus(cliente: ClienteMapa): PinStatus {
+  if (cliente.pendenteCobranca) return 'pendenteCobranca'
+  if (cliente.cobrancasResumo.atrasado > 0) return 'atrasado'
+  if (cliente.cobrancasResumo.parcial > 0) return 'parcial'
+  if (cliente.cobrancasResumo.pago > 0 && cliente.cobrancasResumo.pendente === 0 && cliente.cobrancasResumo.atrasado === 0 && cliente.cobrancasResumo.parcial === 0) return 'pago'
+  if (cliente.cobrancasResumo.pendente > 0) return 'pendente'
+  return 'neutro'
+}
+
+function getPinColor(status: PinStatus): string {
+  return STATUS_COLORS[status] || STATUS_COLORS.neutro
+}
+
+function getPinRadius(status: PinStatus): number {
+  if (status === 'pendenteCobranca') return 14 // Larger pin
+  if (status === 'atrasado') return 12
+  if (status === 'parcial') return 10
+  if (status === 'pago') return 8
+  if (status === 'pendente') return 9
+  return 7
+}
+
+function getStatusLabel(status: PinStatus): string {
+  switch (status) {
+    case 'pendenteCobranca': return 'Pendente de Cobrança'
+    case 'atrasado': return 'Devendo/Atrasado'
+    case 'parcial': return 'Pagamento Parcial'
+    case 'pago': return 'Pago'
+    case 'pendente': return 'Pendente'
+    case 'neutro': return 'Sem cobranças'
+  }
+}
+
+export default function MapInner({ clientes, rotas, showRouteLines = false, selectedRotaId = 'all' }: MapInnerProps) {
   const { navigate } = useNavigation()
 
   // Center on Campo Grande, MS
@@ -73,20 +129,6 @@ export default function MapInner({ clientes, rotas, showRouteLines = false }: Ma
   rotas.forEach((r) => {
     rotaCorMap[r.id] = r.cor
   })
-
-  // Helper to get marker color
-  const getMarkerColor = (rotaId: string | null) => {
-    if (!rotaId) return '#6b7280' // gray for no rota
-    return rotaCorMap[rotaId] || '#6b7280'
-  }
-
-  // Helper to get marker radius based on importance
-  const getMarkerRadius = (cliente: ClienteMapa) => {
-    if (cliente.temAtrasado) return 12
-    if (cliente.totalPendente > 0) return 10
-    if (cliente.cobrancasResumo.pendente > 0) return 9
-    return 7
-  }
 
   // Build route polylines: connect clients in the same route (ordered by identifier)
   const routePolylines = (() => {
@@ -177,6 +219,15 @@ export default function MapInner({ clientes, rotas, showRouteLines = false }: Ma
         color: #166534;
         border: 1px solid #bbf7d0;
       }
+      .map-status-bar {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+      }
     `
     document.head.appendChild(style)
     return () => {
@@ -185,12 +236,62 @@ export default function MapInner({ clientes, rotas, showRouteLines = false }: Ma
     }
   }, [])
 
+  // Count clients by status for the mini-stats
+  const statusCounts = clientes.reduce((acc, c) => {
+    const status = getPinStatus(c)
+    acc[status] = (acc[status] || 0) + 1
+    return acc
+  }, {} as Record<PinStatus, number>)
+
   return (
     <div className="rounded-lg overflow-hidden shadow-sm border">
+      {/* Mini status summary above map */}
+      <div className="bg-card border-b px-4 py-2.5 flex flex-wrap items-center gap-4">
+        <span className="text-xs font-semibold text-muted-foreground">No mapa:</span>
+        <div className="flex flex-wrap items-center gap-3">
+          {statusCounts.pendenteCobranca > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="h-3 w-3 rounded-full" style={{ backgroundColor: STATUS_COLORS.pendenteCobranca }} />
+              <span className="text-xs font-medium">{statusCounts.pendenteCobranca} pend. cobrança</span>
+            </div>
+          )}
+          {statusCounts.atrasado > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="h-3 w-3 rounded-full" style={{ backgroundColor: STATUS_COLORS.atrasado }} />
+              <span className="text-xs font-medium">{statusCounts.atrasado} atrasado{statusCounts.atrasado > 1 ? 's' : ''}</span>
+            </div>
+          )}
+          {statusCounts.parcial > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="h-3 w-3 rounded-full" style={{ backgroundColor: STATUS_COLORS.parcial }} />
+              <span className="text-xs font-medium">{statusCounts.parcial} parcial</span>
+            </div>
+          )}
+          {statusCounts.pago > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="h-3 w-3 rounded-full" style={{ backgroundColor: STATUS_COLORS.pago }} />
+              <span className="text-xs font-medium">{statusCounts.pago} pago{statusCounts.pago > 1 ? 's' : ''}</span>
+            </div>
+          )}
+          {statusCounts.pendente > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STATUS_COLORS.pendente }} />
+              <span className="text-xs font-medium">{statusCounts.pendente} pendente{statusCounts.pendente > 1 ? 's' : ''}</span>
+            </div>
+          )}
+          <span className="text-xs text-muted-foreground">({clientes.length} total)</span>
+        </div>
+        {selectedRotaId !== 'all' && (
+          <div className="ml-auto text-xs text-primary font-medium">
+            Filtrado por rota
+          </div>
+        )}
+      </div>
+
       <MapContainer
         center={center}
         zoom={zoom}
-        style={{ height: 'calc(100vh - 340px)', minHeight: '500px', width: '100%' }}
+        style={{ height: 'calc(100vh - 400px)', minHeight: '480px', width: '100%' }}
         scrollWheelZoom={true}
         className="z-0"
       >
@@ -216,9 +317,16 @@ export default function MapInner({ clientes, rotas, showRouteLines = false }: Ma
         {clientes.map((cliente) => {
           if (cliente.latitude == null || cliente.longitude == null) return null
 
-          const color = getMarkerColor(cliente.rotaId)
+          const pinStatus = getPinStatus(cliente)
+          const color = getPinColor(pinStatus)
           const rotaDesc = cliente.rota?.descricao || 'Sem rota'
-          const radius = getMarkerRadius(cliente)
+          const rotaColor = cliente.rotaId ? (rotaCorMap[cliente.rotaId] || '#6b7280') : '#6b7280'
+          const radius = getPinRadius(pinStatus)
+
+          // Determine border styling based on status
+          const borderColor = pinStatus === 'pendenteCobranca' ? '#ca8a04' : 
+                              pinStatus === 'atrasado' ? '#dc2626' : '#fff'
+          const borderWeight = pinStatus === 'pendenteCobranca' || pinStatus === 'atrasado' ? 3 : 2
 
           return (
             <CircleMarker
@@ -227,15 +335,15 @@ export default function MapInner({ clientes, rotas, showRouteLines = false }: Ma
               radius={radius}
               pathOptions={{
                 fillColor: color,
-                color: cliente.temAtrasado ? '#dc2626' : '#fff',
-                weight: cliente.temAtrasado ? 3 : 2,
+                color: borderColor,
+                weight: borderWeight,
                 opacity: 1,
-                fillOpacity: cliente.temAtrasado ? 1 : 0.85,
-                className: cliente.temAtrasado ? 'pulse-marker' : '',
+                fillOpacity: pinStatus === 'pendenteCobranca' || pinStatus === 'atrasado' ? 1 : 0.85,
+                className: pinStatus === 'atrasado' ? 'pulse-marker' : '',
               }}
             >
               {/* Pulsing ring for atrasado clients */}
-              {cliente.temAtrasado && (
+              {pinStatus === 'atrasado' && (
                 <CircleMarker
                   center={[cliente.latitude, cliente.longitude]}
                   radius={radius + 4}
@@ -248,19 +356,47 @@ export default function MapInner({ clientes, rotas, showRouteLines = false }: Ma
                   }}
                 />
               )}
+              {/* Pulsing ring for pendenteCobranca clients */}
+              {pinStatus === 'pendenteCobranca' && (
+                <CircleMarker
+                  center={[cliente.latitude, cliente.longitude]}
+                  radius={radius + 5}
+                  pathOptions={{
+                    fillColor: 'transparent',
+                    color: '#eab308',
+                    weight: 2,
+                    opacity: 0.5,
+                    className: 'pulse-ring-marker',
+                  }}
+                />
+              )}
               <Popup>
-                <div className="min-w-[220px] max-w-[280px] space-y-2.5">
-                  {/* Header */}
-                  <div>
-                    <div className="font-bold text-sm leading-tight">{cliente.nomeExibicao}</div>
-                    <div className="text-[11px] text-gray-500 mt-0.5">ID: {cliente.identificador}</div>
+                <div className="min-w-[230px] max-w-[300px] space-y-2.5">
+                  {/* Header with status indicator */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-bold text-sm leading-tight">{cliente.nomeExibicao}</div>
+                      <div className="text-[11px] text-gray-500 mt-0.5">ID: {cliente.identificador}</div>
+                    </div>
+                    {/* Status badge */}
+                    <div
+                      className="map-status-bar shrink-0"
+                      style={{
+                        backgroundColor: color + '20',
+                        color: color,
+                        border: `1px solid ${color}40`,
+                      }}
+                    >
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+                      <span className="whitespace-nowrap">{getStatusLabel(pinStatus)}</span>
+                    </div>
                   </div>
 
                   {/* Route with color dot */}
                   <div className="flex items-center gap-1.5">
                     <span
                       className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: color }}
+                      style={{ backgroundColor: rotaColor }}
                     />
                     <span className="text-xs font-medium">{rotaDesc}</span>
                   </div>
@@ -280,6 +416,16 @@ export default function MapInner({ clientes, rotas, showRouteLines = false }: Ma
 
                   {/* Divider */}
                   <div className="border-t" />
+
+                  {/* Pendente de cobrança warning */}
+                  {pinStatus === 'pendenteCobranca' && (
+                    <div className="map-status-bar" style={{ backgroundColor: '#fef9c3', color: '#854d0e', border: '1px solid #fde68a' }}>
+                      <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                      <span>Nenhuma cobrança criada este mês para este cliente</span>
+                    </div>
+                  )}
 
                   {/* Active locações */}
                   {cliente.locacoesAtivas.length > 0 && (
@@ -308,12 +454,6 @@ export default function MapInner({ clientes, rotas, showRouteLines = false }: Ma
                       Cobranças
                     </div>
                     <div className="flex flex-wrap gap-1">
-                      {cliente.cobrancasResumo.pendente > 0 && (
-                        <span className="map-cobranca-badge" style={{ background: '#fef3c7', color: '#92400e' }}>
-                          <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: '#f59e0b' }} />
-                          {cliente.cobrancasResumo.pendente} pendente
-                        </span>
-                      )}
                       {cliente.cobrancasResumo.atrasado > 0 && (
                         <span className="map-cobranca-badge" style={{ background: '#fee2e2', color: '#991b1b' }}>
                           <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: '#dc2626' }} />
@@ -321,14 +461,20 @@ export default function MapInner({ clientes, rotas, showRouteLines = false }: Ma
                         </span>
                       )}
                       {cliente.cobrancasResumo.parcial > 0 && (
-                        <span className="map-cobranca-badge" style={{ background: '#dbeafe', color: '#1e40af' }}>
-                          <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: '#3b82f6' }} />
+                        <span className="map-cobranca-badge" style={{ background: '#ffedd5', color: '#9a3412' }}>
+                          <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: '#f97316' }} />
                           {cliente.cobrancasResumo.parcial} parcial
+                        </span>
+                      )}
+                      {cliente.cobrancasResumo.pendente > 0 && (
+                        <span className="map-cobranca-badge" style={{ background: '#fef3c7', color: '#92400e' }}>
+                          <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: '#f59e0b' }} />
+                          {cliente.cobrancasResumo.pendente} pendente
                         </span>
                       )}
                       {cliente.cobrancasResumo.pago > 0 && (
                         <span className="map-cobranca-badge" style={{ background: '#dcfce7', color: '#166534' }}>
-                          <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: '#16a34a' }} />
+                          <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: '#22c55e' }} />
                           {cliente.cobrancasResumo.pago} pago
                         </span>
                       )}

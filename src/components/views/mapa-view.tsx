@@ -4,8 +4,9 @@ import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
-import { MapPin, Users, TrendingUp, AlertTriangle, Layers, Navigation, MapPinned, Route, ChevronDown, ChevronUp } from 'lucide-react'
+import { MapPin, Users, TrendingUp, AlertTriangle, Layers, Navigation, MapPinned, Route, ChevronDown, ChevronUp, Filter } from 'lucide-react'
 
 const MapInner = dynamic(() => import('./map-inner'), {
   ssr: false,
@@ -40,6 +41,7 @@ interface ClienteMapa {
   totalRecebido: number
   totalPendente: number
   temAtrasado: boolean
+  pendenteCobranca: boolean
 }
 
 interface ClienteSemCoordenada {
@@ -52,6 +54,7 @@ interface ClienteSemCoordenada {
   cobrancasResumo: CobrancasResumo
   totalPendente: number
   temAtrasado: boolean
+  pendenteCobranca: boolean
 }
 
 interface RotaMapa {
@@ -82,11 +85,13 @@ export function MapaView() {
   const [hiddenRotas, setHiddenRotas] = useState<Set<string>>(new Set())
   const [showRouteLines, setShowRouteLines] = useState(false)
   const [showSemCoordenadas, setShowSemCoordenadas] = useState(false)
+  const [selectedRotaId, setSelectedRotaId] = useState<string>('all')
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch('/api/mapa')
+        const rotaParam = selectedRotaId !== 'all' ? `?rotaId=${selectedRotaId}` : ''
+        const res = await fetch(`/api/mapa${rotaParam}`)
         if (res.ok) {
           const data = await res.json()
           setClientes(data.clientes || [])
@@ -101,7 +106,7 @@ export function MapaView() {
       }
     }
     fetchData()
-  }, [])
+  }, [selectedRotaId])
 
   const toggleRota = (rotaId: string) => {
     setHiddenRotas((prev) => {
@@ -187,6 +192,68 @@ export function MapaView() {
         </div>
       </div>
 
+      {/* Route Filter + Status Legend */}
+      {!loading && (
+        <Card className="shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+              {/* Route Filter */}
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-semibold text-muted-foreground">Filtrar Rota:</span>
+                </div>
+                <Select value={selectedRotaId} onValueChange={setSelectedRotaId}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Todas as Rotas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as Rotas</SelectItem>
+                    {rotas.map((rota) => (
+                      <SelectItem key={rota.id} value={rota.id}>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="h-2.5 w-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: rota.cor }}
+                          />
+                          {rota.descricao} ({rota.totalClientes})
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Divider */}
+              <div className="hidden sm:block w-px h-10 bg-border" />
+
+              {/* Status Legend */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-semibold text-muted-foreground">Status dos Pins:</span>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: '#22c55e' }} />
+                    <span className="text-xs font-medium">Pago</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: '#ef4444' }} />
+                    <span className="text-xs font-medium">Devendo/Atrasado</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: '#f97316' }} />
+                    <span className="text-xs font-medium">Pagamento Parcial</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-4 w-4 rounded-full shrink-0 border-2 border-yellow-400" style={{ backgroundColor: '#eab308' }} />
+                    <span className="text-xs font-medium">Pendente de Cobrança</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Stats Cards */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -271,6 +338,11 @@ export function MapaView() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
+                        {cliente.pendenteCobranca && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
+                            Pend. cobrança
+                          </span>
+                        )}
                         {cliente.temAtrasado && (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">
                             {cliente.cobrancasResumo.atrasado} atrasado
@@ -292,7 +364,7 @@ export function MapaView() {
       )}
 
       {/* Legend */}
-      {!loading && rotas.length > 0 && (
+      {!loading && rotas.length > 0 && selectedRotaId === 'all' && (
         <Card className="shadow-sm">
           <CardContent className="p-4">
             <div className="flex flex-wrap items-center gap-3">
@@ -324,7 +396,7 @@ export function MapaView() {
       )}
 
       {/* Route Stats Cards */}
-      {!loading && rotas.length > 0 && (
+      {!loading && rotas.length > 0 && selectedRotaId === 'all' && (
         <Card className="shadow-sm">
           <CardContent className="p-4">
             <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
@@ -337,6 +409,7 @@ export function MapaView() {
                 const rotaPendente = rotaClientes.reduce((acc, c) => acc + c.totalPendente, 0)
                 const rotaRecebido = rotaClientes.reduce((acc, c) => acc + c.totalRecebido, 0)
                 const rotaAtrasados = rotaClientes.filter(c => c.temAtrasado).length
+                const rotaPendCobranca = rotaClientes.filter(c => c.pendenteCobranca).length
                 return (
                   <div
                     key={rota.id}
@@ -367,10 +440,20 @@ export function MapaView() {
                         <p className="text-[10px] text-muted-foreground">Pendente</p>
                       </div>
                     </div>
-                    {rotaAtrasados > 0 && (
-                      <div className="mt-2 flex items-center gap-1 text-[10px] text-red-600 dark:text-red-400">
-                        <AlertTriangle className="h-3 w-3" />
-                        {rotaAtrasados} com cobranças atrasadas
+                    {(rotaAtrasados > 0 || rotaPendCobranca > 0) && (
+                      <div className="mt-2 flex items-center gap-2 flex-wrap">
+                        {rotaAtrasados > 0 && (
+                          <div className="flex items-center gap-1 text-[10px] text-red-600 dark:text-red-400">
+                            <AlertTriangle className="h-3 w-3" />
+                            {rotaAtrasados} atrasado{rotaAtrasados > 1 ? 's' : ''}
+                          </div>
+                        )}
+                        {rotaPendCobranca > 0 && (
+                          <div className="flex items-center gap-1 text-[10px] text-yellow-600 dark:text-yellow-400">
+                            <AlertTriangle className="h-3 w-3" />
+                            {rotaPendCobranca} pend. cobrança
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -412,7 +495,7 @@ export function MapaView() {
 
       {/* Map */}
       {!loading && (
-        <MapInner clientes={filteredClientes} rotas={rotas} stats={stats} showRouteLines={showRouteLines} />
+        <MapInner clientes={filteredClientes} rotas={rotas} stats={stats} showRouteLines={showRouteLines} selectedRotaId={selectedRotaId} />
       )}
     </div>
   )
