@@ -18,6 +18,7 @@ import {
 import { ArrowLeft, Loader2, Save, Search, Calculator } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatarMoeda, calcularCobranca, determinarStatusPagamento, type CobrancaCalcResult } from '@/lib/cobranca-calculos'
+import { Breadcrumb } from '@/components/layout/breadcrumb'
 
 interface Locacao {
   id: string
@@ -358,6 +359,7 @@ export function CobrancaFormView() {
 
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
+      <Breadcrumb />
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={goBack} className="h-9 w-9">

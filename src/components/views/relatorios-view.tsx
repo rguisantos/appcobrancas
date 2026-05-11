@@ -43,7 +43,10 @@ import {
   TrendingUp,
   TrendingDown,
   FileText,
+  Download,
+  FileSpreadsheet,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   BarChart,
   Bar,
@@ -107,6 +110,7 @@ export function RelatoriosView() {
   const { navigate } = useNavigation()
   const [activeReport, setActiveReport] = useState<ReportType>('financeiro')
   const [loading, setLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [cobrancas, setCobrancas] = useState<CobrancaForReport[]>([])
   const [dataInicio, setDataInicio] = useState(() => {
     const d = new Date()
@@ -136,6 +140,46 @@ export function RelatoriosView() {
     }
     fetchData()
   }, [dataInicio, dataFim])
+
+  const handleExport = async (format: 'xlsx' | 'csv') => {
+    setExporting(true)
+    try {
+      const params = new URLSearchParams({
+        tipo: activeReport,
+        format,
+      })
+      if (dataInicio) params.set('dataInicio', dataInicio)
+      if (dataFim) params.set('dataFim', dataFim)
+
+      const res = await fetch(`/api/relatorios/export?${params}`)
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Erro ao exportar' }))
+        toast.error(errorData.error || 'Erro ao exportar relatório')
+        return
+      }
+
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const contentDisposition = res.headers.get('Content-Disposition')
+      const filename = contentDisposition
+        ? contentDisposition.split('filename=')[1]?.replace(/"/g, '')
+        : `relatorio-${activeReport}-${new Date().toISOString().slice(0, 10)}.${format}`
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      toast.success(`Relatório ${activeReport} exportado com sucesso!`)
+    } catch (error) {
+      console.error('Erro ao exportar:', error)
+      toast.error('Erro ao exportar relatório')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   // ==================== FINANCEIRO REPORT ====================
   const financeiroData = (() => {
@@ -318,12 +362,34 @@ export function RelatoriosView() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Relatórios</h1>
           <p className="text-muted-foreground text-sm">
             Análises e relatórios do sistema de cobranças
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 text-xs"
+            disabled={exporting}
+            onClick={() => handleExport('xlsx')}
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            {exporting ? 'Exportando...' : 'Exportar Excel'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 text-xs"
+            disabled={exporting}
+            onClick={() => handleExport('csv')}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Exportar CSV
+          </Button>
         </div>
       </div>
 

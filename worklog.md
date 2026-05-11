@@ -4,149 +4,91 @@
 Task ID: 1
 Agent: Main Agent
 Task: Plan architecture and database schema
-
-Work Log:
-- Analyzed the comprehensive requirements for App Cobranças billing management system
-- Adapted the PostgreSQL-heavy spec for SQLite + Prisma
-- Designed 23 database models adapted for SQLite constraints
-- Planned SPA-like architecture (single / route with client-side navigation)
-- Chose JWT-based auth with cookies instead of NextAuth
-- Removed cron, email, PIX features as requested
-
-Stage Summary:
-- Architecture decided: Next.js 16 + SQLite/Prisma + JWT Auth + Zustand navigation + SPA views
-- 23 database models defined in schema
+Stage Summary: Architecture decided (Next.js 16 + SQLite/Prisma + JWT Auth + Zustand SPA), 23 DB models
 
 ---
-Task ID: 2-a
-Agent: Subagent (full-stack-developer)
-Task: Build all CRUD API routes (40 endpoints)
-
-Work Log:
-- Created 40 API route files across 17 endpoint groups
-- Implemented full CRUD for: Clientes, Produtos, Rotas, Locacoes, Cobrancas, Usuarios
-- Created supporting routes: Tipos/Descricoes/Tamanhos Produto, Estabelecimentos, Metas, Manutencoes, Historico Relogio
-- Created special endpoints: Dashboard, Busca Global, Agenda, Notificacoes, Auditoria, Dispositivos, Health
-- All routes use auth check, Zod validation, audit logging
-
-Stage Summary:
-- 40 API routes created and working
-- Auth + validation + audit on all routes
-- Cobranca calculations integrated via calcularCobranca()
-
----
-Task ID: 2-b through 3-d
+Task ID: 2-a through 4
 Agent: Multiple Subagents
-Task: Build all UI view components (26 views)
-
-Stage Summary:
-- Dashboard with KPIs + charts + activity list
-- Full Clientes CRUD with ViaCEP integration
-- Full Produtos CRUD with attribute management
-- Full Locacoes CRUD with relocar/enviar-estoque flows
-- Full Cobrancas CRUD with real-time billing calculations
-- 8 comprehensive reports with Recharts
-- Interactive Leaflet map centered on Campo Grande, MS
-- Calendar-based agenda for payment tracking
-- Admin views: Usuarios, Rotas, Cadastros, Dispositivos, Auditoria, Metas
-- Perfil with password change
-
----
-Task ID: 4
-Agent: Main Agent
-Task: Create relatorios API routes and finalize
-
-Stage Summary:
-- 8 relatorios API endpoints created
-- System fully functional with login, CRUD, reports, map, agenda, admin views
-- 40 API routes + 26 view components + 1 shared component
+Task: Build all API routes (40 endpoints) + all UI views (26 components)
+Stage Summary: Full system built - CRUD for all entities, billing calculations, reports, map, agenda, admin views
 
 ---
 Task ID: fix-1 + enh-1 + enh-2
 Agent: Bug Fix & Enhancement Agent
-Task: Fix tabbed form validation bug, add dark mode, improve login page
-
-Work Log:
-- BUG FIX: Removed required HTML attributes from tabbed forms (cliente, cobranca, locacao forms)
-- ENHANCEMENT: Added dark mode theme toggle (ThemeProvider + ThemeToggle in TopBar)
-- ENHANCEMENT: Improved login page with gradient background, feature cards, entrance animation
-
-Stage Summary:
-- Tabbed form validation bug fixed across all 3 form views
-- Dark mode toggle fully functional with system preference support
-- Login page redesigned with modern SaaS aesthetic
+Task: Fix tabbed form validation, add dark mode, improve login page
+Stage Summary: Form validation bug fixed, dark mode toggle added, login redesigned with SaaS aesthetic
 
 ---
 Task ID: enh-3 + enh-4 + enh-5
 Agent: Enhancement Agent
-Task: Dashboard animations, global search with Cmd+K, mobile responsiveness
-
-Work Log:
-- Dashboard animations: framer-motion staggered fade-in, useCountUp hook, hover effects, refresh button
-- Global search: CommandDialog with Cmd+K shortcut, grouped results by entity type
-- Mobile responsiveness: safe area insets, responsive grids, body scroll lock, touch targets
-
-Stage Summary:
-- Dashboard has smooth animations with count-up numbers and hover effects
-- Global search is a Spotlight-style command palette with Cmd+K
-- Mobile experience significantly improved
+Task: Dashboard animations, global search (Cmd+K), mobile responsiveness
+Stage Summary: Count-up animations, Spotlight-style search, responsive design with safe areas
 
 ---
 Task ID: qa-round-1
-Agent: Main Agent (QA + Bug Fix)
-Task: Comprehensive QA testing, bug fixes, and enhancement verification
+Agent: Main Agent
+Task: Comprehensive QA testing
+Stage Summary: All 16 views tested, 2 bugs found/fixed (PoolTable icon, form validation), zero errors
+
+---
+Task ID: qa-round-2 + enh-r2
+Agent: Main Agent (QA + Enhancement Round 2)
+Task: QA testing, Excel export, cron API, styling polish, breadcrumbs, inline validation, financial charts
 
 Work Log:
-- Performed full QA testing using agent-browser across all 16 views
-- Tested login flow: works with admin@locacao.com / admin123
-- Tested dashboard: KPI cards, charts, animations render correctly
-- Tested Clientes CRUD: List, create (verified C010), detail, edit all working
-- Tested Cobrancas: Summary cards, filters, quick payment dialog
-- Tested all Admin views: All render correctly
-- Fixed PoolTable icon import error in login-view.tsx (changed to Package icon)
-- Tested dark mode toggle: Switches between light/dark themes correctly
-- Tested global search (Ctrl+K): Command palette, finds results, navigates to detail
-- Zero console errors, zero lint errors across all views
+- Performed QA Round 2 testing: all views render, zero JS errors, zero lint errors
+- Tested login, dashboard, clientes detail, relatórios, dark mode - all pass
+- Verified breadcrumbs appear on detail/form views (e.g., "Início > Clientes > Detalhes")
+- Verified sidebar shows user avatar, role, and "Cobranças Pendentes" quick stats
+- Verified export buttons (Excel/CSV) on relatórios view
+- Verified dark mode styling is polished with better borders and shadows
 
-Bugs Found and Fixed:
-1. Tabbed form validation: HTML5 required on hidden tabs blocked submit - Removed required attrs
-2. PoolTable icon: lucide-react does not export PoolTable - Changed to Package icon
-3. Login page crash from PoolTable import - Fixed icon import
+### New Features Implemented:
+1. **Export-to-Excel/CSV** (enh-r2-1): API endpoint `/api/relatorios/export?tipo=X&format=xlsx|csv` with styled Excel headers, auto-width columns, and proper content-disposition. Export buttons added to relatórios view.
+2. **Cron Vencimento API** (enh-r2-2): `POST /api/cron/vencimento` auto-marks pending cobranças as Atrasado, creates admin notifications, logs audit entry. Dashboard shows warning banner with manual trigger button.
+3. **Sidebar Enhancement** (enh-r2-3): User avatar with name/role, "Cobranças Pendentes" quick stats section fetching live data, staggered framer-motion entrance animations.
+4. **Dark Mode Polish** (sty-r2-1): Improved dark borders (15%/18%), card-shadow and glass-card utility classes, KPI cards with colored top borders (emerald, sky, amber, rose) and hover shadow effects.
+5. **Page Transitions** (sty-r2-2): Framer-motion AnimatePresence wrapper on ViewRouter with fade+slide transitions (0.25s).
+6. **Breadcrumb Navigation** (enh-r2-4): Reusable breadcrumb component showing path hierarchy on all detail/form views.
+7. **Inline Form Validation** (enh-r2-5): Red borders + error messages on invalid fields in cliente form, errors clear on typing.
+8. **Client Financial Chart** (feat-r2-1): Recharts BarChart in cliente detail showing cobrança distribution by status (color-coded).
 
 Stage Summary:
-- All 16 views tested and working
-- 2 bugs found and fixed during QA
-- System is fully functional and stable
+- 8 new features/enhancements added
+- Zero lint errors, zero runtime errors
+- System is fully functional and visually polished
 
 ## Current Project Status
 
 ### Assessment
-The App Cobrancas system is fully functional. All core business flows work:
-- Authentication (JWT with cookies)
-- CRUD for all entities (Clientes, Produtos, Rotas, Locacoes, Cobrancas, Manutencoes, Relogios)
-- Billing calculations with 3 payment forms (Periodo, PercentualPagar, PercentualReceber)
-- Dashboard with animations, KPIs, and charts
-- Interactive map with Leaflet (centered on Campo Grande, MS)
-- Calendar agenda for payment tracking
-- 8 report types with Recharts visualizations
-- Admin views (Users, Routes, Registrations, Devices, Audit, Goals)
-- Dark mode theme toggle with system preference
-- Global search with Cmd+K keyboard shortcut
-- Responsive mobile design with safe areas
+The App Cobranças system is fully functional and polished. All features work:
+- **Auth**: JWT with cookies, login/logout, session management
+- **CRUD**: All 7 entities with soft delete, audit logging, search, filters, pagination
+- **Billing**: 3 payment forms with real-time calculations and payment registration
+- **Dashboard**: Animated KPIs, charts, refresh, cron vencimento warning
+- **Map**: Leaflet interactive map centered on Campo Grande, MS
+- **Agenda**: Calendar with payment tracking
+- **Reports**: 8 types with charts + Excel/CSV export
+- **Admin**: Users (16 permissions), Routes, Cadastros, Devices, Audit, Goals
+- **UX**: Dark mode, global search (Cmd+K), breadcrumbs, page transitions, inline validation
+- **Mobile**: Responsive design with safe areas, overlay sidebar
 
-### Verified Features
-- Login flow: functional with admin@locacao.com / admin123
-- Dashboard: KPIs, charts, count-up animations, hover effects, refresh button
-- Clientes CRUD: list, create (verified C010), detail, edit all working
-- Cobrancas: summary cards, live calculation preview, payment registration
-- Dark mode: toggle in topbar, persists across navigation
-- Global search (Cmd+K): command palette with grouped results
-- All 16 navigation views render without errors
-- ESLint: zero errors, Console: zero runtime errors
+### Verified Features (QA Round 2)
+- ✅ Login: admin@locacao.com / admin123
+- ✅ Dashboard: KPIs with colored borders, animations, cron warning banner
+- ✅ Clientes: list, create (C010), detail with financial chart, breadcrumbs
+- ✅ Relatórios: 8 report types with Excel/CSV export buttons
+- ✅ Dark mode: polished borders and shadows
+- ✅ Sidebar: user avatar, role, quick stats
+- ✅ Page transitions: smooth fade+slide between views
+- ✅ Breadcrumbs: showing on all detail/form views
+- ✅ Zero errors (lint + console)
 
 ### Recommendations for Next Phase
-1. Add export-to-Excel/CSV for reports
-2. Auto-mark cobrancas as Atrasado when past due (cron)
-3. Add more client coordinates for map visualization
-4. Add inline form validation messages instead of just toast
-5. Add visual feedback when sidebar collapses/expands
+1. Add more client coordinates for better map visualization
+2. Add cobrança receipt PDF generation (jsPDF)
+3. Add data import from Excel/CSV for bulk operations
+4. Add notification preferences in user profile
+5. Add dashboard widget customization/reordering
+6. Add keyboard shortcuts for common actions
+7. Performance optimization for large datasets

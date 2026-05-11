@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   LayoutDashboard,
   Users,
@@ -33,6 +34,7 @@ import {
   Bell,
 } from 'lucide-react'
 import { TopBar } from '@/components/layout/top-bar'
+import { PageTransition } from '@/components/layout/page-transition'
 import { DashboardView } from '@/components/views/dashboard-view'
 import { ClientesView } from '@/components/views/clientes-view'
 import { ClienteFormView } from '@/components/views/cliente-form-view'
@@ -59,6 +61,7 @@ import { AdminAuditoriaView } from '@/components/views/admin-auditoria-view'
 import { AdminMetasView } from '@/components/views/admin-metas-view'
 import { PerfilView } from '@/components/views/perfil-view'
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 
 interface NavItem {
   view: ViewType
@@ -95,6 +98,7 @@ export function AppShell() {
   const { user, logout } = useAuth()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [pendingCount, setPendingCount] = useState<number | null>(null)
 
   const permissoesWeb = user?.permissoesWeb || {}
   const isAdmin = user?.tipoPermissao === 'Administrador'
@@ -144,6 +148,22 @@ export function AppShell() {
     }
   }, [mobileOpen])
 
+  // Fetch pending cobranças count
+  useEffect(() => {
+    async function fetchPending() {
+      try {
+        const res = await fetch('/api/cobrancas?status=Pendente&limit=1')
+        if (res.ok) {
+          const data = await res.json()
+          setPendingCount(data.total || data.pagination?.total || 0)
+        }
+      } catch {
+        // silently ignore
+      }
+    }
+    fetchPending()
+  }, [currentView])
+
   return (
     <div className="min-h-screen flex bg-background safe-top safe-right safe-bottom safe-left">
       {/* Mobile overlay - covers content */}
@@ -158,7 +178,7 @@ export function AppShell() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed lg:static inset-y-0 left-0 z-50 flex flex-col border-r bg-card transition-transform duration-300 ease-in-out',
+          'fixed lg:static inset-y-0 left-0 z-50 flex flex-col border-r bg-card transition-all duration-300 ease-in-out',
           collapsed ? 'w-16' : 'w-64',
           // On mobile: overlay mode (translate off-screen when closed, on-screen when open)
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
@@ -177,10 +197,16 @@ export function AppShell() {
               <span className="text-lg font-bold text-primary-foreground">C</span>
             </div>
             {(!collapsed || mobileOpen) && (
-              <div className="flex-1 min-w-0">
+              <motion.div
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 'auto' }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ duration: 0.2 }}
+                className="flex-1 min-w-0 overflow-hidden"
+              >
                 <h1 className="text-base font-bold truncate">Cobranças</h1>
                 <p className="text-[10px] text-muted-foreground truncate">Gestão de Cobranças</p>
-              </div>
+              </motion.div>
             )}
           </div>
           {/* Desktop collapse toggle */}
@@ -203,30 +229,73 @@ export function AppShell() {
           </Button>
         </div>
 
+        {/* User Info Section */}
+        {!collapsed && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="px-4 py-2 border-b"
+          >
+            <div className="flex items-center gap-3">
+              <Avatar className="h-9 w-9">
+                <AvatarFallback className="text-sm bg-primary text-primary-foreground">
+                  {user?.nome?.charAt(0)?.toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{user?.nome}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.tipoPermissao}</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+        {collapsed && (
+          <div className="flex justify-center py-2 border-b">
+            <Avatar className="h-7 w-7">
+              <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                {user?.nome?.charAt(0)?.toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        )}
+
         {/* Navigation */}
         <ScrollArea className="flex-1 py-3">
           <TooltipProvider delayDuration={0}>
             <nav className="space-y-1 px-2">
               {!collapsed && (
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2"
+                >
                   Menu Principal
-                </p>
+                </motion.p>
               )}
-              {filteredNavItems.map((item) => (
+              {filteredNavItems.map((item, index) => (
                 <Tooltip key={item.view}>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant={isActive(item.view) ? 'secondary' : 'ghost'}
-                      className={cn(
-                        'w-full justify-start gap-3 h-10 sm:h-9 text-sm font-medium',
-                        collapsed && !mobileOpen && 'lg:justify-center lg:px-0',
-                        isActive(item.view) && 'bg-primary/10 text-primary hover:bg-primary/15'
-                      )}
-                      onClick={() => handleNavClick(item.view)}
+                    <motion.div
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.15, delay: index * 0.02 }}
                     >
-                      {item.icon}
-                      {(!collapsed || mobileOpen) && <span className="truncate">{item.label}</span>}
-                    </Button>
+                      <Button
+                        variant={isActive(item.view) ? 'secondary' : 'ghost'}
+                        className={cn(
+                          'w-full justify-start gap-3 h-10 sm:h-9 text-sm font-medium transition-all duration-200',
+                          collapsed && !mobileOpen && 'lg:justify-center lg:px-0',
+                          isActive(item.view) && 'bg-primary/10 text-primary hover:bg-primary/15'
+                        )}
+                        onClick={() => handleNavClick(item.view)}
+                      >
+                        {item.icon}
+                        {(!collapsed || mobileOpen) && <span className="truncate">{item.label}</span>}
+                      </Button>
+                    </motion.div>
                   </TooltipTrigger>
                   {collapsed && !mobileOpen && (
                     <TooltipContent side="right" className="font-medium">
@@ -240,25 +309,36 @@ export function AppShell() {
                 <>
                   <Separator className="my-3" />
                   {!collapsed && (
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.2 }}
+                      className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2"
+                    >
                       Administração
-                    </p>
+                    </motion.p>
                   )}
-                  {filteredAdminItems.map((item) => (
+                  {filteredAdminItems.map((item, index) => (
                     <Tooltip key={item.view}>
                       <TooltipTrigger asChild>
-                        <Button
-                          variant={isActive(item.view) ? 'secondary' : 'ghost'}
-                          className={cn(
-                            'w-full justify-start gap-3 h-10 sm:h-9 text-sm font-medium',
-                            collapsed && !mobileOpen && 'lg:justify-center lg:px-0',
-                            isActive(item.view) && 'bg-primary/10 text-primary hover:bg-primary/15'
-                          )}
-                          onClick={() => handleNavClick(item.view)}
+                        <motion.div
+                          initial={{ opacity: 0, x: -8 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.15, delay: index * 0.02 }}
                         >
-                          {item.icon}
-                          {(!collapsed || mobileOpen) && <span className="truncate">{item.label}</span>}
-                        </Button>
+                          <Button
+                            variant={isActive(item.view) ? 'secondary' : 'ghost'}
+                            className={cn(
+                              'w-full justify-start gap-3 h-10 sm:h-9 text-sm font-medium transition-all duration-200',
+                              collapsed && !mobileOpen && 'lg:justify-center lg:px-0',
+                              isActive(item.view) && 'bg-primary/10 text-primary hover:bg-primary/15'
+                            )}
+                            onClick={() => handleNavClick(item.view)}
+                          >
+                            {item.icon}
+                            {(!collapsed || mobileOpen) && <span className="truncate">{item.label}</span>}
+                          </Button>
+                        </motion.div>
                       </TooltipTrigger>
                       {collapsed && !mobileOpen && (
                         <TooltipContent side="right" className="font-medium">
@@ -273,11 +353,39 @@ export function AppShell() {
           </TooltipProvider>
         </ScrollArea>
 
+        {/* Quick Stats Section */}
+        {!collapsed && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="px-4 py-3 border-t"
+          >
+            <div className="rounded-lg bg-primary/5 p-3">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Cobranças Pendentes</p>
+              <p className="text-lg font-bold text-primary">
+                {pendingCount !== null ? pendingCount : '--'}
+              </p>
+            </div>
+          </motion.div>
+        )}
+        {collapsed && (
+          <div className="px-2 py-3 border-t">
+            <div className="rounded-md bg-primary/5 p-1.5 text-center">
+              <p className="text-[9px] font-medium text-muted-foreground">Pend.</p>
+              <p className="text-xs font-bold text-primary">
+                {pendingCount !== null ? pendingCount : '--'}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Bottom section */}
         <div className="border-t p-3 space-y-1 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <Button
             variant="ghost"
-            className={cn('w-full justify-start gap-3 h-10 sm:h-9 text-sm', collapsed && !mobileOpen && 'lg:justify-center lg:px-0')}
+            className={cn('w-full justify-start gap-3 h-10 sm:h-9 text-sm transition-all duration-200', collapsed && !mobileOpen && 'lg:justify-center lg:px-0')}
             onClick={() => navigate('perfil')}
           >
             <User className="h-4 w-4" />
@@ -285,7 +393,7 @@ export function AppShell() {
           </Button>
           <Button
             variant="ghost"
-            className={cn('w-full justify-start gap-3 h-10 sm:h-9 text-sm text-destructive hover:text-destructive', collapsed && !mobileOpen && 'lg:justify-center lg:px-0')}
+            className={cn('w-full justify-start gap-3 h-10 sm:h-9 text-sm text-destructive hover:text-destructive transition-all duration-200', collapsed && !mobileOpen && 'lg:justify-center lg:px-0')}
             onClick={handleLogout}
           >
             <LogOut className="h-4 w-4" />
@@ -298,7 +406,9 @@ export function AppShell() {
       <div className="flex-1 flex flex-col min-w-0 w-full">
         <TopBar onMenuClick={() => setMobileOpen(true)} />
         <main className="flex-1 overflow-auto">
-          <ViewRouter currentView={currentView} />
+          <PageTransition>
+            <ViewRouter currentView={currentView} />
+          </PageTransition>
         </main>
       </div>
     </div>

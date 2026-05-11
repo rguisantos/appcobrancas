@@ -20,6 +20,7 @@ import {
 import { ArrowLeft, Loader2, Save, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
+import { Breadcrumb } from '@/components/layout/breadcrumb'
 
 interface Cliente {
   id: string
@@ -295,6 +296,7 @@ export function LocacaoFormView() {
 
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
+      <Breadcrumb />
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={goBack} className="h-9 w-9">

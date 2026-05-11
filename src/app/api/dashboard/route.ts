@@ -52,6 +52,18 @@ export async function GET() {
       where: { deletedAt: null, status: { in: ['Pendente', 'Atrasado'] } },
     })
 
+    // Cobranças atrasadas specifically
+    const cobrancasAtrasadas = await db.cobranca.count({
+      where: { deletedAt: null, status: 'Atrasado' },
+    })
+
+    // Total value in Atrasado cobranças
+    const cobrancasAtrasadasValor = await db.cobranca.aggregate({
+      where: { deletedAt: null, status: 'Atrasado' },
+      _sum: { totalClientePaga: true, valorRecebido: true },
+    })
+    const totalAtrasadoValor = (cobrancasAtrasadasValor._sum.totalClientePaga || 0) - (cobrancasAtrasadasValor._sum.valorRecebido || 0)
+
     // Clientes sem cobranças recentes (últimos 30 dias)
     const trintaDiasAtras = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
@@ -133,6 +145,8 @@ export async function GET() {
       totalProdutos,
       locacoesAtivas,
       cobrancasPendentes,
+      cobrancasAtrasadas,
+      totalAtrasadoValor,
       clientesNaoCobrados: clientesNaoCobradosResult,
       receitaMensal,
       cobrancasByStatus,

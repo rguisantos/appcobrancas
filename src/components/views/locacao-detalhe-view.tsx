@@ -49,6 +49,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
+import { Breadcrumb } from '@/components/layout/breadcrumb'
 
 interface LocacaoDetalhe {
   id: string
@@ -384,6 +385,7 @@ export function LocacaoDetalheView() {
 
   return (
     <div className="p-6 space-y-6">
+      <Breadcrumb />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <Button variant="ghost" size="icon" onClick={goBack} className="h-9 w-9 shrink-0">

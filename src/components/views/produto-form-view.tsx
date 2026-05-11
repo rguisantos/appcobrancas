@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select'
 import { ArrowLeft, Loader2, Save } from 'lucide-react'
 import { toast } from 'sonner'
+import { Breadcrumb } from '@/components/layout/breadcrumb'
 
 interface TipoProduto {
   id: string
@@ -246,6 +247,7 @@ export function ProdutoFormView() {
 
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
+      <Breadcrumb />
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={goBack} className="h-9 w-9">

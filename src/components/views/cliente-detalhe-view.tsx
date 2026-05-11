@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigation } from '@/lib/store/navigation'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -41,7 +41,9 @@ import {
   AlertTriangle,
   CheckCircle,
 } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { toast } from 'sonner'
+import { Breadcrumb } from '@/components/layout/breadcrumb'
 
 interface ClienteDetalhe {
   id: string
@@ -146,6 +148,22 @@ export function ClienteDetalheView() {
     }
   }
 
+  // Chart data for cobranças by status (computed before early returns for hooks rules)
+  const chartData = useMemo(() => {
+    const cobrancas = cliente?.cobrancas?.filter(c => c.status !== 'Cancelada') || []
+    const statusMap: Record<string, { count: number; total: number }> = {}
+    cobrancas.forEach(c => {
+      if (!statusMap[c.status]) statusMap[c.status] = { count: 0, total: 0 }
+      statusMap[c.status].count++
+      statusMap[c.status].total += c.totalClientePaga
+    })
+    return Object.entries(statusMap).map(([status, data]) => ({
+      status,
+      count: data.count,
+      total: data.total,
+    }))
+  }, [cliente?.cobrancas])
+
   if (loading) {
     return <DetailSkeleton />
   }
@@ -180,6 +198,7 @@ export function ClienteDetalheView() {
 
   return (
     <div className="p-6 space-y-6">
+      <Breadcrumb />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <Button variant="ghost" size="icon" onClick={goBack} className="h-9 w-9 shrink-0">
@@ -355,6 +374,39 @@ export function ClienteDetalheView() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Financial Summary Chart */}
+      {chartData.length > 0 && (
+        <Card className="shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+              <DollarSign className="h-4 w-4" />
+              Distribuição por Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="status" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip formatter={(value: number) => formatarMoeda(value)} />
+                <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                  {chartData.map((entry, index) => (
+                    <Cell key={index} fill={
+                      entry.status === 'Pago' ? '#22c55e' :
+                      entry.status === 'Parcial' ? '#f97316' :
+                      entry.status === 'Pendente' ? '#eab308' :
+                      entry.status === 'Atrasado' ? '#ef4444' :
+                      '#94a3b8'
+                    } />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tabs: Locações & Cobranças */}
       <Tabs defaultValue="locacoes" className="space-y-4">

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 import {
   DollarSign,
   Users,
@@ -17,6 +18,8 @@ import {
   AlertTriangle,
   ArrowRight,
   RefreshCw,
+  Clock,
+  Zap,
 } from 'lucide-react'
 import {
   BarChart,
@@ -40,6 +43,8 @@ interface DashboardData {
   totalProdutos: number
   locacoesAtivas: number
   cobrancasPendentes: number
+  cobrancasAtrasadas: number
+  totalAtrasadoValor: number
   clientesNaoCobrados: Array<{
     id: string
     identificador: string
@@ -147,6 +152,7 @@ export function DashboardView() {
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [processingVencimento, setProcessingVencimento] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
@@ -173,6 +179,29 @@ export function DashboardView() {
     fetchData()
   }
 
+  const handleProcessarVencimentos = async () => {
+    setProcessingVencimento(true)
+    try {
+      const res = await fetch('/api/cron/vencimento', { method: 'POST' })
+      if (res.ok) {
+        const result = await res.json()
+        if (result.updated > 0) {
+          toast.success(`${result.updated} cobrança(s) marcada(s) como atrasada(s)`)
+        } else {
+          toast.info('Nenhuma cobrança vencida encontrada')
+        }
+        fetchData()
+      } else {
+        toast.error('Erro ao processar vencimentos')
+      }
+    } catch (error) {
+      console.error('Erro ao processar vencimentos:', error)
+      toast.error('Erro ao processar vencimentos')
+    } finally {
+      setProcessingVencimento(false)
+    }
+  }
+
   if (loading) {
     return <DashboardSkeleton />
   }
@@ -191,9 +220,9 @@ export function DashboardView() {
       rawValue: data.ganhoAtualMes,
       displayValue: <CountUpValue value={data.ganhoAtualMes} isCurrency />,
       icon: <DollarSign className="h-5 w-5" />,
-      accent: 'border-l-4 border-l-green-500',
-      iconBg: 'bg-green-100 dark:bg-green-900',
-      iconColor: 'text-green-600 dark:text-green-400',
+      accent: 'border-t-4 border-t-emerald-500',
+      iconBg: 'bg-emerald-100 dark:bg-emerald-900',
+      iconColor: 'text-emerald-600 dark:text-emerald-400',
       subtitle: 'Receita recebida no mês',
     },
     {
@@ -201,9 +230,9 @@ export function DashboardView() {
       rawValue: data.totalClientes,
       displayValue: <CountUpValue value={data.totalClientes} />,
       icon: <Users className="h-5 w-5" />,
-      accent: 'border-l-4 border-l-blue-500',
-      iconBg: 'bg-blue-100 dark:bg-blue-900',
-      iconColor: 'text-blue-600 dark:text-blue-400',
+      accent: 'border-t-4 border-t-sky-500',
+      iconBg: 'bg-sky-100 dark:bg-sky-900',
+      iconColor: 'text-sky-600 dark:text-sky-400',
       subtitle: 'Total de clientes ativos',
     },
     {
@@ -211,9 +240,9 @@ export function DashboardView() {
       rawValue: data.produtosLocados,
       displayValue: `${data.produtosLocados}/${data.totalProdutos}`,
       icon: <Package className="h-5 w-5" />,
-      accent: 'border-l-4 border-l-orange-500',
-      iconBg: 'bg-orange-100 dark:bg-orange-900',
-      iconColor: 'text-orange-600 dark:text-orange-400',
+      accent: 'border-t-4 border-t-amber-500',
+      iconBg: 'bg-amber-100 dark:bg-amber-900',
+      iconColor: 'text-amber-600 dark:text-amber-400',
       subtitle: 'Locados vs. disponíveis',
     },
     {
@@ -221,9 +250,9 @@ export function DashboardView() {
       rawValue: data.cobrancasPendentes,
       displayValue: <CountUpValue value={data.cobrancasPendentes} />,
       icon: <FileText className="h-5 w-5" />,
-      accent: 'border-l-4 border-l-red-500',
-      iconBg: 'bg-red-100 dark:bg-red-900',
-      iconColor: 'text-red-600 dark:text-red-400',
+      accent: 'border-t-4 border-t-rose-500',
+      iconBg: 'bg-rose-100 dark:bg-rose-900',
+      iconColor: 'text-rose-600 dark:text-rose-400',
       subtitle: 'Pendentes e atrasadas',
     },
   ]
@@ -260,6 +289,45 @@ export function DashboardView() {
         </div>
       </div>
 
+      {/* Cobranças Vencidas Warning Banner */}
+      {data.cobrancasAtrasadas > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <Card className="shadow-sm border-2 border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/50">
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full bg-red-100 dark:bg-red-900 p-2.5">
+                    <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-red-800 dark:text-red-300">
+                      Cobranças Vencidas
+                    </p>
+                    <p className="text-xs text-red-600 dark:text-red-400">
+                      {data.cobrancasAtrasadas} cobrança{data.cobrancasAtrasadas !== 1 ? 's' : ''} atrasada{data.cobrancasAtrasadas !== 1 ? 's' : ''} — Total: {formatarMoeda(data.totalAtrasadoValor)}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs"
+                  onClick={handleProcessarVencimentos}
+                  disabled={processingVencimento}
+                >
+                  <Zap className={`h-3.5 w-3.5 ${processingVencimento ? 'animate-pulse' : ''}`} />
+                  {processingVencimento ? 'Processando...' : 'Atualizar Vencimentos'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpiCards.map((kpi, index) => (
@@ -272,7 +340,7 @@ export function DashboardView() {
             whileHover={{ scale: 1.02, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
             transition={{ type: 'spring', stiffness: 400, damping: 25 }}
           >
-            <Card className={`shadow-sm ${kpi.accent} transition-shadow`}>
+            <Card className={`shadow-sm hover:shadow-md transition-shadow ${kpi.accent}`}>
               <CardContent className="p-5">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">

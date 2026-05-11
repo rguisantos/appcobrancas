@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ArrowLeft, Loader2, Save, Search } from 'lucide-react'
 import { toast } from 'sonner'
+import { Breadcrumb } from '@/components/layout/breadcrumb'
 
 interface Rota {
   id: string
@@ -83,6 +84,7 @@ export function ClienteFormView() {
   const [loading, setLoading] = useState(isEditing)
   const [submitting, setSubmitting] = useState(false)
   const [cepLoading, setCepLoading] = useState(false)
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
   // Fetch rotas
   useEffect(() => {
@@ -146,9 +148,16 @@ export function ClienteFormView() {
     }
   }, [isEditing, selectedId, navigate])
 
+  // Helper for input className with validation state
+  const inputClassName = (field: string) =>
+    `h-11 ${validationErrors[field] ? 'border-destructive focus-visible:ring-destructive' : ''}`
+
   // Handle field changes
   const handleChange = (field: keyof ClienteFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+    if (validationErrors[field]) {
+      setValidationErrors((prev) => { const next = {...prev}; delete next[field]; return next })
+    }
   }
 
   // ViaCEP lookup
@@ -191,18 +200,17 @@ export function ClienteFormView() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.identificador.trim()) {
-      toast.error('Identificador é obrigatório')
+    const errors: Record<string, string> = {}
+    if (!formData.identificador.trim()) errors.identificador = 'Identificador é obrigatório'
+    if (!formData.nomeExibicao.trim()) errors.nomeExibicao = 'Nome é obrigatório'
+    if (!formData.telefonePrincipal.trim()) errors.telefonePrincipal = 'Telefone é obrigatório'
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors)
+      toast.error('Preencha todos os campos obrigatórios')
       return
     }
-    if (!formData.nomeExibicao.trim()) {
-      toast.error('Nome de exibição é obrigatório')
-      return
-    }
-    if (!formData.telefonePrincipal.trim()) {
-      toast.error('Telefone principal é obrigatório')
-      return
-    }
+    setValidationErrors({})
 
     setSubmitting(true)
     try {
@@ -247,6 +255,7 @@ export function ClienteFormView() {
 
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
+      <Breadcrumb />
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={goBack} className="h-9 w-9">
@@ -307,7 +316,9 @@ export function ClienteFormView() {
                       value={formData.identificador}
                       onChange={(e) => handleChange('identificador', e.target.value)}
                       placeholder="Ex: C001"
+                      className={inputClassName('identificador')}
                     />
+                    {validationErrors.identificador && <p className="text-xs text-destructive mt-1">{validationErrors.identificador}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="nomeExibicao">Nome de Exibição *</Label>
@@ -316,7 +327,9 @@ export function ClienteFormView() {
                       value={formData.nomeExibicao}
                       onChange={(e) => handleChange('nomeExibicao', e.target.value)}
                       placeholder="Nome curto para exibição"
+                      className={inputClassName('nomeExibicao')}
                     />
+                    {validationErrors.nomeExibicao && <p className="text-xs text-destructive mt-1">{validationErrors.nomeExibicao}</p>}
                   </div>
                 </div>
 
@@ -401,7 +414,9 @@ export function ClienteFormView() {
                       value={formData.telefonePrincipal}
                       onChange={(e) => handleChange('telefonePrincipal', e.target.value)}
                       placeholder="(00) 00000-0000"
+                      className={inputClassName('telefonePrincipal')}
                     />
+                    {validationErrors.telefonePrincipal && <p className="text-xs text-destructive mt-1">{validationErrors.telefonePrincipal}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
