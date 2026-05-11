@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
 import { format, parseISO } from 'date-fns'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Table,
   TableBody,
@@ -56,6 +57,9 @@ import {
   Loader2,
   Download,
   X,
+  Bell,
+  Clock,
+  XCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -135,6 +139,10 @@ export function CobrancasView() {
   const [paymentCobranca, setPaymentCobranca] = useState<Cobranca | null>(null)
   const [paymentValue, setPaymentValue] = useState('')
   const [paymentSubmitting, setPaymentSubmitting] = useState(false)
+
+  // Batch selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [batchLoading, setBatchLoading] = useState(false)
 
   // Fetch cobrancas
   const fetchCobrancas = useCallback(async () => {
@@ -261,6 +269,65 @@ export function CobrancasView() {
       return format(parseISO(dateStr), 'dd/MM/yyyy')
     } catch {
       return dateStr
+    }
+  }
+
+  // Batch operations
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === cobrancas.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(cobrancas.map((c) => c.id)))
+    }
+  }
+
+  const clearSelection = () => {
+    setSelectedIds(new Set())
+  }
+
+  const handleBatchAction = async (action: 'marcar-atrasado' | 'enviar-lembrete') => {
+    if (selectedIds.size === 0) return
+
+    setBatchLoading(true)
+    try {
+      const res = await fetch('/api/cobrancas/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          cobrancaIds: Array.from(selectedIds),
+        }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        if (action === 'marcar-atrasado') {
+          toast.success(`${data.updated} cobrança(s) marcada(s) como atrasada(s)`)
+        } else {
+          toast.success(`Lembretes simulados para ${data.updated} cobrança(s)`)
+        }
+        setSelectedIds(new Set())
+        fetchCobrancas()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || 'Erro na operação batch')
+      }
+    } catch {
+      toast.error('Erro na operação batch')
+    } finally {
+      setBatchLoading(false)
     }
   }
 
@@ -430,6 +497,13 @@ export function CobrancasView() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[40px]">
+                    <Checkbox
+                      checked={selectedIds.size === cobrancas.length && cobrancas.length > 0}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Selecionar todos"
+                    />
+                  </TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Produto</TableHead>
                   <TableHead className="hidden md:table-cell">Período</TableHead>
@@ -444,12 +518,20 @@ export function CobrancasView() {
               <TableBody>
                 {cobrancas.map((cobranca) => {
                   const statusBorder = cobranca.status === 'Pago' ? 'border-l-4 border-l-green-500' : cobranca.status === 'Pendente' ? 'border-l-4 border-l-yellow-500' : cobranca.status === 'Atrasado' ? 'border-l-4 border-l-red-500' : cobranca.status === 'Parcial' ? 'border-l-4 border-l-orange-500' : 'border-l-4 border-l-gray-400'
+                  const isSelected = selectedIds.has(cobranca.id)
                   return (
                   <TableRow
                     key={cobranca.id}
-                    className={`cursor-pointer hover:bg-muted/50 transition-colors ${statusBorder}`}
+                    className={`cursor-pointer hover:bg-muted/50 transition-colors ${statusBorder} ${isSelected ? 'bg-primary/5' : ''}`}
                     onClick={() => navigate('cobranca-detalhe', cobranca.id)}
                   >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleSelect(cobranca.id)}
+                        aria-label={`Selecionar cobrança de ${cobranca.clienteNome}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">
                       {cobranca.clienteNome || cobranca.cliente?.nomeExibicao}
                     </TableCell>
@@ -558,6 +640,52 @@ export function CobrancasView() {
               Próximo
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Batch Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300">
+          <div className="flex items-center gap-3 bg-foreground text-background px-5 py-3 rounded-xl shadow-xl">
+            <span className="text-sm font-medium whitespace-nowrap">
+              {selectedIds.size} cobrança{selectedIds.size !== 1 ? 's' : ''} selecionada{selectedIds.size !== 1 ? 's' : ''}
+            </span>
+            <div className="h-6 w-px bg-background/20" />
+            <Button
+              variant="secondary"
+              size="sm"
+              className="gap-1.5 h-8 text-xs"
+              disabled={batchLoading}
+              onClick={() => handleBatchAction('marcar-atrasado')}
+            >
+              <Clock className="h-3.5 w-3.5" />
+              Marcar como Atrasado
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="gap-1.5 h-8 text-xs"
+              disabled={batchLoading}
+              onClick={() => handleBatchAction('enviar-lembrete')}
+            >
+              <Bell className="h-3.5 w-3.5" />
+              Enviar Lembrete
+            </Button>
+            <div className="h-6 w-px bg-background/20" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 h-8 text-xs text-background hover:bg-background/10 hover:text-background"
+              onClick={clearSelection}
+              disabled={batchLoading}
+            >
+              <XCircle className="h-3.5 w-3.5" />
+              Cancelar Seleção
+            </Button>
+            {batchLoading && (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            )}
           </div>
         </div>
       )}

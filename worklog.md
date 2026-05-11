@@ -329,3 +329,256 @@ The App Cobranças system is a fully-featured, production-ready billing manageme
 5. Performance optimization for large datasets (virtual scrolling)
 6. Add PWA support for mobile install
 7. Add real-time notifications via WebSocket
+
+---
+Task ID: 5-a
+Agent: Styling Enhancement Agent
+Task: Improve styling across Produtos, Locações, and detail views + Sidebar polish
+
+Work Log:
+
+### 1. Produtos View Improvements (`produtos-view.tsx`):
+- Added `hover:bg-muted/50 transition-colors` to each TableRow
+- Added colored left border per row based on status (green=Ativo, red=Inativo, purple=Manutenção)
+- Added subtle `bg-muted/30` background to the filter card
+- Added "Exportar" button with Download icon next to "Novo Produto"
+- Improved empty state with larger Package icon container (h-20/w-20) and "Criar Primeiro Produto" action button
+- Added status summary cards at top showing: Total Produtos, Ativos, Em Manutenção, Inativos - each with colored left border, gradient background, and icon
+
+### 2. Locações View Improvements (`locacoes-view.tsx`):
+- Added `hover:bg-muted/50 transition-colors` to each TableRow
+- Added colored left border per row based on status (green=Ativa, gray=Finalizada, red=Cancelada)
+- Added subtle `bg-muted/30` background to the filter card
+- Added "Exportar" button with Download icon next to "Nova Locação"
+- Improved empty state with larger DollarSign icon container (h-20/w-20) and "Criar Primeira Locação" action button
+- Added status summary cards at top showing: Total Locações, Ativas, Finalizadas, Canceladas
+- Changed filter inputs from "ID do cliente..." / "ID do produto..." to "Buscar por nome do cliente..." / "Buscar por produto..." for better UX
+
+### 3. Produto Detail View Enhancement (`produto-detalhe-view.tsx`):
+- Added gradient accent bar on header section matching the product's conservation status (green=Ótima, sky=Boa, yellow=Regular, orange=Ruim, red=Péssima)
+- Added visual "Product Status Card" at the top with large icon (CheckCircle/Wrench/XCircle based on status), status badge, and key metrics (number of locações and manutenções)
+- Added "Informações Técnicas" section with grid of 8 attributes (conservação, relógio, tipo, descrição, tamanho, código CH, código ABLF, estabelecimento)
+- Added "Histórico de Locações" standalone section showing all locações with colored left borders per status and hover states
+- All existing tabs (Locações, Manutenções, Histórico Relógio) preserved below
+
+### 4. Locação Detail View Enhancement (`locacao-detalhe-view.tsx`):
+- Added "Payment Method Card" showing formaPagamento with visual card design:
+  - Periodo: shows valorFixo prominently with periodicidade
+  - PercentualPagar/PercentualReceber: shows percentualEmpresa and percentualCliente with visual percentage bars
+- Added visual timeline showing the locação lifecycle (Locação criada → Primeira cobrança → Em andamento/Finalizada/Cancelada) with colored dots and connector lines
+- Added "Histórico de Cobranças" section showing all cobranças with colored left borders per status, hover states, and summary counts (pagas, pendentes, atrasadas)
+- Removed old Tabs section for cobranças (replaced by standalone Histórico de Cobranças card)
+
+### 5. Sidebar Polish (`app-shell.tsx`):
+- Added gradient bottom border on logo section (`from-transparent via-border to-transparent`) replacing solid border-b
+- Added gradient bottom border on user info section replacing solid border-b
+- Added hover background color change on nav items with `hover:bg-muted/60` and `rounded-lg` corners
+- Added active indicator: a small colored left accent bar (`w-1 h-4 rounded-full bg-primary`) on the active nav item's icon
+- Made "Cobranças Pendentes" quick stats section more visually appealing with emerald gradient background (`from-emerald-50 to-emerald-100/80`), emerald text colors, and subtle border
+- Replaced Separator between main nav and admin nav with gradient divider (`from-transparent via-border to-transparent`)
+
+Stage Summary:
+- 5 views enhanced with consistent styling improvements
+- All existing functionality preserved
+- Zero lint errors
+- Dev server running normally
+
+---
+Task ID: 5-b
+Agent: Enhancement Agent (Round 2)
+Task: Add keyboard shortcuts, CSV import API, and dashboard weekly comparison
+
+Work Log:
+
+### 1. Keyboard Shortcuts Panel (`/src/components/shared/keyboard-shortcuts.tsx`)
+- Created new `KeyboardShortcuts` component with floating overlay panel
+- Triggered by pressing `?` key (disabled when typing in inputs/textareas)
+- Closes on Escape key or clicking the backdrop
+- Organized by categories: Navegação, Ações, Sistema
+- Shortcuts:
+  - Navegação: ⌘1-9 (sidebar items), ⌘K (search), Esc (close/go back)
+  - Ações: N (new), E (export), R (refresh), P (print)
+  - Sistema: D (dashboard), ? (help), T (theme toggle)
+- Each row displays keyboard key badges + description
+- Animated in/out with framer-motion (scale + fade + y offset)
+- Backdrop blur overlay, styled with emerald accent
+- Footer shows "⌘ = Command no Mac · Ctrl no Windows/Linux"
+
+### 2. Integration in AppShell (`/src/components/layout/app-shell.tsx`)
+- Imported `KeyboardShortcuts` from shared components
+- Added `<KeyboardShortcuts />` after the main content div in AppShell component
+
+### 3. CSV Import API for Clientes (`/src/app/api/import/clientes/route.ts`)
+- POST endpoint accepting multipart form data with 'file' field
+- CSV parser with quote handling for comma-separated values
+- Columns: identificador, nomeExibicao, nomeCompleto, tipoPessoa, telefonePrincipal, email, cep, logradouro, numero, complemento, bairro, cidade, estado
+- Validation: required fields (identificador, nomeExibicao, tipoPessoa, telefonePrincipal)
+- ViaCEP API integration: auto-fills address from CEP when only CEP is provided
+- Duplicate identificador check: skips with error
+- Batch processing: creates clients in batches of 10 using Promise.all
+- Audit logging for each imported client
+- Returns: { success: number, errors: Array<{row: number, error: string}>, total: number }
+- Auth required (same getAuthSession pattern as other routes)
+
+### 4. CSV Import API for Produtos (`/src/app/api/import/produtos/route.ts`)
+- POST endpoint with same multipart form data pattern
+- Columns: identificador, tipoNome, descricaoNome, tamanhoNome, conservacao, numeroRelogio, statusProduto
+- Auto-find or create TipoProduto, DescricaoProduto, TamanhoProduto by nome
+- Validation: required fields (identificador, tipoNome, descricaoNome, tamanhoNome)
+- Valid conservacao/status values checked
+- Duplicate identificador check
+- Batch processing in groups of 10
+- Audit logging for each imported product
+- Returns same format as clientes import
+
+### 5. Dashboard Weekly Comparison Widget (`/src/components/views/dashboard-view.tsx`)
+- Added `WeeklyComparisonWidget` component rendered between Quick Actions and Charts sections
+- Fetches paid cobranças for current week (Monday-today) and previous week (previous Monday-Sunday)
+- Calculates total valorRecebido for each period
+- Shows percentage change badge (green for positive, red for negative)
+- Sparkline-style bar visualization comparing this week vs last week
+- Two data rows: "Esta semana: R$ X" and "Semana anterior: R$ Y"
+- Loading skeleton state while fetching
+- Uses teal color scheme for the card (distinct from other KPI colors)
+- Animated with framer-motion
+
+### 6. Import UI Button in Clientes View (`/src/components/views/clientes-view.tsx`)
+- Added "Importar CSV" button next to "Exportar" and "Novo Cliente"
+- Hidden file input with accept=".csv"
+- Uses React.useRef for file input reference
+- Loading spinner (Loader2 with animate-spin) during upload
+- POSTs FormData to `/api/import/clientes`
+- Toast success with count of imported records and error count
+- Toast error on failure
+- File input reset after import
+
+### 7. Import UI Button in Produtos View (`/src/components/views/produtos-view.tsx`)
+- Same pattern as Clientes view
+- "Importar CSV" button before "Exportar" and "Novo Produto"
+- POSTs FormData to `/api/import/produtos`
+- Loading state, toast notifications, file input reset
+
+### 8. Top Bar Enhancements (`/src/components/layout/top-bar.tsx`)
+- Added `shadow-sm` to header for subtle bottom shadow
+- Added "?" keyboard shortcut hint next to search button (visible on lg screens)
+- Added `animate-pulse` class on Bell icon when there are unread notifications
+
+Stage Summary:
+- 8 features/enhancements implemented across 7 files
+- 3 new files created (keyboard-shortcuts.tsx, 2 API route files)
+- Zero lint errors
+- All existing functionality preserved
+
+---
+Task ID: 6-a
+Agent: Feature Enhancement Agent (Round 3)
+Task: Add Route Optimization, Maintenance Scheduler Enhancement, Product Status Cards, Client Financial Summary, Cobrança Batch Operations, Batch Actions UI
+
+Work Log:
+
+### 1. Route Optimization Suggestion API (NEW FILE)
+- Created `/src/app/api/rotas/otimizar/route.ts` — GET endpoint
+- Accepts `rotaId` query parameter
+- Fetches all clients on that route with pending cobranças (Pendente, Atrasado, Parcial)
+- Sorts clients by priority: Atrasado=1 (highest), Pendente=2, Parcial=3
+- Within each priority group, sorts by geographic proximity using nearest-neighbor algorithm (if latitude/longitude available) or alphabetically
+- Returns array of `{ clienteId, nomeExibicao, identificador, prioridade, motivo, cobrancasPendentes, cobrancasAtrasadas }`
+- Requires auth
+
+### 2. Client Financial Summary API (NEW FILE)
+- Created `/src/app/api/clientes/[id]/financeiro/route.ts` — GET endpoint
+- Returns comprehensive financial summary for a specific client:
+  - `totalCobrancas`, `totalPago`, `totalPendente`, `totalAtrasado`, `totalParcial`
+  - `averageMonthlyPayment` (based on months with payments)
+  - `saldoDevedorAcumulado` (sum of outstanding balances)
+  - `paymentHistory` — last 6 months, month-by-month with `mes`, `label`, `total`, `pago`, `quantidade`
+- Uses Next.js 16 async params pattern (`{ params }: { params: Promise<{ id: string }> }`)
+- Requires auth
+
+### 3. Cobrança Batch Operations API (NEW FILE)
+- Created `/src/app/api/cobrancas/batch/route.ts` — POST endpoint
+- Accepts `{ action: 'marcar-atrasado' | 'enviar-lembrete', cobrancaIds: string[] }`
+- `marcar-atrasado`: Updates all specified cobranças with status 'Pendente' to 'Atrasado' using `db.cobranca.updateMany`
+- `enviar-lembrete`: Logs reminder simulation (no email service configured)
+- Creates audit log entries for batch operations with severity 'aviso' (marcar-atrasado) or 'info' (enviar-lembrete)
+- Returns `{ updated: number }`
+- Requires auth + Admin role only
+
+### 4. Maintenance Scheduler Enhancement (MODIFIED FILE)
+- Enhanced `/src/components/views/manutencoes-view.tsx` with 3 new features:
+
+**A. Maintenance Stats Cards** (at top of view):
+- Total Manutenções (count) — slate accent
+- Em Andamento (count) — orange left border + orange icon
+- Concluídas (count) — green left border + green icon
+- Canceladas (count) — gray left border + gray icon
+- Each card with icon and rounded-lg icon container
+
+**B. Calendar View Tab**:
+- Added view mode toggle buttons (Lista/Calendário) with List and Calendar icons
+- Calendar shows a month grid with weekday headers (Dom-Sáb) using date-fns
+- Navigation: previous/next month buttons + "Hoje" button
+- Colored dots on dates with scheduled maintenance events (orange=EmAndamento, green=Concluida, gray=Cancelada)
+- Click a date to see maintenance details in a side panel
+- Side panel shows product identifier, tipo badge, description, cost, status badge
+- "Agendar" quick button on empty dates to create maintenance for that date
+- Today's date highlighted with emerald border
+
+**C. Quick Schedule Button**:
+- Renamed "Nova Manutenção" to "Agendar Manutenção" with CalendarPlus icon
+- Dialog title changed to "Agendar Manutenção"
+- Submit button text changed to "Agendar Manutenção"
+- All existing functionality preserved (product search, tipo, description, date, cost, status, observação)
+
+### 5. Product Status Cards on Dashboard (MODIFIED FILE)
+- Enhanced `/src/components/views/dashboard-view.tsx`:
+- Added "Produtos por Tipo" section below the charts
+- Fetches from `/api/produtos?limit=100` and groups by `tipoNome`
+- Horizontal responsive grid of cards (2 cols mobile, 3 sm, 4 lg, 5 xl)
+- Each card shows:
+  - Product type name (Bilhar, Pebolim, Jukebox, Air Hockey, etc.)
+  - Total count and locados count
+  - Occupation rate progress bar with percentage
+  - Contextual icon based on product type name
+  - Subtle gradient background per card type
+- Added `getProductTypeStyle()` helper function with 10+ product type mappings:
+  - Bilhar → Table2 icon, emerald gradient
+  - Pebolim → Gamepad2 icon, amber gradient
+  - Jukebox/Música → Music icon, rose gradient
+  - Air Hockey → Wind icon, sky gradient
+  - Fumaça/Cigarro → Cigarette icon, violet gradient
+  - Café → Coffee icon, orange gradient
+  - Dart → Trophy icon, teal gradient
+  - Box/Caixa → Box icon, slate gradient
+  - Pinball/Fliperama → Dices icon, pink gradient
+  - Disco/Totem → Disc3 icon, fuchsia gradient
+  - Default → CircleDot icon, gray gradient
+- Added 11 new lucide-react icon imports (CircleDot, Table2, Disc3, Music, Wind, Gamepad2, Cigarette, Coffee, Trophy, Dices, Box)
+- Animated with framer-motion (0.8s delay)
+
+### 6. Batch Actions UI in Cobranças View (MODIFIED FILE)
+- Enhanced `/src/components/views/cobrancas-view.tsx`:
+
+**A. Checkbox Column**:
+- Added Checkbox column at the start of each cobrança row
+- "Select all" checkbox in header
+- Selected rows highlighted with `bg-primary/5`
+- Checkbox click stops event propagation (doesn't trigger row navigation)
+
+**B. Floating Batch Action Bar**:
+- Appears at bottom of screen when any items are selected
+- Dark themed bar (bg-foreground text-background) with rounded-xl and shadow-xl
+- Shows count: "X cobrança(s) selecionada(s)"
+- "Marcar como Atrasado" button with Clock icon — calls `/api/cobrancas/batch` with action 'marcar-atrasado'
+- "Enviar Lembrete" button with Bell icon — calls `/api/cobrancas/batch` with action 'enviar-lembrete'
+- "Cancelar Seleção" button with XCircle icon — clears selection
+- Loading spinner (Loader2) during batch operations
+- Animated entrance with `animate-in slide-in-from-bottom-4`
+- Toast feedback on batch operations (success count or error message)
+- Selection cleared after successful batch operation
+
+Stage Summary:
+- 3 new API endpoints created (Route Optimization, Client Financial Summary, Batch Operations)
+- 3 existing views enhanced (Manutenções, Dashboard, Cobranças)
+- Zero lint errors
+- All existing functionality preserved

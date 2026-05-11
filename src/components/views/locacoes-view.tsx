@@ -29,7 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Repeat, Warehouse, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Repeat, Warehouse, ChevronLeft, ChevronRight, Download, DollarSign, CheckCircle, XCircle, PauseCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
 import { format } from 'date-fns'
@@ -131,6 +131,62 @@ export function LocacoesView() {
 
   const totalPages = Math.ceil(total / limit)
 
+  // Status counts for summary cards
+  const statusCounts = {
+    total: locacoes.length > 0 ? total : 0,
+    ativas: locacoes.filter(l => l.status === 'Ativa').length,
+    finalizadas: locacoes.filter(l => l.status === 'Finalizada').length,
+    canceladas: locacoes.filter(l => l.status === 'Cancelada').length,
+  }
+
+  const statusBorderColor = (status: string) => {
+    switch (status) {
+      case 'Ativa': return 'border-l-4 border-l-green-500'
+      case 'Finalizada': return 'border-l-4 border-l-gray-400'
+      case 'Cancelada': return 'border-l-4 border-l-red-400'
+      default: return 'border-l-4 border-l-gray-400'
+    }
+  }
+
+  const summaryCards = [
+    {
+      title: 'Total Locações',
+      value: statusCounts.total,
+      icon: <DollarSign className="h-5 w-5" />,
+      accent: 'border-l-4 border-l-gray-500',
+      iconBg: 'bg-gray-100 dark:bg-gray-800',
+      iconColor: 'text-gray-600 dark:text-gray-400',
+      gradient: 'from-gray-50 to-gray-100/50 dark:from-gray-950 dark:to-gray-900/30',
+    },
+    {
+      title: 'Ativas',
+      value: statusCounts.ativas,
+      icon: <CheckCircle className="h-5 w-5" />,
+      accent: 'border-l-4 border-l-green-500',
+      iconBg: 'bg-green-100 dark:bg-green-900',
+      iconColor: 'text-green-600 dark:text-green-400',
+      gradient: 'from-green-50 to-green-100/50 dark:from-green-950 dark:to-green-900/30',
+    },
+    {
+      title: 'Finalizadas',
+      value: statusCounts.finalizadas,
+      icon: <PauseCircle className="h-5 w-5" />,
+      accent: 'border-l-4 border-l-gray-400',
+      iconBg: 'bg-gray-100 dark:bg-gray-800',
+      iconColor: 'text-gray-600 dark:text-gray-400',
+      gradient: 'from-gray-50 to-gray-100/50 dark:from-gray-950 dark:to-gray-900/30',
+    },
+    {
+      title: 'Canceladas',
+      value: statusCounts.canceladas,
+      icon: <XCircle className="h-5 w-5" />,
+      accent: 'border-l-4 border-l-red-500',
+      iconBg: 'bg-red-100 dark:bg-red-900',
+      iconColor: 'text-red-600 dark:text-red-400',
+      gradient: 'from-red-50 to-red-100/50 dark:from-red-950 dark:to-red-900/30',
+    },
+  ]
+
   const formatFormaPagamento = (fp: string) => {
     const map: Record<string, string> = {
       'Periodo': 'Período',
@@ -150,14 +206,42 @@ export function LocacoesView() {
             {total} locação{total !== 1 ? 'ões' : ''} encontrada{total !== 1 ? 's' : ''}
           </p>
         </div>
-        <Button onClick={() => navigate('locacao-nova')} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nova Locação
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => {
+            toast.info('Exportação iniciada...')
+            window.open('/api/locacoes?export=csv', '_blank')
+          }}>
+            <Download className="h-4 w-4" />
+            Exportar
+          </Button>
+          <Button onClick={() => navigate('locacao-nova')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nova Locação
+          </Button>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {summaryCards.map((card) => (
+          <Card key={card.title} className={`shadow-sm ${card.accent} bg-gradient-to-br ${card.gradient}`}>
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground font-medium">{card.title}</p>
+                  <p className="text-2xl font-bold">{card.value}</p>
+                </div>
+                <div className={`rounded-xl p-2.5 ${card.iconBg} shadow-sm`}>
+                  <span className={card.iconColor}>{card.icon}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Filters */}
-      <Card className="shadow-sm">
+      <Card className="shadow-sm bg-muted/30">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <Select value={status} onValueChange={handleStatusChange}>
@@ -174,7 +258,7 @@ export function LocacoesView() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="ID do cliente..."
+                placeholder="Buscar por nome do cliente..."
                 className="pl-9"
                 value={clienteInput}
                 onChange={(e) => setClienteInput(e.target.value)}
@@ -183,7 +267,7 @@ export function LocacoesView() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="ID do produto..."
+                placeholder="Buscar por produto..."
                 className="pl-9"
                 value={produtoInput}
                 onChange={(e) => setProdutoInput(e.target.value)}
@@ -199,14 +283,21 @@ export function LocacoesView() {
           {loading ? (
             <TableSkeleton />
           ) : locacoes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
-                <Search className="h-6 w-6 text-muted-foreground" />
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="h-20 w-20 rounded-2xl bg-muted/50 flex items-center justify-center mb-6">
+                <DollarSign className="h-10 w-10 text-muted-foreground/50" />
               </div>
-              <p className="text-lg font-medium">Nenhuma locação encontrada</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Tente ajustar os filtros ou crie uma nova locação
+              <p className="text-lg font-semibold">Nenhuma locação encontrada</p>
+              <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+                Tente ajustar os filtros ou crie uma nova locação para começar
               </p>
+              <Button
+                className="mt-4 gap-2"
+                onClick={() => navigate('locacao-nova')}
+              >
+                <Plus className="h-4 w-4" />
+                Criar Primeira Locação
+              </Button>
             </div>
           ) : (
             <Table>
@@ -226,7 +317,7 @@ export function LocacoesView() {
                 {locacoes.map((locacao) => (
                   <TableRow
                     key={locacao.id}
-                    className="cursor-pointer"
+                    className={`cursor-pointer hover:bg-muted/50 transition-colors ${statusBorderColor(locacao.status)}`}
                     onClick={() => navigate('locacao-detalhe', locacao.id)}
                   >
                     <TableCell className="font-medium">{locacao.clienteNome || locacao.cliente?.nomeExibicao}</TableCell>

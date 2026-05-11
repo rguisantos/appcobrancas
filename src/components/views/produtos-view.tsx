@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigation } from '@/lib/store/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -40,7 +40,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, ChevronLeft, ChevronRight, Download, Package, CheckCircle, Wrench, XCircle, Upload, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Produto {
@@ -86,6 +86,8 @@ export function ProdutosView() {
   // Delete dialog state
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [importLoading, setImportLoading] = useState(false)
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null)
 
   // Fetch tipos once
   useEffect(() => {
@@ -164,6 +166,38 @@ export function ProdutosView() {
     }
   }
 
+  // CSV Import handler
+  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setImportLoading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch('/api/import/produtos', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (res.ok) {
+        const result = await res.json()
+        toast.success(`${result.success} produto(s) importado(s) com sucesso${result.errors.length > 0 ? ` (${result.errors.length} erro(s))` : ''}`)
+        fetchProdutos()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || 'Erro ao importar produtos')
+      }
+    } catch {
+      toast.error('Erro ao importar produtos')
+    } finally {
+      setImportLoading(false)
+      // Reset file input
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
   const totalPages = Math.ceil(total / limit)
 
   const conservacaoColors: Record<string, string> = {
@@ -173,6 +207,62 @@ export function ProdutosView() {
     'Ruim': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
     'Péssima': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   }
+
+  // Status counts for summary cards
+  const statusCounts = {
+    total: produtos.length > 0 ? total : 0,
+    ativos: produtos.filter(p => p.statusProduto === 'Ativo').length,
+    manutencao: produtos.filter(p => p.statusProduto === 'Manutenção').length,
+    inativos: produtos.filter(p => p.statusProduto === 'Inativo').length,
+  }
+
+  const statusBorderColor = (status: string) => {
+    switch (status) {
+      case 'Ativo': return 'border-l-4 border-l-green-500'
+      case 'Inativo': return 'border-l-4 border-l-red-400'
+      case 'Manutenção': return 'border-l-4 border-l-purple-500'
+      default: return 'border-l-4 border-l-gray-400'
+    }
+  }
+
+  const summaryCards = [
+    {
+      title: 'Total Produtos',
+      value: statusCounts.total,
+      icon: <Package className="h-5 w-5" />,
+      accent: 'border-l-4 border-l-gray-500',
+      iconBg: 'bg-gray-100 dark:bg-gray-800',
+      iconColor: 'text-gray-600 dark:text-gray-400',
+      gradient: 'from-gray-50 to-gray-100/50 dark:from-gray-950 dark:to-gray-900/30',
+    },
+    {
+      title: 'Ativos',
+      value: statusCounts.ativos,
+      icon: <CheckCircle className="h-5 w-5" />,
+      accent: 'border-l-4 border-l-green-500',
+      iconBg: 'bg-green-100 dark:bg-green-900',
+      iconColor: 'text-green-600 dark:text-green-400',
+      gradient: 'from-green-50 to-green-100/50 dark:from-green-950 dark:to-green-900/30',
+    },
+    {
+      title: 'Em Manutenção',
+      value: statusCounts.manutencao,
+      icon: <Wrench className="h-5 w-5" />,
+      accent: 'border-l-4 border-l-purple-500',
+      iconBg: 'bg-purple-100 dark:bg-purple-900',
+      iconColor: 'text-purple-600 dark:text-purple-400',
+      gradient: 'from-purple-50 to-purple-100/50 dark:from-purple-950 dark:to-purple-900/30',
+    },
+    {
+      title: 'Inativos',
+      value: statusCounts.inativos,
+      icon: <XCircle className="h-5 w-5" />,
+      accent: 'border-l-4 border-l-red-500',
+      iconBg: 'bg-red-100 dark:bg-red-900',
+      iconColor: 'text-red-600 dark:text-red-400',
+      gradient: 'from-red-50 to-red-100/50 dark:from-red-950 dark:to-red-900/30',
+    },
+  ]
 
   return (
     <div className="p-6 space-y-6">
@@ -184,14 +274,58 @@ export function ProdutosView() {
             {total} produto{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}
           </p>
         </div>
-        <Button onClick={() => navigate('produto-novo')} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Produto
-        </Button>
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={handleImportCSV}
+          />
+          <Button
+            variant="outline"
+            className="gap-2"
+            disabled={importLoading}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {importLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            {importLoading ? 'Importando...' : 'Importar CSV'}
+          </Button>
+          <Button variant="outline" className="gap-2" onClick={() => {
+            toast.info('Exportação iniciada...')
+            window.open('/api/produtos?export=csv', '_blank')
+          }}>
+            <Download className="h-4 w-4" />
+            Exportar
+          </Button>
+          <Button onClick={() => navigate('produto-novo')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Novo Produto
+          </Button>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {summaryCards.map((card) => (
+          <Card key={card.title} className={`shadow-sm ${card.accent} bg-gradient-to-br ${card.gradient}`}>
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground font-medium">{card.title}</p>
+                  <p className="text-2xl font-bold">{card.value}</p>
+                </div>
+                <div className={`rounded-xl p-2.5 ${card.iconBg} shadow-sm`}>
+                  <span className={card.iconColor}>{card.icon}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Filters */}
-      <Card className="shadow-sm">
+      <Card className="shadow-sm bg-muted/30">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
@@ -247,14 +381,21 @@ export function ProdutosView() {
           {loading ? (
             <TableSkeleton />
           ) : produtos.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
-                <Search className="h-6 w-6 text-muted-foreground" />
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="h-20 w-20 rounded-2xl bg-muted/50 flex items-center justify-center mb-6">
+                <Package className="h-10 w-10 text-muted-foreground/50" />
               </div>
-              <p className="text-lg font-medium">Nenhum produto encontrado</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Tente ajustar os filtros ou crie um novo produto
+              <p className="text-lg font-semibold">Nenhum produto encontrado</p>
+              <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+                Tente ajustar os filtros ou crie um novo produto para começar
               </p>
+              <Button
+                className="mt-4 gap-2"
+                onClick={() => navigate('produto-novo')}
+              >
+                <Plus className="h-4 w-4" />
+                Criar Primeiro Produto
+              </Button>
             </div>
           ) : (
             <Table>
@@ -274,7 +415,7 @@ export function ProdutosView() {
                 {produtos.map((produto) => (
                   <TableRow
                     key={produto.id}
-                    className="cursor-pointer"
+                    className={`cursor-pointer hover:bg-muted/50 transition-colors ${statusBorderColor(produto.statusProduto)}`}
                     onClick={() => navigate('produto-detalhe', produto.id)}
                   >
                     <TableCell className="font-medium">{produto.identificador}</TableCell>

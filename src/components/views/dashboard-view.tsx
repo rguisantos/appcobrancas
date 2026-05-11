@@ -29,6 +29,18 @@ import {
   Sun,
   MoonStar,
   Sunrise,
+  CalendarDays,
+  CircleDot,
+  Table2,
+  Disc3,
+  Music,
+  Wind,
+  Gamepad2,
+  Cigarette,
+  Coffee,
+  Trophy,
+  Dices,
+  Box,
 } from 'lucide-react'
 import {
   BarChart,
@@ -122,6 +134,115 @@ function getStatusBorderColor(status: string): string {
   }
 }
 
+function getProductTypeStyle(tipoNome: string): {
+  icon: React.ReactNode | null
+  gradient: string
+  iconBg: string
+  iconColor: string
+  barColor: string
+} {
+  const lowerName = tipoNome.toLowerCase()
+
+  if (lowerName.includes('bilhar')) {
+    return {
+      icon: <Table2 className="h-4 w-4" />,
+      gradient: 'from-emerald-50 to-emerald-100/60 dark:from-emerald-950 dark:to-emerald-900/40',
+      iconBg: 'bg-emerald-200 dark:bg-emerald-800',
+      iconColor: 'text-emerald-700 dark:text-emerald-300',
+      barColor: '#16a34a',
+    }
+  }
+  if (lowerName.includes('pebolim')) {
+    return {
+      icon: <Gamepad2 className="h-4 w-4" />,
+      gradient: 'from-amber-50 to-amber-100/60 dark:from-amber-950 dark:to-amber-900/40',
+      iconBg: 'bg-amber-200 dark:bg-amber-800',
+      iconColor: 'text-amber-700 dark:text-amber-300',
+      barColor: '#d97706',
+    }
+  }
+  if (lowerName.includes('jukebox') || lowerName.includes('música') || lowerName.includes('musica')) {
+    return {
+      icon: <Music className="h-4 w-4" />,
+      gradient: 'from-rose-50 to-rose-100/60 dark:from-rose-950 dark:to-rose-900/40',
+      iconBg: 'bg-rose-200 dark:bg-rose-800',
+      iconColor: 'text-rose-700 dark:text-rose-300',
+      barColor: '#e11d48',
+    }
+  }
+  if (lowerName.includes('air hockey') || lowerName.includes('hockey')) {
+    return {
+      icon: <Wind className="h-4 w-4" />,
+      gradient: 'from-sky-50 to-sky-100/60 dark:from-sky-950 dark:to-sky-900/40',
+      iconBg: 'bg-sky-200 dark:bg-sky-800',
+      iconColor: 'text-sky-700 dark:text-sky-300',
+      barColor: '#0284c7',
+    }
+  }
+  if (lowerName.includes('fumaça') || lowerName.includes('fumaca') || lowerName.includes('cigarro')) {
+    return {
+      icon: <Cigarette className="h-4 w-4" />,
+      gradient: 'from-violet-50 to-violet-100/60 dark:from-violet-950 dark:to-violet-900/40',
+      iconBg: 'bg-violet-200 dark:bg-violet-800',
+      iconColor: 'text-violet-700 dark:text-violet-300',
+      barColor: '#7c3aed',
+    }
+  }
+  if (lowerName.includes('café') || lowerName.includes('cafe')) {
+    return {
+      icon: <Coffee className="h-4 w-4" />,
+      gradient: 'from-orange-50 to-orange-100/60 dark:from-orange-950 dark:to-orange-900/40',
+      iconBg: 'bg-orange-200 dark:bg-orange-800',
+      iconColor: 'text-orange-700 dark:text-orange-300',
+      barColor: '#ea580c',
+    }
+  }
+  if (lowerName.includes('dart') || lowerName.includes('dardo')) {
+    return {
+      icon: <Trophy className="h-4 w-4" />,
+      gradient: 'from-teal-50 to-teal-100/60 dark:from-teal-950 dark:to-teal-900/40',
+      iconBg: 'bg-teal-200 dark:bg-teal-800',
+      iconColor: 'text-teal-700 dark:text-teal-300',
+      barColor: '#0d9488',
+    }
+  }
+  if (lowerName.includes('box') || lowerName.includes('caixa')) {
+    return {
+      icon: <Box className="h-4 w-4" />,
+      gradient: 'from-slate-50 to-slate-100/60 dark:from-slate-950 dark:to-slate-900/40',
+      iconBg: 'bg-slate-200 dark:bg-slate-700',
+      iconColor: 'text-slate-700 dark:text-slate-300',
+      barColor: '#475569',
+    }
+  }
+  if (lowerName.includes('pinball') || lowerName.includes('fliperama')) {
+    return {
+      icon: <Dices className="h-4 w-4" />,
+      gradient: 'from-pink-50 to-pink-100/60 dark:from-pink-950 dark:to-pink-900/40',
+      iconBg: 'bg-pink-200 dark:bg-pink-800',
+      iconColor: 'text-pink-700 dark:text-pink-300',
+      barColor: '#db2777',
+    }
+  }
+  if (lowerName.includes('discoteca') || lowerName.includes('disco') || lowerName.includes('totem')) {
+    return {
+      icon: <Disc3 className="h-4 w-4" />,
+      gradient: 'from-fuchsia-50 to-fuchsia-100/60 dark:from-fuchsia-950 dark:to-fuchsia-900/40',
+      iconBg: 'bg-fuchsia-200 dark:bg-fuchsia-800',
+      iconColor: 'text-fuchsia-700 dark:text-fuchsia-300',
+      barColor: '#c026d3',
+    }
+  }
+  // Default fallback
+  return {
+    icon: <CircleDot className="h-4 w-4" />,
+    gradient: 'from-gray-50 to-gray-100/60 dark:from-gray-900 dark:to-gray-800/40',
+    iconBg: 'bg-gray-200 dark:bg-gray-700',
+    iconColor: 'text-gray-700 dark:text-gray-300',
+    barColor: '#6b7280',
+  }
+}
+
 const barChartConfig: ChartConfig = {
   valor: {
     label: 'Receita',
@@ -209,6 +330,13 @@ export function DashboardView() {
   const [refreshing, setRefreshing] = useState(false)
   const [processingVencimento, setProcessingVencimento] = useState(false)
 
+  // Product status cards state
+  const [productTypes, setProductTypes] = useState<Array<{
+    tipoNome: string
+    total: number
+    locados: number
+  }> | null>(null)
+
   const fetchData = useCallback(async () => {
     try {
       const res = await fetch('/api/dashboard')
@@ -228,6 +356,44 @@ export function DashboardView() {
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  // Fetch products for type distribution cards
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const res = await fetch('/api/produtos?limit=100')
+        if (res.ok) {
+          const json = await res.json()
+          const produtos: Array<{
+            tipoNome: string
+            locacoes: Array<{ status: string; deletedAt: string | null }>
+          }> = json.data || []
+
+          // Group by tipoNome
+          const typeMap = new Map<string, { total: number; locados: number }>()
+          for (const p of produtos) {
+            const existing = typeMap.get(p.tipoNome) || { total: 0, locados: 0 }
+            existing.total += 1
+            if (p.locacoes && p.locacoes.some((l) => l.status === 'Ativa' && !l.deletedAt)) {
+              existing.locados += 1
+            }
+            typeMap.set(p.tipoNome, existing)
+          }
+
+          const types = Array.from(typeMap.entries()).map(([tipoNome, counts]) => ({
+            tipoNome,
+            total: counts.total,
+            locados: counts.locados,
+          }))
+
+          setProductTypes(types)
+        }
+      } catch (error) {
+        console.error('Erro ao buscar produtos:', error)
+      }
+    }
+    fetchProducts()
+  }, [])
 
   const handleRefresh = () => {
     setRefreshing(true)
@@ -538,6 +704,9 @@ export function DashboardView() {
         </div>
       </motion.div>
 
+      {/* Weekly Comparison Widget */}
+      <WeeklyComparisonWidget />
+
       {/* Charts Section */}
       <motion.div
         className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6"
@@ -731,6 +900,73 @@ export function DashboardView() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Produtos por Tipo Section */}
+      {productTypes && productTypes.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8, duration: 0.5 }}
+        >
+          <Card className="shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Package className="h-4 w-4 text-amber-600" />
+                Produtos por Tipo
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                {productTypes.map((pt) => {
+                  const occupation = pt.total > 0 ? (pt.locados / pt.total) * 100 : 0
+                  const { icon, gradient, iconBg, iconColor, barColor } = getProductTypeStyle(pt.tipoNome)
+
+                  return (
+                    <div
+                      key={pt.tipoNome}
+                      className={`rounded-xl p-4 border-0 bg-gradient-to-br ${gradient} hover:shadow-md transition-shadow cursor-pointer`}
+                      onClick={() => navigate('produtos')}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className={`rounded-lg p-2 ${iconBg}`}>
+                          {icon && <span className={iconColor}>{icon}</span>}
+                        </div>
+                        <span className="text-xs text-muted-foreground font-medium">
+                          {pt.tipoNome}
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-2xl font-bold">{pt.total}</span>
+                          <span className="text-xs text-muted-foreground">produtos</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {pt.locados} locado{pt.locados !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      {/* Occupation progress bar */}
+                      <div className="mt-3">
+                        <div className="h-1.5 w-full bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-700"
+                            style={{
+                              width: `${Math.min(occupation, 100)}%`,
+                              backgroundColor: barColor,
+                            }}
+                          />
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {occupation.toFixed(0)}% ocupação
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
     </div>
   )
 }
@@ -746,6 +982,161 @@ function BadgeWithColor({ label, color }: { label: string; color: string }) {
     >
       {label}
     </span>
+  )
+}
+
+function WeeklyComparisonWidget() {
+  const [weekData, setWeekData] = useState<{ thisWeek: number; lastWeek: number } | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchWeeklyData() {
+      try {
+        const now = new Date()
+        // Get start of this week (Monday)
+        const dayOfWeek = now.getDay()
+        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+        const thisWeekStart = new Date(now)
+        thisWeekStart.setDate(now.getDate() + mondayOffset)
+        thisWeekStart.setHours(0, 0, 0, 0)
+
+        // Last week start (previous Monday)
+        const lastWeekStart = new Date(thisWeekStart)
+        lastWeekStart.setDate(thisWeekStart.getDate() - 7)
+
+        // Last week end (Sunday)
+        const lastWeekEnd = new Date(thisWeekStart)
+        lastWeekEnd.setDate(thisWeekStart.getDate() - 1)
+        lastWeekEnd.setHours(23, 59, 59, 999)
+
+        const thisWeekStartStr = thisWeekStart.toISOString().split('T')[0]
+        const thisWeekEndStr = now.toISOString().split('T')[0]
+        const lastWeekStartStr = lastWeekStart.toISOString().split('T')[0]
+        const lastWeekEndStr = lastWeekEnd.toISOString().split('T')[0]
+
+        // Fetch paid cobranças for both weeks
+        const [thisWeekRes, lastWeekRes] = await Promise.all([
+          fetch(`/api/cobrancas?status=Pago&periodoInicio=${thisWeekStartStr}&periodoFim=${thisWeekEndStr}&limit=1000`),
+          fetch(`/api/cobrancas?status=Pago&periodoInicio=${lastWeekStartStr}&periodoFim=${lastWeekEndStr}&limit=1000`),
+        ])
+
+        let thisWeekTotal = 0
+        let lastWeekTotal = 0
+
+        if (thisWeekRes.ok) {
+          const data = await thisWeekRes.json()
+          const items = data.data || []
+          thisWeekTotal = items.reduce((sum: number, c: { valorRecebido: number }) => sum + (c.valorRecebido || 0), 0)
+        }
+
+        if (lastWeekRes.ok) {
+          const data = await lastWeekRes.json()
+          const items = data.data || []
+          lastWeekTotal = items.reduce((sum: number, c: { valorRecebido: number }) => sum + (c.valorRecebido || 0), 0)
+        }
+
+        setWeekData({ thisWeek: thisWeekTotal, lastWeek: lastWeekTotal })
+      } catch (error) {
+        console.error('Erro ao buscar dados semanais:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchWeeklyData()
+  }, [])
+
+  const percentageChange = weekData && weekData.lastWeek > 0
+    ? ((weekData.thisWeek - weekData.lastWeek) / weekData.lastWeek) * 100
+    : weekData && weekData.thisWeek > 0 ? 100 : 0
+
+  const isUp = percentageChange >= 0
+
+  // Bar visualization proportions
+  const maxVal = weekData ? Math.max(weekData.thisWeek, weekData.lastWeek, 1) : 1
+  const thisWeekBarHeight = weekData ? (weekData.thisWeek / maxVal) * 100 : 0
+  const lastWeekBarHeight = weekData ? (weekData.lastWeek / maxVal) * 100 : 0
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3, duration: 0.4 }}
+    >
+      <Card className="shadow-sm">
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="rounded-lg bg-teal-100 dark:bg-teal-900 p-2">
+                <CalendarDays className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold">Comparativo Semanal</h3>
+                <p className="text-[10px] text-muted-foreground">Receita recebida</p>
+              </div>
+            </div>
+            {weekData && !loading && (
+              <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${
+                isUp
+                  ? 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300'
+                  : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
+              }`}>
+                {isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                {isUp ? '+' : ''}{percentageChange.toFixed(1)}%
+              </span>
+            )}
+          </div>
+
+          {loading ? (
+            <div className="flex items-end gap-4 h-20">
+              <Skeleton className="flex-1 h-full" />
+              <Skeleton className="flex-1 h-3/4" />
+            </div>
+          ) : weekData ? (
+            <>
+              <div className="flex items-end gap-4 h-20 mb-3">
+                {/* This week bar */}
+                <div className="flex-1 flex flex-col items-center gap-1">
+                  <div className="w-full flex items-end justify-center" style={{ height: '60px' }}>
+                    <div
+                      className="w-full max-w-[60px] rounded-t-md bg-teal-500 dark:bg-teal-600 transition-all duration-700"
+                      style={{ height: `${Math.max(thisWeekBarHeight, 4)}%` }}
+                    />
+                  </div>
+                </div>
+                {/* Last week bar */}
+                <div className="flex-1 flex flex-col items-center gap-1">
+                  <div className="w-full flex items-end justify-center" style={{ height: '60px' }}>
+                    <div
+                      className="w-full max-w-[60px] rounded-t-md bg-muted-foreground/20 dark:bg-muted-foreground/30 transition-all duration-700"
+                      style={{ height: `${Math.max(lastWeekBarHeight, 4)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2.5 w-2.5 rounded-full bg-teal-500" />
+                    <span className="text-xs text-muted-foreground">Esta semana</span>
+                  </div>
+                  <span className="text-sm font-semibold">{formatarMoeda(weekData.thisWeek)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2.5 w-2.5 rounded-full bg-muted-foreground/30" />
+                    <span className="text-xs text-muted-foreground">Semana anterior</span>
+                  </div>
+                  <span className="text-sm font-semibold text-muted-foreground">{formatarMoeda(weekData.lastWeek)}</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">Erro ao carregar comparativo</p>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
   )
 }
 

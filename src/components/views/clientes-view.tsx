@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigation } from '@/lib/store/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -38,7 +38,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, ChevronLeft, ChevronRight, Download, Users } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, ChevronLeft, ChevronRight, Download, Users, Upload, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Cliente {
@@ -81,6 +81,8 @@ export function ClientesView() {
   // Delete dialog state
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [importLoading, setImportLoading] = useState(false)
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null)
 
   // Fetch rotas once
   useEffect(() => {
@@ -158,6 +160,38 @@ export function ClientesView() {
     }
   }
 
+  // CSV Import handler
+  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setImportLoading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch('/api/import/clientes', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (res.ok) {
+        const result = await res.json()
+        toast.success(`${result.success} cliente(s) importado(s) com sucesso${result.errors.length > 0 ? ` (${result.errors.length} erro(s))` : ''}`)
+        fetchClientes()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || 'Erro ao importar clientes')
+      }
+    } catch {
+      toast.error('Erro ao importar clientes')
+    } finally {
+      setImportLoading(false)
+      // Reset file input
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
   const totalPages = Math.ceil(total / limit)
 
   return (
@@ -171,6 +205,22 @@ export function ClientesView() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={handleImportCSV}
+          />
+          <Button
+            variant="outline"
+            className="gap-2"
+            disabled={importLoading}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {importLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            {importLoading ? 'Importando...' : 'Importar CSV'}
+          </Button>
           <Button variant="outline" className="gap-2" onClick={() => {
             toast.info('Exportação iniciada...')
             window.open('/api/clientes?export=csv', '_blank')

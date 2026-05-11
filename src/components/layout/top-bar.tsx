@@ -159,7 +159,7 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
 
   return (
     <>
-      <header className="h-12 sm:h-14 border-b bg-card flex items-center px-3 sm:px-4 gap-2 sm:gap-3 shrink-0">
+      <header className="h-12 sm:h-14 border-b bg-card flex items-center px-3 sm:px-4 gap-2 sm:gap-3 shrink-0 shadow-sm">
         {/* Mobile menu button */}
         <Button
           variant="ghost"
@@ -195,6 +195,10 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
             <span className="text-xs">⌘</span>K
           </kbd>
         </Button>
+        {/* Keyboard shortcut hint "?" */}
+        <kbd className="pointer-events-none hidden lg:inline-flex h-5 select-none items-center rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+          ?
+        </kbd>
         {/* Mobile search icon */}
         <Button
           variant="ghost"
@@ -212,7 +216,7 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8 relative">
-              <Bell className="h-4 w-4" />
+              <Bell className={`h-4 w-4 ${unreadCount > 0 ? 'animate-pulse' : ''}`} />
               {unreadCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-bold">
                   {unreadCount > 9 ? '9+' : unreadCount}

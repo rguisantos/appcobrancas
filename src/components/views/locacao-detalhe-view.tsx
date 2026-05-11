@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/shared/status-badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
 import {
   Table,
   TableBody,
@@ -46,6 +46,10 @@ import {
   DollarSign,
   Search,
   Loader2,
+  CreditCard,
+  Clock,
+  CalendarDays,
+  Percent,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
@@ -383,6 +387,32 @@ export function LocacaoDetalheView() {
     locacao.cliente?.cep && `CEP: ${locacao.cliente.cep}`,
   ].filter(Boolean).join(', ') || '—'
 
+  // Cobranças summary
+  const cobrancasSummary = {
+    total: locacao.cobrancas?.length || 0,
+    pago: locacao.cobrancas?.filter(c => c.status === 'Pago').length || 0,
+    pendente: locacao.cobrancas?.filter(c => c.status === 'Pendente' || c.status === 'Parcial').length || 0,
+    atrasado: locacao.cobrancas?.filter(c => c.status === 'Atrasado').length || 0,
+    totalRecebido: locacao.cobrancas?.reduce((acc, c) => acc + (c.status === 'Pago' || c.status === 'Parcial' ? c.valorRecebido : 0), 0) || 0,
+    totalDevido: locacao.cobrancas?.reduce((acc, c) => acc + (c.status !== 'Pago' ? c.totalClientePaga - c.valorRecebido : 0), 0) || 0,
+  }
+
+  // Timeline events
+  const timelineEvents = []
+  if (locacao.dataLocacao) {
+    timelineEvents.push({ date: locacao.dataLocacao, label: 'Locação criada', icon: <CalendarDays className="h-4 w-4" />, color: 'bg-green-500' })
+  }
+  if (locacao.dataPrimeiraCobranca) {
+    timelineEvents.push({ date: locacao.dataPrimeiraCobranca, label: 'Primeira cobrança', icon: <DollarSign className="h-4 w-4" />, color: 'bg-yellow-500' })
+  }
+  if (locacao.status === 'Finalizada' && locacao.dataFim) {
+    timelineEvents.push({ date: locacao.dataFim, label: 'Locação finalizada', icon: <Clock className="h-4 w-4" />, color: 'bg-gray-500' })
+  } else if (locacao.status === 'Cancelada' && locacao.dataFim) {
+    timelineEvents.push({ date: locacao.dataFim, label: 'Locação cancelada', icon: <Clock className="h-4 w-4" />, color: 'bg-red-500' })
+  } else {
+    timelineEvents.push({ date: new Date().toLocaleDateString('pt-BR'), label: 'Em andamento', icon: <Clock className="h-4 w-4" />, color: 'bg-emerald-500' })
+  }
+
   return (
     <div className="p-6 space-y-6">
       <Breadcrumb />
@@ -446,6 +476,159 @@ export function LocacaoDetalheView() {
           </Button>
         </div>
       </div>
+
+      {/* Payment Method Card */}
+      <Card className="shadow-sm border-l-4 border-l-emerald-500">
+        <CardContent className="p-5">
+          <div className="flex items-center gap-4">
+            <div className="h-14 w-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center shrink-0">
+              <CreditCard className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-medium text-muted-foreground mb-1">Forma de Pagamento</h3>
+              <p className="text-lg font-bold">{formatFormaPagamento(locacao.formaPagamento)}</p>
+            </div>
+            <div className="flex items-center gap-6">
+              {locacao.formaPagamento === 'Periodo' ? (
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Valor Fixo</p>
+                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                    {locacao.valorFixo ? formatarMoeda(locacao.valorFixo) : '—'}
+                  </p>
+                  {locacao.periodicidade && (
+                    <p className="text-xs text-muted-foreground">{locacao.periodicidade}</p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">% Empresa</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="w-20 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${locacao.percentualEmpresa}%` }} />
+                      </div>
+                      <span className="text-sm font-bold">{locacao.percentualEmpresa}%</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">% Cliente</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="w-20 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div className="h-full bg-amber-500 rounded-full" style={{ width: `${locacao.percentualCliente}%` }} />
+                      </div>
+                      <span className="text-sm font-bold">{locacao.percentualCliente}%</span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Timeline */}
+      <Card className="shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+            <Clock className="h-4 w-4" />
+            Ciclo da Locação
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-0 w-full">
+            {timelineEvents.map((event, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center relative">
+                {/* Connector line */}
+                {i < timelineEvents.length - 1 && (
+                  <div className="absolute top-4 left-1/2 w-full h-0.5 bg-border -z-0" />
+                )}
+                {/* Dot */}
+                <div className={`relative z-10 h-8 w-8 rounded-full ${event.color} flex items-center justify-center text-white shadow-sm`}>
+                  {event.icon}
+                </div>
+                <p className="text-xs font-medium mt-2 text-center">{event.label}</p>
+                <p className="text-[10px] text-muted-foreground text-center">{event.date}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Histórico de Cobranças */}
+      <Card className="shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+            <DollarSign className="h-4 w-4" />
+            Histórico de Cobranças
+            <span className="ml-auto flex items-center gap-3">
+              <span className="text-xs font-normal text-green-600 dark:text-green-400">{cobrancasSummary.pago} pagas</span>
+              <span className="text-xs font-normal text-yellow-600 dark:text-yellow-400">{cobrancasSummary.pendente} pendentes</span>
+              <span className="text-xs font-normal text-red-600 dark:text-red-400">{cobrancasSummary.atrasado} atrasadas</span>
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {!locacao.cobrancas || locacao.cobrancas.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <DollarSign className="h-8 w-8 text-muted-foreground mb-3" />
+              <p className="text-sm font-medium">Nenhuma cobrança registrada</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                As cobranças desta locação aparecerão aqui
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Período</TableHead>
+                  <TableHead className="hidden md:table-cell">Relógio</TableHead>
+                  <TableHead className="hidden md:table-cell">Fichas</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Recebido</TableHead>
+                  <TableHead>Saldo Devedor</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {locacao.cobrancas.map((cob) => {
+                  const statusBorder = cob.status === 'Pago' ? 'border-l-4 border-l-green-500' : cob.status === 'Pendente' ? 'border-l-4 border-l-yellow-500' : cob.status === 'Atrasado' ? 'border-l-4 border-l-red-500' : cob.status === 'Parcial' ? 'border-l-4 border-l-orange-500' : 'border-l-4 border-l-gray-400'
+                  return (
+                    <TableRow
+                      key={cob.id}
+                      className={`cursor-pointer hover:bg-muted/50 transition-colors ${statusBorder}`}
+                      onClick={() => navigate('cobranca-detalhe', cob.id)}
+                    >
+                      <TableCell className="text-xs">
+                        {cob.dataInicio} a {cob.dataFim}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-muted-foreground text-xs">
+                        {cob.relogioAnterior} → {cob.relogioAtual}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-muted-foreground">
+                        {cob.fichasRodadas}
+                      </TableCell>
+                      <TableCell>{formatarMoeda(cob.totalClientePaga)}</TableCell>
+                      <TableCell>{formatarMoeda(cob.valorRecebido)}</TableCell>
+                      <TableCell>
+                        {cob.saldoDevedorGerado > 0 ? (
+                          <span className="text-red-600 dark:text-red-400 font-medium">
+                            {formatarMoeda(cob.saldoDevedorGerado)}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={cob.status} />
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -522,78 +705,6 @@ export function LocacaoDetalheView() {
           </CardContent>
         </Card>
       )}
-
-      {/* Tabs: Cobranças */}
-      <Tabs defaultValue="cobrancas" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="cobrancas">
-            Cobranças ({locacao.cobrancas?.length || 0})
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="cobrancas">
-          <Card className="shadow-sm">
-            <CardContent className="p-0">
-              {!locacao.cobrancas || locacao.cobrancas.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <DollarSign className="h-8 w-8 text-muted-foreground mb-3" />
-                  <p className="text-sm font-medium">Nenhuma cobrança registrada</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    As cobranças desta locação aparecerão aqui
-                  </p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Período</TableHead>
-                      <TableHead className="hidden md:table-cell">Relógio</TableHead>
-                      <TableHead className="hidden md:table-cell">Fichas</TableHead>
-                      <TableHead>Valor</TableHead>
-                      <TableHead>Recebido</TableHead>
-                      <TableHead>Saldo Devedor</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {locacao.cobrancas.map((cob) => (
-                      <TableRow
-                        key={cob.id}
-                        className="cursor-pointer"
-                        onClick={() => navigate('cobranca-detalhe', cob.id)}
-                      >
-                        <TableCell className="text-xs">
-                          {cob.dataInicio} a {cob.dataFim}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-muted-foreground text-xs">
-                          {cob.relogioAnterior} → {cob.relogioAtual}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-muted-foreground">
-                          {cob.fichasRodadas}
-                        </TableCell>
-                        <TableCell>{formatarMoeda(cob.totalClientePaga)}</TableCell>
-                        <TableCell>{formatarMoeda(cob.valorRecebido)}</TableCell>
-                        <TableCell>
-                          {cob.saldoDevedorGerado > 0 ? (
-                            <span className="text-red-600 dark:text-red-400 font-medium">
-                              {formatarMoeda(cob.saldoDevedorGerado)}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge status={cob.status} />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
 
       {/* Relocar Dialog */}
       <Dialog open={showRelocarDialog} onOpenChange={setShowRelocarDialog}>

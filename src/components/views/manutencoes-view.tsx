@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigation } from '@/lib/store/navigation'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,7 +10,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, addMonths, subMonths } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import {
   Table,
   TableBody,
@@ -44,6 +45,12 @@ import {
   ChevronRight,
   Wrench,
   Loader2,
+  Calendar,
+  List,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  CalendarPlus,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -72,6 +79,13 @@ interface Produto {
   descricaoNome: string
 }
 
+interface ManutencaoStats {
+  total: number
+  emAndamento: number
+  concluidas: number
+  canceladas: number
+}
+
 const tipoLabels: Record<string, string> = {
   preventiva: 'Preventiva',
   corretiva: 'Corretiva',
@@ -86,13 +100,31 @@ const tipoColors: Record<string, string> = {
   outra: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
 }
 
+const statusDotColor: Record<string, string> = {
+  EmAndamento: 'bg-orange-500',
+  Concluida: 'bg-green-500',
+  Cancelada: 'bg-gray-400',
+}
+
+const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+
 export function ManutencoesView() {
   const { navigate } = useNavigation()
 
   // Data state
   const [manutencoes, setManutencoes] = useState<Manutencao[]>([])
+  const [allManutencoes, setAllManutencoes] = useState<Manutencao[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<ManutencaoStats>({ total: 0, emAndamento: 0, concluidas: 0, canceladas: 0 })
+
+  // View mode
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
+
+  // Calendar state
+  const [calendarMonth, setCalendarMonth] = useState(new Date())
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [selectedDateManutencoes, setSelectedDateManutencoes] = useState<Manutencao[]>([])
 
   // Filter state
   const [page, setPage] = useState(1)
@@ -119,7 +151,7 @@ export function ManutencoesView() {
 
   const produtoDropdownRef = useRef<HTMLDivElement>(null)
 
-  // Fetch manutencoes
+  // Fetch manutencoes (paginated for list view)
   const fetchManutencoes = useCallback(async () => {
     setLoading(true)
     try {
@@ -143,9 +175,35 @@ export function ManutencoesView() {
     }
   }, [page, statusFilter, tipoFilter])
 
+  // Fetch all manutencoes for calendar & stats
+  const fetchAllManutencoes = useCallback(async () => {
+    try {
+      const res = await fetch('/api/manutencoes?limit=1000')
+      if (res.ok) {
+        const data = await res.json()
+        const items: Manutencao[] = data.data || []
+        setAllManutencoes(items)
+
+        // Calculate stats
+        setStats({
+          total: items.length,
+          emAndamento: items.filter((m) => m.status === 'EmAndamento').length,
+          concluidas: items.filter((m) => m.status === 'Concluida').length,
+          canceladas: items.filter((m) => m.status === 'Cancelada').length,
+        })
+      }
+    } catch (error) {
+      console.error('Erro ao buscar todas manutenções:', error)
+    }
+  }, [])
+
   useEffect(() => {
     fetchManutencoes()
   }, [fetchManutencoes])
+
+  useEffect(() => {
+    fetchAllManutencoes()
+  }, [fetchAllManutencoes])
 
   // Search produtos
   useEffect(() => {
@@ -241,6 +299,7 @@ export function ManutencoesView() {
         setDialogOpen(false)
         resetForm()
         fetchManutencoes()
+        fetchAllManutencoes()
       } else {
         const data = await res.json()
         toast.error(data.error || 'Erro ao criar manutenção')
@@ -251,6 +310,68 @@ export function ManutencoesView() {
       setSubmitting(false)
     }
   }
+
+  // Calendar helpers
+  const calendarDays = (() => {
+    const monthStart = startOfMonth(calendarMonth)
+    const monthEnd = endOfMonth(calendarMonth)
+    const days = eachDayOfInterval({ start: monthStart, end: monthEnd })
+
+    // Pad start with empty cells
+    const startDay = getDay(monthStart)
+    const padded: (Date | null)[] = Array(startDay).fill(null)
+    return [...padded, ...days]
+  })()
+
+  const getManutencoesForDate = (date: Date) => {
+    return allManutencoes.filter((m) => {
+      try {
+        const startDate = parseISO(m.dataInicio)
+        return isSameDay(startDate, date)
+      } catch {
+        return false
+      }
+    })
+  }
+
+  const handleDateClick = (date: Date) => {
+    setSelectedDate(date)
+    setSelectedDateManutencoes(getManutencoesForDate(date))
+  }
+
+  const statsCards = [
+    {
+      title: 'Total Manutenções',
+      value: stats.total,
+      icon: <Wrench className="h-5 w-5" />,
+      iconBg: 'bg-slate-100 dark:bg-slate-800',
+      iconColor: 'text-slate-600 dark:text-slate-400',
+    },
+    {
+      title: 'Em Andamento',
+      value: stats.emAndamento,
+      icon: <Clock className="h-5 w-5" />,
+      iconBg: 'bg-orange-100 dark:bg-orange-900',
+      iconColor: 'text-orange-600 dark:text-orange-400',
+      accent: 'border-l-4 border-l-orange-500',
+    },
+    {
+      title: 'Concluídas',
+      value: stats.concluidas,
+      icon: <CheckCircle2 className="h-5 w-5" />,
+      iconBg: 'bg-green-100 dark:bg-green-900',
+      iconColor: 'text-green-600 dark:text-green-400',
+      accent: 'border-l-4 border-l-green-500',
+    },
+    {
+      title: 'Canceladas',
+      value: stats.canceladas,
+      icon: <XCircle className="h-5 w-5" />,
+      iconBg: 'bg-gray-100 dark:bg-gray-800',
+      iconColor: 'text-gray-600 dark:text-gray-400',
+      accent: 'border-l-4 border-l-gray-400',
+    },
+  ]
 
   return (
     <div className="p-6 space-y-6">
@@ -263,152 +384,363 @@ export function ManutencoesView() {
           </p>
         </div>
         <Button onClick={() => { resetForm(); setDialogOpen(true) }} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nova Manutenção
+          <CalendarPlus className="h-4 w-4" />
+          Agendar Manutenção
         </Button>
       </div>
 
-      {/* Filters */}
-      <Card className="shadow-sm">
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1) }}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="EmAndamento">Em Andamento</SelectItem>
-                <SelectItem value="Concluida">Concluída</SelectItem>
-                <SelectItem value="Cancelada">Cancelada</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={tipoFilter} onValueChange={(v) => { setTipoFilter(v); setPage(1) }}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="preventiva">Preventiva</SelectItem>
-                <SelectItem value="corretiva">Corretiva</SelectItem>
-                <SelectItem value="troca_pano">Troca Pano</SelectItem>
-                <SelectItem value="outra">Outra</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Data Table */}
-      <Card className="shadow-sm">
-        <CardContent className="p-0">
-          {loading ? (
-            <TableSkeleton />
-          ) : manutencoes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
-                <Wrench className="h-6 w-6 text-muted-foreground" />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {statsCards.map((card) => (
+          <Card key={card.title} className={`shadow-sm ${card.accent || ''}`}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground font-medium">{card.title}</p>
+                  <p className="text-2xl font-bold">{card.value}</p>
+                </div>
+                <div className={`rounded-lg p-2.5 ${card.iconBg}`}>
+                  <span className={card.iconColor}>{card.icon}</span>
+                </div>
               </div>
-              <p className="text-lg font-medium">Nenhuma manutenção encontrada</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Tente ajustar os filtros ou crie uma nova manutenção
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Produto</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead className="hidden md:table-cell">Descrição</TableHead>
-                  <TableHead>Data Início</TableHead>
-                  <TableHead className="hidden md:table-cell">Data Fim</TableHead>
-                  <TableHead>Custo</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[80px]">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {manutencoes.map((m) => (
-                  <TableRow key={m.id}>
-                    <TableCell className="font-medium">
-                      {m.produtoIdentificador || m.produto?.identificador || '—'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`text-xs border-0 ${tipoColors[m.tipo] || 'bg-gray-100 text-gray-800'}`}
-                      >
-                        {tipoLabels[m.tipo] || m.tipo}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell max-w-[200px] truncate text-muted-foreground text-sm">
-                      {m.descricao}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {formatDate(m.dataInicio)}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
-                      {formatDate(m.dataFim)}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {formatarMoeda(m.custo)}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={m.status} />
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 text-xs"
-                        onClick={() => navigate('produto-detalhe', m.produtoId)}
-                      >
-                        Ver Produto
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Página {page} de {totalPages}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage(page - 1)}
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Anterior
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => setPage(page + 1)}
-            >
-              Próximo
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          </div>
+      {/* View Mode Toggle */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant={viewMode === 'list' ? 'default' : 'outline'}
+          size="sm"
+          className="gap-1.5"
+          onClick={() => setViewMode('list')}
+        >
+          <List className="h-4 w-4" />
+          Lista
+        </Button>
+        <Button
+          variant={viewMode === 'calendar' ? 'default' : 'outline'}
+          size="sm"
+          className="gap-1.5"
+          onClick={() => setViewMode('calendar')}
+        >
+          <Calendar className="h-4 w-4" />
+          Calendário
+        </Button>
+      </div>
+
+      {viewMode === 'list' ? (
+        <>
+          {/* Filters */}
+          <Card className="shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1) }}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="EmAndamento">Em Andamento</SelectItem>
+                    <SelectItem value="Concluida">Concluída</SelectItem>
+                    <SelectItem value="Cancelada">Cancelada</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={tipoFilter} onValueChange={(v) => { setTipoFilter(v); setPage(1) }}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="preventiva">Preventiva</SelectItem>
+                    <SelectItem value="corretiva">Corretiva</SelectItem>
+                    <SelectItem value="troca_pano">Troca Pano</SelectItem>
+                    <SelectItem value="outra">Outra</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Data Table */}
+          <Card className="shadow-sm">
+            <CardContent className="p-0">
+              {loading ? (
+                <TableSkeleton />
+              ) : manutencoes.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
+                    <Wrench className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-lg font-medium">Nenhuma manutenção encontrada</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Tente ajustar os filtros ou crie uma nova manutenção
+                  </p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Produto</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead className="hidden md:table-cell">Descrição</TableHead>
+                      <TableHead>Data Início</TableHead>
+                      <TableHead className="hidden md:table-cell">Data Fim</TableHead>
+                      <TableHead>Custo</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-[80px]">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {manutencoes.map((m) => (
+                      <TableRow key={m.id} className="hover:bg-muted/50 transition-colors">
+                        <TableCell className="font-medium">
+                          {m.produtoIdentificador || m.produto?.identificador || '—'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={`text-xs border-0 ${tipoColors[m.tipo] || 'bg-gray-100 text-gray-800'}`}
+                          >
+                            {tipoLabels[m.tipo] || m.tipo}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell max-w-[200px] truncate text-muted-foreground text-sm">
+                          {m.descricao}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {formatDate(m.dataInicio)}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
+                          {formatDate(m.dataFim)}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {formatarMoeda(m.custo)}
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge status={m.status} />
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 text-xs"
+                            onClick={() => navigate('produto-detalhe', m.produtoId)}
+                          >
+                            Ver Produto
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Página {page} de {totalPages}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => setPage(page - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(page + 1)}
+                >
+                  Próximo
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        /* Calendar View */
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="shadow-sm lg:col-span-2">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">
+                  {format(calendarMonth, 'MMMM yyyy', { locale: ptBR })}
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setCalendarMonth(subMonths(calendarMonth, 1))}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => setCalendarMonth(new Date())}
+                  >
+                    Hoje
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setCalendarMonth(addMonths(calendarMonth, 1))}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* Weekday headers */}
+              <div className="grid grid-cols-7 gap-1 mb-1">
+                {WEEKDAYS.map((day) => (
+                  <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
+                    {day}
+                  </div>
+                ))}
+              </div>
+              {/* Calendar grid */}
+              <div className="grid grid-cols-7 gap-1">
+                {calendarDays.map((date, idx) => {
+                  if (!date) {
+                    return <div key={`empty-${idx}`} className="h-20" />
+                  }
+
+                  const dayManutencoes = getManutencoesForDate(date)
+                  const isToday = isSameDay(date, new Date())
+                  const isSelected = selectedDate && isSameDay(date, selectedDate)
+
+                  return (
+                    <button
+                      key={date.toISOString()}
+                      className={`h-20 p-1.5 rounded-lg border text-left transition-colors hover:bg-muted/50 ${
+                        isToday
+                          ? 'border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30'
+                          : isSelected
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border/50'
+                      }`}
+                      onClick={() => handleDateClick(date)}
+                    >
+                      <span className={`text-xs font-medium ${isToday ? 'text-emerald-600 dark:text-emerald-400' : ''}`}>
+                        {format(date, 'd')}
+                      </span>
+                      {dayManutencoes.length > 0 && (
+                        <div className="flex flex-wrap gap-0.5 mt-1">
+                          {dayManutencoes.slice(0, 3).map((m) => (
+                            <span
+                              key={m.id}
+                              className={`h-2 w-2 rounded-full ${statusDotColor[m.status] || 'bg-gray-400'}`}
+                              title={`${tipoLabels[m.tipo] || m.tipo} - ${m.status}`}
+                            />
+                          ))}
+                          {dayManutencoes.length > 3 && (
+                            <span className="text-[9px] text-muted-foreground">+{dayManutencoes.length - 3}</span>
+                          )}
+                        </div>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Selected date details */}
+          <Card className="shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">
+                {selectedDate
+                  ? format(selectedDate, "dd 'de' MMMM", { locale: ptBR })
+                  : 'Selecione uma data'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!selectedDate ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <Calendar className="h-8 w-8 text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Clique em uma data para ver as manutenções agendadas
+                  </p>
+                </div>
+              ) : selectedDateManutencoes.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <Wrench className="h-8 w-8 text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma manutenção nesta data
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 gap-1.5"
+                    onClick={() => {
+                      setDataInicio(format(selectedDate, 'yyyy-MM-dd'))
+                      setDialogOpen(true)
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Agendar
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {selectedDateManutencoes.map((m) => (
+                    <div
+                      key={m.id}
+                      className="p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => navigate('produto-detalhe', m.produtoId)}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {m.produtoIdentificador || m.produto?.identificador || '—'}
+                          </p>
+                          <Badge
+                            variant="outline"
+                            className={`text-xs border-0 mt-1 ${tipoColors[m.tipo] || 'bg-gray-100 text-gray-800'}`}
+                          >
+                            {tipoLabels[m.tipo] || m.tipo}
+                          </Badge>
+                        </div>
+                        <StatusBadge status={m.status} />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+                        {m.descricao}
+                      </p>
+                      {m.custo > 0 && (
+                        <p className="text-xs font-medium mt-1">
+                          {formatarMoeda(m.custo)}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
 
-      {/* Nova Manutenção Dialog */}
+      {/* Agendar Manutenção Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Nova Manutenção</DialogTitle>
+            <DialogTitle>Agendar Manutenção</DialogTitle>
             <DialogDescription>
               Registre uma nova manutenção para um produto
             </DialogDescription>
@@ -550,7 +882,7 @@ export function ManutencoesView() {
               ) : (
                 <>
                   <Wrench className="h-4 w-4" />
-                  Criar Manutenção
+                  Agendar Manutenção
                 </>
               )}
             </Button>

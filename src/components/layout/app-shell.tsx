@@ -61,6 +61,7 @@ import { AdminAuditoriaView } from '@/components/views/admin-auditoria-view'
 import { AdminMetasView } from '@/components/views/admin-metas-view'
 import { PerfilView } from '@/components/views/perfil-view'
 import { NotificacoesView } from '@/components/views/notificacoes-view'
+import { KeyboardShortcuts } from '@/components/shared/keyboard-shortcuts'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 
@@ -193,7 +194,7 @@ export function AppShell() {
         }}
       >
         {/* Logo */}
-        <div className={cn('flex items-center h-14 px-4 border-b', collapsed && 'lg:justify-center', mobileOpen && 'justify-between')}>
+        <div className={cn('flex items-center h-14 px-4', collapsed && !mobileOpen && 'lg:justify-center', mobileOpen && 'justify-between')}>
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shrink-0">
               <span className="text-lg font-bold text-primary-foreground">C</span>
@@ -230,6 +231,8 @@ export function AppShell() {
             <X className="h-4 w-4" />
           </Button>
         </div>
+        {/* Gradient bottom border on logo section */}
+        <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
         {/* User Info Section */}
         {!collapsed && (
@@ -238,7 +241,7 @@ export function AppShell() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="px-4 py-2 border-b"
+            className="px-4 py-2"
           >
             <div className="flex items-center gap-3">
               <Avatar className="h-9 w-9">
@@ -254,7 +257,7 @@ export function AppShell() {
           </motion.div>
         )}
         {collapsed && (
-          <div className="flex justify-center py-2 border-b">
+          <div className="flex justify-center py-2">
             <Avatar className="h-7 w-7">
               <AvatarFallback className="text-xs bg-primary text-primary-foreground">
                 {user?.nome?.charAt(0)?.toUpperCase() || 'U'}
@@ -262,6 +265,7 @@ export function AppShell() {
             </Avatar>
           </div>
         )}
+        <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
         {/* Navigation */}
         <ScrollArea className="flex-1 py-3">
@@ -288,13 +292,20 @@ export function AppShell() {
                       <Button
                         variant={isActive(item.view) ? 'secondary' : 'ghost'}
                         className={cn(
-                          'w-full justify-start gap-3 h-10 sm:h-9 text-sm font-medium transition-all duration-200',
+                          'w-full justify-start gap-3 h-10 sm:h-9 text-sm font-medium transition-all duration-200 rounded-lg',
                           collapsed && !mobileOpen && 'lg:justify-center lg:px-0',
-                          isActive(item.view) && 'bg-primary/10 text-primary hover:bg-primary/15'
+                          isActive(item.view) 
+                            ? 'bg-primary/10 text-primary hover:bg-primary/15' 
+                            : 'hover:bg-muted/60'
                         )}
                         onClick={() => handleNavClick(item.view)}
                       >
-                        {item.icon}
+                        <span className="relative">
+                          {item.icon}
+                          {isActive(item.view) && (
+                            <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 rounded-full bg-primary" />
+                          )}
+                        </span>
                         {(!collapsed || mobileOpen) && <span className="truncate">{item.label}</span>}
                       </Button>
                     </motion.div>
@@ -309,7 +320,7 @@ export function AppShell() {
 
               {filteredAdminItems.length > 0 && (
                 <>
-                  <Separator className="my-3" />
+                  <div className="mx-3 my-2 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
                   {!collapsed && (
                     <motion.p
                       initial={{ opacity: 0 }}
@@ -331,13 +342,20 @@ export function AppShell() {
                           <Button
                             variant={isActive(item.view) ? 'secondary' : 'ghost'}
                             className={cn(
-                              'w-full justify-start gap-3 h-10 sm:h-9 text-sm font-medium transition-all duration-200',
+                              'w-full justify-start gap-3 h-10 sm:h-9 text-sm font-medium transition-all duration-200 rounded-lg',
                               collapsed && !mobileOpen && 'lg:justify-center lg:px-0',
-                              isActive(item.view) && 'bg-primary/10 text-primary hover:bg-primary/15'
+                              isActive(item.view) 
+                                ? 'bg-primary/10 text-primary hover:bg-primary/15' 
+                                : 'hover:bg-muted/60'
                             )}
                             onClick={() => handleNavClick(item.view)}
                           >
-                            {item.icon}
+                            <span className="relative">
+                              {item.icon}
+                              {isActive(item.view) && (
+                                <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 rounded-full bg-primary" />
+                              )}
+                            </span>
                             {(!collapsed || mobileOpen) && <span className="truncate">{item.label}</span>}
                           </Button>
                         </motion.div>
@@ -364,9 +382,9 @@ export function AppShell() {
             transition={{ duration: 0.2 }}
             className="px-4 py-3 border-t"
           >
-            <div className="rounded-lg bg-primary/5 p-3">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Cobranças Pendentes</p>
-              <p className="text-lg font-bold text-primary">
+            <div className="rounded-lg bg-gradient-to-br from-emerald-50 to-emerald-100/80 dark:from-emerald-950/50 dark:to-emerald-900/30 p-3 border border-emerald-200/50 dark:border-emerald-800/30">
+              <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-1">Cobranças Pendentes</p>
+              <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
                 {pendingCount !== null ? pendingCount : '--'}
               </p>
             </div>
@@ -374,9 +392,9 @@ export function AppShell() {
         )}
         {collapsed && (
           <div className="px-2 py-3 border-t">
-            <div className="rounded-md bg-primary/5 p-1.5 text-center">
-              <p className="text-[9px] font-medium text-muted-foreground">Pend.</p>
-              <p className="text-xs font-bold text-primary">
+            <div className="rounded-md bg-gradient-to-br from-emerald-50 to-emerald-100/80 dark:from-emerald-950/50 dark:to-emerald-900/30 p-1.5 text-center border border-emerald-200/50 dark:border-emerald-800/30">
+              <p className="text-[9px] font-medium text-emerald-700 dark:text-emerald-400">Pend.</p>
+              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                 {pendingCount !== null ? pendingCount : '--'}
               </p>
             </div>
@@ -413,6 +431,9 @@ export function AppShell() {
           </PageTransition>
         </main>
       </div>
+
+      {/* Keyboard Shortcuts Panel */}
+      <KeyboardShortcuts />
     </div>
   )
 }

@@ -35,6 +35,10 @@ import {
   FileText,
   Wrench,
   Gauge,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Settings2,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
@@ -184,47 +188,199 @@ export function ProdutoDetalheView() {
     'Péssima': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   }
 
+  // Get accent color based on conservação
+  const conservacaoAccent: Record<string, string> = {
+    'Ótima': 'from-green-500 to-green-600',
+    'Boa': 'from-sky-500 to-sky-600',
+    'Regular': 'from-yellow-500 to-yellow-600',
+    'Ruim': 'from-orange-500 to-orange-600',
+    'Péssima': 'from-red-500 to-red-600',
+  }
+  const headerAccent = conservacaoAccent[produto.conservacao] || 'from-gray-500 to-gray-600'
+
+  const conservacaoAccentBorder: Record<string, string> = {
+    'Ótima': 'border-green-500',
+    'Boa': 'border-sky-500',
+    'Regular': 'border-yellow-500',
+    'Ruim': 'border-orange-500',
+    'Péssima': 'border-red-500',
+  }
+  const accentBorder = conservacaoAccentBorder[produto.conservacao] || 'border-gray-500'
+
+  const statusIcon = produto.statusProduto === 'Ativo' ? <CheckCircle className="h-8 w-8 text-green-500" /> : produto.statusProduto === 'Manutenção' ? <Wrench className="h-8 w-8 text-purple-500" /> : <XCircle className="h-8 w-8 text-red-400" />
+  const statusGradient = produto.statusProduto === 'Ativo' ? 'from-green-50 to-green-100/50 dark:from-green-950 dark:to-green-900/30' : produto.statusProduto === 'Manutenção' ? 'from-purple-50 to-purple-100/50 dark:from-purple-950 dark:to-purple-900/30' : 'from-red-50 to-red-100/50 dark:from-red-950 dark:to-red-900/30'
+
   return (
     <div className="p-6 space-y-6">
       <Breadcrumb />
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={goBack} className="h-9 w-9 shrink-0">
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold truncate">{produto.identificador}</h1>
-            <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium border-0 bg-primary/10 text-primary">
-              {produto.tipoNome || produto.tipo?.nome}
-            </span>
-            <StatusBadge status={produto.statusProduto} />
+      {/* Header with accent bar */}
+      <div className={`rounded-xl bg-gradient-to-r ${headerAccent} p-[3px]`}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-card rounded-lg p-4">
+          <Button variant="ghost" size="icon" onClick={goBack} className="h-9 w-9 shrink-0">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl font-bold truncate">{produto.identificador}</h1>
+              <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium border-0 bg-primary/10 text-primary">
+                {produto.tipoNome || produto.tipo?.nome}
+              </span>
+              <StatusBadge status={produto.statusProduto} />
+            </div>
+            <p className="text-muted-foreground text-sm">
+              {produto.descricaoNome || produto.descricao?.nome} — {produto.tamanhoNome || produto.tamanho?.nome}
+            </p>
           </div>
-          <p className="text-muted-foreground text-sm">
-            {produto.descricaoNome || produto.descricao?.nome} — {produto.tamanhoNome || produto.tamanho?.nome}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={() => navigate('produto-editar', produto.id)}
-          >
-            <Pencil className="h-4 w-4" />
-            Editar
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2 text-destructive hover:text-destructive"
-            onClick={() => setShowDeleteDialog(true)}
-          >
-            <Trash2 className="h-4 w-4" />
-            Excluir
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => navigate('produto-editar', produto.id)}
+            >
+              <Pencil className="h-4 w-4" />
+              Editar
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 text-destructive hover:text-destructive"
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <Trash2 className="h-4 w-4" />
+              Excluir
+            </Button>
+          </div>
         </div>
       </div>
+
+      {/* Product Status Card */}
+      <Card className={`shadow-sm border-l-4 ${accentBorder} bg-gradient-to-br ${statusGradient}`}>
+        <CardContent className="p-5">
+          <div className="flex items-center gap-5">
+            <div className="h-16 w-16 rounded-2xl bg-white/80 dark:bg-black/20 flex items-center justify-center shadow-sm shrink-0">
+              {statusIcon}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 mb-1">
+                <h2 className="text-lg font-bold">{produto.identificador}</h2>
+                <StatusBadge status={produto.statusProduto} />
+              </div>
+              <p className="text-sm text-muted-foreground">{produto.tipoNome || produto.tipo?.nome} — {produto.descricaoNome || produto.descricao?.nome}</p>
+            </div>
+            <div className="hidden sm:flex items-center gap-6">
+              <div className="text-center">
+                <p className="text-2xl font-bold">{produto.locacoes?.length || 0}</p>
+                <p className="text-xs text-muted-foreground">Locações</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold">{produto.manutencoes?.length || 0}</p>
+                <p className="text-xs text-muted-foreground">Manutenções</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Informações Técnicas */}
+      <Card className="shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+            <Settings2 className="h-4 w-4" />
+            Informações Técnicas
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Conservação</p>
+              <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium border-0 ${conservacaoColors[produto.conservacao] || 'bg-gray-100 text-gray-800'}`}>
+                {produto.conservacao}
+              </span>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Relógio</p>
+              <p className="text-sm font-medium">{produto.numeroRelogio || '—'}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Tipo</p>
+              <p className="text-sm font-medium">{produto.tipoNome || produto.tipo?.nome || '—'}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Descrição</p>
+              <p className="text-sm font-medium">{produto.descricaoNome || produto.descricao?.nome || '—'}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Tamanho</p>
+              <p className="text-sm font-medium">{produto.tamanhoNome || produto.tamanho?.nome || '—'}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Código CH</p>
+              <p className="text-sm font-medium">{produto.codigoCH || '—'}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Código ABLF</p>
+              <p className="text-sm font-medium">{produto.codigoABLF || '—'}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Estabelecimento</p>
+              <p className="text-sm font-medium">{produto.estabelecimento || '—'}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Histórico de Locações */}
+      <Card className="shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+            <Clock className="h-4 w-4" />
+            Histórico de Locações ({produto.locacoes?.length || 0})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {!produto.locacoes || produto.locacoes.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Clock className="h-8 w-8 text-muted-foreground mb-3" />
+              <p className="text-sm font-medium">Nenhuma locação registrada</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                As locações deste produto aparecerão aqui
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Data Locação</TableHead>
+                  <TableHead>Fim</TableHead>
+                  <TableHead>Pagamento</TableHead>
+                  <TableHead>Relógio</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {produto.locacoes.map((loc) => (
+                  <TableRow
+                    key={loc.id}
+                    className={`cursor-pointer hover:bg-muted/50 transition-colors ${loc.status === 'Ativa' ? 'border-l-4 border-l-green-500' : loc.status === 'Finalizada' ? 'border-l-4 border-l-gray-400' : 'border-l-4 border-l-red-400'}`}
+                    onClick={() => navigate('locacao-detalhe', loc.id)}
+                  >
+                    <TableCell className="font-medium">{loc.clienteNome}</TableCell>
+                    <TableCell>{loc.dataLocacao}</TableCell>
+                    <TableCell>{loc.dataFim || '—'}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs">{loc.formaPagamento}</TableCell>
+                    <TableCell>{loc.numeroRelogio}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={loc.status} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
