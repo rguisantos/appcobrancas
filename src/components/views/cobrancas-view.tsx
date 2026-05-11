@@ -54,6 +54,8 @@ import {
   AlertTriangle,
   Wallet,
   Loader2,
+  Download,
+  X,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -270,6 +272,7 @@ export function CobrancasView() {
       accent: 'border-l-4 border-l-green-500',
       iconBg: 'bg-green-100 dark:bg-green-900',
       iconColor: 'text-green-600 dark:text-green-400',
+      gradient: 'from-green-50 to-green-100/50 dark:from-green-950 dark:to-green-900/30',
     },
     {
       title: 'Total Pendente',
@@ -278,6 +281,7 @@ export function CobrancasView() {
       accent: 'border-l-4 border-l-yellow-500',
       iconBg: 'bg-yellow-100 dark:bg-yellow-900',
       iconColor: 'text-yellow-600 dark:text-yellow-400',
+      gradient: 'from-yellow-50 to-yellow-100/50 dark:from-yellow-950 dark:to-yellow-900/30',
     },
     {
       title: 'Total Atrasado',
@@ -286,6 +290,7 @@ export function CobrancasView() {
       accent: 'border-l-4 border-l-red-500',
       iconBg: 'bg-red-100 dark:bg-red-900',
       iconColor: 'text-red-600 dark:text-red-400',
+      gradient: 'from-red-50 to-red-100/50 dark:from-red-950 dark:to-red-900/30',
     },
     {
       title: 'Total Geral',
@@ -294,6 +299,7 @@ export function CobrancasView() {
       accent: 'border-l-4 border-l-gray-500',
       iconBg: 'bg-gray-100 dark:bg-gray-800',
       iconColor: 'text-gray-600 dark:text-gray-400',
+      gradient: 'from-gray-50 to-gray-100/50 dark:from-gray-950 dark:to-gray-900/30',
     },
   ]
 
@@ -307,23 +313,32 @@ export function CobrancasView() {
             {total} cobrança{total !== 1 ? 's' : ''} encontrada{total !== 1 ? 's' : ''}
           </p>
         </div>
-        <Button onClick={() => navigate('cobranca-nova')} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nova Cobrança
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => {
+            toast.info('Exportação iniciada...')
+            window.open('/api/cobrancas?export=csv', '_blank')
+          }}>
+            <Download className="h-4 w-4" />
+            Exportar
+          </Button>
+          <Button onClick={() => navigate('cobranca-nova')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nova Cobrança
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {summaryCards.map((card) => (
-          <Card key={card.title} className={`shadow-sm ${card.accent}`}>
+          <Card key={card.title} className={`shadow-sm ${card.accent} bg-gradient-to-br ${card.gradient}`}>
             <CardContent className="p-5">
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground font-medium">{card.title}</p>
                   <p className="text-2xl font-bold">{card.value}</p>
                 </div>
-                <div className={`rounded-lg p-2.5 ${card.iconBg}`}>
+                <div className={`rounded-xl p-2.5 ${card.iconBg} shadow-sm`}>
                   <span className={card.iconColor}>{card.icon}</span>
                 </div>
               </div>
@@ -333,7 +348,7 @@ export function CobrancasView() {
       </div>
 
       {/* Filters */}
-      <Card className="shadow-sm">
+      <Card className="shadow-sm bg-muted/30">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <Select value={status} onValueChange={handleStatusChange}>
@@ -374,6 +389,24 @@ export function CobrancasView() {
                 onChange={(e) => setClienteInput(e.target.value)}
               />
             </div>
+            {(status !== 'all' || dataInicio || dataFim || clienteSearch) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  setStatus('all')
+                  setDataInicio('')
+                  setDataFim('')
+                  setClienteInput('')
+                  setClienteSearch('')
+                  setPage(1)
+                }}
+              >
+                <X className="h-3.5 w-3.5" />
+                Limpar Filtros
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -409,10 +442,12 @@ export function CobrancasView() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {cobrancas.map((cobranca) => (
+                {cobrancas.map((cobranca) => {
+                  const statusBorder = cobranca.status === 'Pago' ? 'border-l-4 border-l-green-500' : cobranca.status === 'Pendente' ? 'border-l-4 border-l-yellow-500' : cobranca.status === 'Atrasado' ? 'border-l-4 border-l-red-500' : cobranca.status === 'Parcial' ? 'border-l-4 border-l-orange-500' : 'border-l-4 border-l-gray-400'
+                  return (
                   <TableRow
                     key={cobranca.id}
-                    className="cursor-pointer"
+                    className={`cursor-pointer hover:bg-muted/50 transition-colors ${statusBorder}`}
                     onClick={() => navigate('cobranca-detalhe', cobranca.id)}
                   >
                     <TableCell className="font-medium">
@@ -490,7 +525,8 @@ export function CobrancasView() {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))}
+                  )
+                })}
               </TableBody>
             </Table>
           )}

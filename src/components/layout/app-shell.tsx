@@ -60,6 +60,7 @@ import { AdminDispositivosView } from '@/components/views/admin-dispositivos-vie
 import { AdminAuditoriaView } from '@/components/views/admin-auditoria-view'
 import { AdminMetasView } from '@/components/views/admin-metas-view'
 import { PerfilView } from '@/components/views/perfil-view'
+import { NotificacoesView } from '@/components/views/notificacoes-view'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 
@@ -82,6 +83,7 @@ const navItems: NavItem[] = [
   { view: 'relatorios', label: 'Relatórios', icon: <BarChart3 className="h-4 w-4" />, permission: 'relatorios' },
   { view: 'mapa', label: 'Mapa de Rotas', icon: <Map className="h-4 w-4" />, permission: 'mapa' },
   { view: 'agenda', label: 'Agenda', icon: <Calendar className="h-4 w-4" />, permission: 'agenda' },
+  { view: 'notificacoes', label: 'Notificações', icon: <Bell className="h-4 w-4" /> },
 ]
 
 const adminItems: NavItem[] = [
@@ -489,6 +491,8 @@ function ViewRouter({ currentView }: { currentView: ViewType }) {
       return <AdminMetasView />
     case 'perfil':
       return <PerfilView />
+    case 'notificacoes':
+      return <NotificacoesView />
     default:
       return (
         <div className="flex items-center justify-center h-full min-h-[400px]">

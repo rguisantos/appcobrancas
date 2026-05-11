@@ -7,6 +7,8 @@ interface User {
   tipoPermissao: string
   permissoesWeb: Record<string, boolean>
   rotasPermitidas: string[]
+  createdAt?: string
+  dataUltimoAcesso?: string
 }
 
 interface AuthState {

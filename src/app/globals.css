@@ -139,3 +139,33 @@
   background: oklch(0.2 0 0 / 80%);
   border: 1px solid oklch(1 0 0 / 10%);
 }
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: oklch(0.7 0 0 / 30%); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: oklch(0.6 0 0 / 50%); }
+.dark ::-webkit-scrollbar-thumb { background: oklch(0.4 0 0 / 40%); }
+
+/* Table hover effect */
+.table-row-hover:hover { background-color: oklch(0.97 0 0 / 80%); }
+.dark .table-row-hover:hover { background-color: oklch(0.25 0 0 / 50%); }
+
+/* Focus ring animation */
+@keyframes focus-ring { 0% { box-shadow: 0 0 0 0 oklch(0.205 0 0 / 20%); } 100% { box-shadow: 0 0 0 3px oklch(0.205 0 0 / 10%); } }
+
+/* Shimmer loading effect */
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+.shimmer { background: linear-gradient(90deg, transparent, oklch(0.9 0 0 / 30%), transparent); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+
+/* Smooth page transitions */
+.page-enter { animation: pageEnter 0.3s ease-out; }
+@keyframes pageEnter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Card hover lift */
+.card-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.card-lift:hover { transform: translateY(-2px); box-shadow: 0 8px 25px -5px rgb(0 0 0 / 10%), 0 10px 10px -5px rgb(0 0 0 / 4%); }
+.dark .card-lift:hover { box-shadow: 0 8px 25px -5px rgb(0 0 0 / 30%), 0 10px 10px -5px rgb(0 0 0 / 10%); }
+
+/* Gradient text */
+.gradient-text { background: linear-gradient(135deg, oklch(0.55 0.15 160), oklch(0.45 0.12 180)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }

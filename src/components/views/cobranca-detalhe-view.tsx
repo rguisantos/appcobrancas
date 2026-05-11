@@ -41,6 +41,7 @@ import {
   Calendar,
   DollarSign,
   Loader2,
+  Printer,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Breadcrumb } from '@/components/layout/breadcrumb'
@@ -248,6 +249,178 @@ export function CobrancaDetalheView() {
     return map[fp] || fp
   }
 
+  const handlePrint = () => {
+    if (!cobranca) return
+
+    const formatCurrency = (val: number) =>
+      new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
+
+    const receiptNumber = cobranca.id.substring(0, 8).toUpperCase()
+    const descontos = (cobranca.descontoPartidasValor || 0) + (cobranca.descontoDinheiro || 0)
+    const now = new Date()
+    const dateStr = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+
+    const statusMap: Record<string, string> = {
+      Pendente: 'Pendente',
+      Pago: 'Pago',
+      Parcial: 'Parcial',
+      Atrasado: 'Atrasado',
+    }
+
+    const printContent = `
+      <html>
+      <head>
+        <title>Recibo - ${cobranca.clienteNome}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+          .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px; }
+          .header h1 { margin: 0; font-size: 18px; }
+          .header p { margin: 4px 0; color: #666; font-size: 12px; }
+          .title { text-align: center; font-size: 16px; font-weight: bold; margin: 20px 0; text-transform: uppercase; }
+          .receipt-number { text-align: center; font-size: 11px; color: #666; margin-bottom: 15px; }
+          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 15px 0; }
+          .info-item { padding: 6px 0; }
+          .info-label { font-size: 11px; color: #666; }
+          .info-value { font-size: 13px; font-weight: 500; }
+          .section-title { font-size: 13px; font-weight: bold; text-transform: uppercase; margin: 18px 0 8px; color: #444; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+          .financial { border-top: 1px solid #ddd; margin-top: 15px; padding-top: 15px; }
+          .financial-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+          .financial-total { font-weight: bold; font-size: 15px; border-top: 2px solid #333; margin-top: 8px; padding-top: 8px; }
+          .observation { margin-top: 15px; padding: 10px; background: #f9f9f9; border-radius: 4px; font-size: 12px; }
+          .footer { margin-top: 40px; text-align: center; font-size: 11px; color: #999; border-top: 1px solid #ddd; padding-top: 15px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>App Cobranças - Sistema de Gestão</h1>
+          <p>Recibo de Cobrança</p>
+        </div>
+
+        <div class="receipt-number">Recibo Nº ${receiptNumber}</div>
+
+        <div class="section-title">Informações do Cliente</div>
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-label">Nome</div>
+            <div class="info-value">${cobranca.clienteNome || cobranca.cliente?.nomeExibicao || '—'}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Identificador</div>
+            <div class="info-value">${cobranca.cliente?.email || cobranca.clienteId.substring(0, 8)}</div>
+          </div>
+        </div>
+
+        <div class="section-title">Produto / Locação</div>
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-label">Produto</div>
+            <div class="info-value">${cobranca.produtoIdentificador || '—'}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Forma de Pagamento</div>
+            <div class="info-value">${formatFormaPagamento(cobranca.formaPagamento)}</div>
+          </div>
+        </div>
+
+        <div class="section-title">Período</div>
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-label">Data Início</div>
+            <div class="info-value">${formatDate(cobranca.dataInicio)}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Data Fim</div>
+            <div class="info-value">${formatDate(cobranca.dataFim)}</div>
+          </div>
+        </div>
+
+        <div class="section-title">Leitura do Relógio</div>
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-label">Relógio Anterior</div>
+            <div class="info-value">${cobranca.relogioAnterior}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Relógio Atual</div>
+            <div class="info-value">${cobranca.relogioAtual}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Fichas Rodadas</div>
+            <div class="info-value">${cobranca.fichasRodadas}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Valor por Ficha</div>
+            <div class="info-value">${formatCurrency(cobranca.valorFicha)}</div>
+          </div>
+        </div>
+
+        <div class="section-title">Resumo Financeiro</div>
+        <div class="financial">
+          <div class="financial-row">
+            <span>Total Bruto</span>
+            <span>${formatCurrency(cobranca.totalBruto)}</span>
+          </div>
+          <div class="financial-row">
+            <span>Descontos</span>
+            <span>-${formatCurrency(descontos)}</span>
+          </div>
+          <div class="financial-row">
+            <span>Subtotal</span>
+            <span>${formatCurrency(cobranca.subtotalAposDescontos)}</span>
+          </div>
+          <div class="financial-row">
+            <span>Percentual Empresa (${cobranca.percentualEmpresa}%)</span>
+            <span>${formatCurrency(cobranca.valorPercentual)}</span>
+          </div>
+          <div class="financial-row financial-total">
+            <span>Total Cliente Paga</span>
+            <span>${formatCurrency(cobranca.totalClientePaga)}</span>
+          </div>
+        </div>
+
+        <div class="section-title">Pagamento</div>
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-label">Valor Recebido</div>
+            <div class="info-value">${formatCurrency(cobranca.valorRecebido)}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Status</div>
+            <div class="info-value">${statusMap[cobranca.status] || cobranca.status}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Forma de Pagamento</div>
+            <div class="info-value">${formatFormaPagamento(cobranca.formaPagamento)}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Data Pagamento</div>
+            <div class="info-value">${formatDate(cobranca.dataPagamento)}</div>
+          </div>
+        </div>
+
+        ${cobranca.observacao ? `
+          <div class="observation">
+            <strong>Observação:</strong> ${cobranca.observacao}
+          </div>
+        ` : ''}
+
+        <div class="footer">
+          <p>Documento gerado automaticamente pelo App Cobranças</p>
+          <p>${dateStr}</p>
+        </div>
+      </body>
+      </html>
+    `
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(printContent)
+      printWindow.document.close()
+      printWindow.focus()
+      printWindow.print()
+      printWindow.close()
+    }
+  }
+
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
       <Breadcrumb />
@@ -269,6 +442,15 @@ export function CobrancaDetalheView() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handlePrint}
+          >
+            <Printer className="h-4 w-4" />
+            Imprimir Recibo
+          </Button>
           <Button
             variant="outline"
             size="sm"

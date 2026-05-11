@@ -38,7 +38,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, ChevronLeft, ChevronRight, Download, Users } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Cliente {
@@ -170,14 +170,23 @@ export function ClientesView() {
             {total} cliente{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}
           </p>
         </div>
-        <Button onClick={() => navigate('cliente-novo')} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Cliente
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => {
+            toast.info('Exportação iniciada...')
+            window.open('/api/clientes?export=csv', '_blank')
+          }}>
+            <Download className="h-4 w-4" />
+            Exportar
+          </Button>
+          <Button onClick={() => navigate('cliente-novo')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Novo Cliente
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
-      <Card className="shadow-sm">
+      <Card className="shadow-sm bg-muted/30">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
@@ -222,14 +231,21 @@ export function ClientesView() {
           {loading ? (
             <TableSkeleton />
           ) : clientes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
-                <Search className="h-6 w-6 text-muted-foreground" />
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="h-20 w-20 rounded-2xl bg-muted/50 flex items-center justify-center mb-6">
+                <Users className="h-10 w-10 text-muted-foreground/50" />
               </div>
-              <p className="text-lg font-medium">Nenhum cliente encontrado</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Tente ajustar os filtros ou crie um novo cliente
+              <p className="text-lg font-semibold">Nenhum cliente encontrado</p>
+              <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+                Tente ajustar os filtros ou crie um novo cliente para começar
               </p>
+              <Button
+                className="mt-4 gap-2"
+                onClick={() => navigate('cliente-novo')}
+              >
+                <Plus className="h-4 w-4" />
+                Criar Primeiro Cliente
+              </Button>
             </div>
           ) : (
             <Table>
@@ -248,7 +264,7 @@ export function ClientesView() {
                 {clientes.map((cliente) => (
                   <TableRow
                     key={cliente.id}
-                    className="cursor-pointer"
+                    className={`cursor-pointer hover:bg-muted/50 transition-colors ${cliente.status === 'Ativo' ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-red-400'}`}
                     onClick={() => navigate('cliente-detalhe', cliente.id)}
                   >
                     <TableCell className="font-medium">{cliente.identificador}</TableCell>

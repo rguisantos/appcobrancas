@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
         rotasPermitidas: true,
         status: true,
         dataUltimoAcesso: true,
+        createdAt: true,
       },
     })
 

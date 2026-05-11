@@ -37,6 +37,7 @@ export type ViewType =
   | 'admin-metas'
   | 'admin-meta-nova'
   | 'perfil'
+  | 'notificacoes'
 
 interface NavigationState {
   currentView: ViewType

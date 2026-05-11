@@ -6,10 +6,6 @@ export async function GET(request: NextRequest) {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
-  if (session.tipoPermissao !== 'Administrador') {
-    return NextResponse.json({ error: 'Acesso restrito a administradores' }, { status: 403 })
-  }
-
   const searchParams = request.nextUrl.searchParams
   const page = parseInt(searchParams.get('page') || '1')
   const limit = parseInt(searchParams.get('limit') || '50')
@@ -25,6 +21,11 @@ export async function GET(request: NextRequest) {
   if (entidade) where.entidade = entidade
   if (acao) where.acao = acao
   if (usuarioId) where.usuarioId = usuarioId
+
+  // Non-admin users can only view their own logs (override any usuarioId filter)
+  if (session.tipoPermissao !== 'Administrador') {
+    where.usuarioId = session.userId
+  }
 
   if (dataInicio || dataFim) {
     const createdAtFilter: Record<string, Date> = {}
