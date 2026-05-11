@@ -579,6 +579,58 @@
   background: #f59e0b;
   color: #78350f;
 }
+
+/* ============================================
+   MOBILE RESPONSIVE UTILITIES
+   ============================================ */
+
+/* Safe area insets for iOS notch/home indicator */
+.safe-top { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.safe-left { padding-left: env(safe-area-inset-left); }
+.safe-right { padding-right: env(safe-area-inset-right); }
+
+/* Compact touch targets for mobile - slightly smaller on small screens */
+@media (max-width: 640px) {
+  .mobile-compact { gap: 0.375rem; }
+  .mobile-text-sm { font-size: 0.8125rem; }
+  .mobile-p-2 { padding: 0.5rem; }
+  .mobile-p-3 { padding: 0.75rem; }
+  .mobile-gap-2 { gap: 0.5rem; }
+
+  /* Make cards stack-friendly on mobile */
+  .mobile-stack { flex-direction: column; }
+  .mobile-full { width: 100%; }
+
+  /* Reduce animation intensity on mobile for performance */
+  .shimmer-card,
+  .skeleton-shimmer,
+  .stagger-row {
+    animation-duration: 2.2s;
+  }
+
+  /* Ensure proper tap target size (minimum 44px) */
+  .mobile-tap-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Prevent horizontal overflow on mobile */
+@media (max-width: 640px) {
+  .mobile-overflow-hidden {
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Improve touch scrolling on mobile */
+@media (max-width: 640px) {
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+}
 .badge-count-emerald {
   background: #10b981;
   color: #064e3b;

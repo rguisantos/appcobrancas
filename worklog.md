@@ -1473,3 +1473,70 @@ Stage Summary:
 - Dev server running and functional with PostgreSQL
 - Cron job created for automated QA and development every 15 minutes
 - Login verified working: admin@locacao.com / admin123
+
+---
+Task ID: 5
+Agent: Engineering Improvements Agent
+Task: Engineering Improvements — Fix PostgreSQL, Mobile, Remove SQLite References
+
+Work Log:
+
+1. Fixed lib/db.ts for PostgreSQL (src/lib/db.ts):
+   - Removed hardcoded Neon DATABASE URL from source code (security concern)
+   - Replaced with resolveDatabaseUrl() function that reads from .env file as fallback
+   - When system env has a stale file: SQLite URL, reads PostgreSQL URL directly from .env
+   - Added datasourceUrl option to PrismaClient for explicit URL resolution
+   - Added clear error message when DATABASE_URL is missing/invalid
+
+2. Updated .env with Neon connection pooling parameters:
+   - Added connection_limit=5 and pool_timeout=10 to DATABASE_URL
+   - Prevents connection pool exhaustion with Neon serverless PostgreSQL
+
+3. Checked API routes for PostgreSQL compatibility:
+   - Audited all 40+ API route files for $queryRaw, $executeRaw, raw SQL
+   - NO raw SQL queries found — all routes use Prisma ORM methods only
+   - NO SQLite-specific syntax found (no strftime, LAST_INSERT_ROWID, etc.)
+   - NO db.custom.db references found in code (only in worklog.md)
+   - All API routes are fully PostgreSQL-compatible
+
+4. Fixed Prisma seed file for PostgreSQL (prisma/seed.ts):
+   - Added explicit prisma.$connect() call at start (handles Neon cold starts)
+   - Added datasources config to PrismaClient constructor
+   - Changed dataPagamento from new Date().toISOString() to .split('T')[0] for date-only format
+   - Improved error handling: process.exit(1) on failure, descriptive console.error
+
+5. Improved app-shell.tsx sidebar for mobile (src/components/layout/app-shell.tsx):
+   - Added swipe-to-close gesture for mobile sidebar (touch events)
+   - Uses useRef for touch start/current tracking, useCallback for handlers
+   - Closes sidebar when user swipes left > 60px
+   - Mobile overlay now uses CSS transition with opacity animation (no conditional rendering)
+   - Added shadow-2xl on mobile sidebar when open for better depth perception
+   - Changed sidebar transition from transition-all to transition-transform for smoother animation
+
+6. Removed old SQLite database references:
+   - Deleted /home/z/my-project/db/custom.db (old SQLite database file)
+   - Removed /home/z/my-project/db/ directory (now empty)
+   - db.ts comments about SQLite now reference the pattern, not hardcoded paths
+
+7. Verified and enhanced globals.css mobile improvements (src/app/globals.css):
+   - Added safe-area inset utilities (.safe-top, .safe-bottom, .safe-left, .safe-right)
+   - Added mobile-compact/text-sm/p-2/p-3/gap-2 utilities for small screens
+   - Added mobile-stack and mobile-full for card layout flexibility
+   - Added mobile-tap-target for minimum 44px touch targets (iOS HIG)
+   - Reduced animation duration on mobile for better performance
+   - Added mobile-overflow-hidden to prevent horizontal scroll
+   - Added mobile-scroll for better touch scrolling behavior
+   - All existing utilities verified working on mobile
+
+Lint Results:
+- Zero lint errors, zero warnings
+
+Stage Summary:
+- lib/db.ts: Removed hardcoded Neon URL, added .env file fallback resolution
+- .env: Added connection pooling params for Neon
+- API routes: All PostgreSQL-compatible (no raw SQL)
+- Seed file: Added $connect() for cold starts, fixed date format
+- App shell: Swipe-to-close mobile sidebar, animated overlay, shadow depth
+- SQLite cleanup: Removed custom.db file and db/ directory
+- CSS: 15+ mobile utilities added for safe areas, touch targets, performance
+- Zero lint errors

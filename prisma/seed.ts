@@ -2,10 +2,21 @@ import { PrismaClient } from '@prisma/client'
 import { hashPassword } from '../src/lib/hash'
 import { PERMISSOES_WEB_ADMIN, PERMISSOES_MOBILE_DEFAULT } from '../src/lib/permissoes-padrao'
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient({
+  log: ['error', 'warn'],
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL,
+    },
+  },
+})
 
 async function main() {
   console.log('🌱 Seeding database...')
+
+  // Ensure database connection is established (important for Neon cold starts)
+  await prisma.$connect()
+  console.log('✅ Database connection established')
 
   // Create admin user
   const existingAdmin = await prisma.usuario.findUnique({ where: { email: 'admin@locacao.com' } })
@@ -183,7 +194,7 @@ async function main() {
           dataInicio: '2024-11-01',
           dataFim: '2024-11-30',
           dataVencimento: '2024-11-30',
-          dataPagamento: status === 'Pago' || status === 'Parcial' ? new Date().toISOString() : null,
+          dataPagamento: status === 'Pago' || status === 'Parcial' ? new Date().toISOString().split('T')[0] : null,
           relogioAnterior,
           relogioAtual,
           fichasRodadas,
@@ -223,5 +234,8 @@ async function main() {
 }
 
 main()
-  .catch(console.error)
+  .catch((e) => {
+    console.error('❌ Seed failed:', e)
+    process.exit(1)
+  })
   .finally(() => prisma.$disconnect())

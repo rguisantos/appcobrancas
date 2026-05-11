@@ -71,7 +71,7 @@ const AdminAuditoriaView = dynamic(() => import('@/components/views/admin-audito
 const AdminMetasView = dynamic(() => import('@/components/views/admin-metas-view').then(m => ({ default: m.AdminMetasView })), { ssr: false, loading: ViewLoading })
 const PerfilView = dynamic(() => import('@/components/views/perfil-view').then(m => ({ default: m.PerfilView })), { ssr: false, loading: ViewLoading })
 const NotificacoesView = dynamic(() => import('@/components/views/notificacoes-view').then(m => ({ default: m.NotificacoesView })), { ssr: false, loading: ViewLoading })
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion } from 'framer-motion'
 
 interface NavItem {
@@ -116,6 +116,9 @@ export function AppShell() {
   const [prevPendingCount, setPrevPendingCount] = useState<number | null>(null)
   const [prevOverdueCount, setPrevOverdueCount] = useState<number | null>(null)
   const [unreadNotificationCount, setUnreadNotificationCount] = useState<number>(0)
+  const sidebarRef = useRef<HTMLElement>(null)
+  const touchStartX = useRef<number>(0)
+  const touchCurrentX = useRef<number>(0)
 
   const permissoesWeb = user?.permissoesWeb || {}
   const isAdmin = user?.tipoPermissao === 'Administrador'
@@ -156,6 +159,24 @@ export function AppShell() {
     }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  // Swipe-to-close gesture for mobile sidebar
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+    touchCurrentX.current = e.touches[0].clientX
+  }, [])
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    touchCurrentX.current = e.touches[0].clientX
+  }, [])
+
+  const handleTouchEnd = useCallback(() => {
+    const diff = touchStartX.current - touchCurrentX.current
+    // Close sidebar if swiped left more than 60px
+    if (diff > 60) {
+      setMobileOpen(false)
+    }
   }, [])
 
   // Prevent body scroll when mobile sidebar is open
@@ -219,29 +240,36 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen flex bg-background safe-top safe-right safe-bottom safe-left">
-      {/* Mobile overlay - covers content */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm transition-opacity"
-          onClick={() => setMobileOpen(false)}
-          aria-hidden="true"
-        />
-      )}
+      {/* Mobile overlay - covers content with animated fade */}
+      <div
+        className={cn(
+          'fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm transition-opacity duration-300',
+          mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        )}
+        onClick={() => setMobileOpen(false)}
+        aria-hidden="true"
+      />
 
       {/* Sidebar */}
       <aside
+        ref={sidebarRef}
         className={cn(
-          'fixed lg:static inset-y-0 left-0 z-50 flex flex-col border-r bg-card transition-all duration-300 ease-in-out',
+          'fixed lg:static inset-y-0 left-0 z-50 flex flex-col border-r bg-card transition-transform duration-300 ease-in-out',
           collapsed ? 'w-16' : 'w-64',
           // On mobile: overlay mode (translate off-screen when closed, on-screen when open)
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
           // Safe area for iOS
-          'pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)]'
+          'pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)]',
+          // Shadow on mobile when open
+          mobileOpen && 'shadow-2xl lg:shadow-none'
         )}
         style={{
           // Ensure sidebar is above content on mobile
           ...(mobileOpen ? { height: '100dvh' } : {}),
         }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         {/* Logo */}
         <div className={cn('flex items-center h-14 px-4', collapsed && !mobileOpen && 'lg:justify-center', mobileOpen && 'justify-between')}>
@@ -344,34 +372,34 @@ export function AppShell() {
                         <Button
                           variant={isActive(item.view) ? 'secondary' : 'ghost'}
                           className={cn(
-                            'w-full justify-start gap-3 h-10 sm:h-9 text-sm font-medium transition-all duration-200 rounded-lg',
-                            collapsed && !mobileOpen && 'lg:justify-center lg:px-0',
-                            isActive(item.view) 
-                              ? 'bg-primary/10 text-primary hover:bg-primary/15' 
-                              : 'hover:bg-muted/60'
-                          )}
-                          onClick={() => handleNavClick(item.view)}
-                        >
-                          <span className="relative">
-                            {item.icon}
-                            {isActive(item.view) && (
-                              <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 rounded-full bg-primary" />
+                              'w-full justify-start gap-3 h-10 sm:h-9 text-sm font-medium transition-all duration-200 rounded-lg',
+                              collapsed && !mobileOpen && 'lg:justify-center lg:px-0',
+                              isActive(item.view) 
+                                ? 'bg-primary/10 text-primary hover:bg-primary/15' 
+                                : 'hover:bg-muted/60'
                             )}
-                            {item.badge !== undefined && item.badge > 0 && (
-                              <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-[9px] font-bold text-white">
-                                {item.badge > 9 ? '9+' : item.badge}
+                            onClick={() => handleNavClick(item.view)}
+                          >
+                            <span className="relative">
+                              {item.icon}
+                              {isActive(item.view) && (
+                                <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 rounded-full bg-primary" />
+                              )}
+                              {item.badge !== undefined && item.badge > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-[9px] font-bold text-white">
+                                  {item.badge > 9 ? '9+' : item.badge}
+                                </span>
+                              )}
+                            </span>
+                            {(!collapsed || mobileOpen) && (
+                              <span className="truncate flex-1">{item.label}</span>
+                            )}
+                            {(!collapsed || mobileOpen) && item.badge !== undefined && item.badge > 0 && (
+                              <span className="flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full bg-red-100 dark:bg-red-900 text-[10px] font-bold text-red-700 dark:text-red-200 shrink-0">
+                                {item.badge > 99 ? '99+' : item.badge}
                               </span>
                             )}
-                          </span>
-                          {(!collapsed || mobileOpen) && (
-                            <span className="truncate flex-1">{item.label}</span>
-                          )}
-                          {(!collapsed || mobileOpen) && item.badge !== undefined && item.badge > 0 && (
-                            <span className="flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full bg-red-100 dark:bg-red-900 text-[10px] font-bold text-red-700 dark:text-red-200 shrink-0">
-                              {item.badge > 99 ? '99+' : item.badge}
-                            </span>
-                          )}
-                        </Button>
+                          </Button>
                       </motion.div>
                     </TooltipTrigger>
                     {collapsed && !mobileOpen && (
@@ -408,8 +436,8 @@ export function AppShell() {
                               className={cn(
                                 'w-full justify-start gap-3 h-10 sm:h-9 text-sm font-medium transition-all duration-200 rounded-lg',
                                 collapsed && !mobileOpen && 'lg:justify-center lg:px-0',
-                                isActive(item.view) 
-                                  ? 'bg-primary/10 text-primary hover:bg-primary/15' 
+                                isActive(item.view)
+                                  ? 'bg-primary/10 text-primary hover:bg-primary/15'
                                   : 'hover:bg-muted/60'
                               )}
                               onClick={() => handleNavClick(item.view)}
