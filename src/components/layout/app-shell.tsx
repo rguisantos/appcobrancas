@@ -4,7 +4,6 @@ import { useNavigation, ViewType } from '@/lib/store/navigation'
 import { useAuth } from '@/lib/store/auth'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -318,202 +317,205 @@ export function AppShell() {
         )}
         <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
-        {/* Navigation */}
-        <ScrollArea className="flex-1 py-3">
-          <TooltipProvider delayDuration={0}>
-            <nav className="space-y-1 px-2">
-              {!collapsed && (
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.2 }}
-                  className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2"
-                >
-                  Menu Principal
-                </motion.p>
-              )}
-              {filteredNavItems.map((item, index) => (
-                <Tooltip key={item.view}>
-                  <TooltipTrigger asChild>
-                    <motion.div
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.15, delay: index * 0.02 }}
-                    >
-                      <Button
-                        variant={isActive(item.view) ? 'secondary' : 'ghost'}
-                        className={cn(
-                          'w-full justify-start gap-3 h-10 sm:h-9 text-sm font-medium transition-all duration-200 rounded-lg',
-                          collapsed && !mobileOpen && 'lg:justify-center lg:px-0',
-                          isActive(item.view) 
-                            ? 'bg-primary/10 text-primary hover:bg-primary/15' 
-                            : 'hover:bg-muted/60'
-                        )}
-                        onClick={() => handleNavClick(item.view)}
+        {/* Scrollable content area - includes nav, quick stats, and bottom actions */}
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          {/* Navigation */}
+          <div className="py-3">
+            <TooltipProvider delayDuration={0}>
+              <nav className="space-y-1 px-2">
+                {!collapsed && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.2 }}
+                    className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2"
+                  >
+                    Menu Principal
+                  </motion.p>
+                )}
+                {filteredNavItems.map((item, index) => (
+                  <Tooltip key={item.view}>
+                    <TooltipTrigger asChild>
+                      <motion.div
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.15, delay: index * 0.02 }}
                       >
-                        <span className="relative">
-                          {item.icon}
-                          {isActive(item.view) && (
-                            <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 rounded-full bg-primary" />
+                        <Button
+                          variant={isActive(item.view) ? 'secondary' : 'ghost'}
+                          className={cn(
+                            'w-full justify-start gap-3 h-10 sm:h-9 text-sm font-medium transition-all duration-200 rounded-lg',
+                            collapsed && !mobileOpen && 'lg:justify-center lg:px-0',
+                            isActive(item.view) 
+                              ? 'bg-primary/10 text-primary hover:bg-primary/15' 
+                              : 'hover:bg-muted/60'
                           )}
-                          {item.badge !== undefined && item.badge > 0 && (
-                            <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-[9px] font-bold text-white">
-                              {item.badge > 9 ? '9+' : item.badge}
-                            </span>
-                          )}
-                        </span>
-                        {(!collapsed || mobileOpen) && (
-                          <span className="truncate flex-1">{item.label}</span>
-                        )}
-                        {(!collapsed || mobileOpen) && item.badge !== undefined && item.badge > 0 && (
-                          <span className="flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full bg-red-100 dark:bg-red-900 text-[10px] font-bold text-red-700 dark:text-red-200 shrink-0">
-                            {item.badge > 99 ? '99+' : item.badge}
-                          </span>
-                        )}
-                      </Button>
-                    </motion.div>
-                  </TooltipTrigger>
-                  {collapsed && !mobileOpen && (
-                    <TooltipContent side="right" className="font-medium">
-                      {item.label}
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-              ))}
-
-              {filteredAdminItems.length > 0 && (
-                <>
-                  <div className="mx-3 my-2 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-                  {!collapsed && (
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.2 }}
-                      className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2"
-                    >
-                      Administração
-                    </motion.p>
-                  )}
-                  {filteredAdminItems.map((item, index) => (
-                    <Tooltip key={item.view}>
-                      <TooltipTrigger asChild>
-                        <motion.div
-                          initial={{ opacity: 0, x: -8 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.15, delay: index * 0.02 }}
+                          onClick={() => handleNavClick(item.view)}
                         >
-                          <Button
-                            variant={isActive(item.view) ? 'secondary' : 'ghost'}
-                            className={cn(
-                              'w-full justify-start gap-3 h-10 sm:h-9 text-sm font-medium transition-all duration-200 rounded-lg',
-                              collapsed && !mobileOpen && 'lg:justify-center lg:px-0',
-                              isActive(item.view) 
-                                ? 'bg-primary/10 text-primary hover:bg-primary/15' 
-                                : 'hover:bg-muted/60'
+                          <span className="relative">
+                            {item.icon}
+                            {isActive(item.view) && (
+                              <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 rounded-full bg-primary" />
                             )}
-                            onClick={() => handleNavClick(item.view)}
-                          >
-                            <span className="relative">
-                              {item.icon}
-                              {isActive(item.view) && (
-                                <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 rounded-full bg-primary" />
-                              )}
+                            {item.badge !== undefined && item.badge > 0 && (
+                              <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-[9px] font-bold text-white">
+                                {item.badge > 9 ? '9+' : item.badge}
+                              </span>
+                            )}
+                          </span>
+                          {(!collapsed || mobileOpen) && (
+                            <span className="truncate flex-1">{item.label}</span>
+                          )}
+                          {(!collapsed || mobileOpen) && item.badge !== undefined && item.badge > 0 && (
+                            <span className="flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full bg-red-100 dark:bg-red-900 text-[10px] font-bold text-red-700 dark:text-red-200 shrink-0">
+                              {item.badge > 99 ? '99+' : item.badge}
                             </span>
-                            {(!collapsed || mobileOpen) && <span className="truncate">{item.label}</span>}
-                          </Button>
-                        </motion.div>
-                      </TooltipTrigger>
-                      {collapsed && !mobileOpen && (
-                        <TooltipContent side="right" className="font-medium">
-                          {item.label}
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                  ))}
-                </>
-              )}
-            </nav>
-          </TooltipProvider>
-        </ScrollArea>
+                          )}
+                        </Button>
+                      </motion.div>
+                    </TooltipTrigger>
+                    {collapsed && !mobileOpen && (
+                      <TooltipContent side="right" className="font-medium">
+                        {item.label}
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                ))}
 
-        {/* Quick Stats Section */}
-        {!collapsed && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="px-4 py-3 border-t space-y-2"
-          >
-            <div className="rounded-lg bg-gradient-to-br from-emerald-50 to-emerald-100/80 dark:from-emerald-950/50 dark:to-emerald-900/30 p-3 border border-emerald-200/50 dark:border-emerald-800/30">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Cobranças Pendentes</p>
-                {pendingCount !== null && prevPendingCount !== null && pendingCount !== prevPendingCount && (
-                  <span className={`text-[10px] font-semibold flex items-center gap-0.5 ${
-                    pendingCount < prevPendingCount ? 'text-emerald-600' : 'text-amber-600'
-                  }`}>
-                    {pendingCount < prevPendingCount ? '↓' : '↑'}
-                    {Math.abs(pendingCount - prevPendingCount)}
-                  </span>
+                {filteredAdminItems.length > 0 && (
+                  <>
+                    <div className="mx-3 my-2 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+                    {!collapsed && (
+                      <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.2 }}
+                        className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2"
+                      >
+                        Administração
+                      </motion.p>
+                    )}
+                    {filteredAdminItems.map((item, index) => (
+                      <Tooltip key={item.view}>
+                        <TooltipTrigger asChild>
+                          <motion.div
+                            initial={{ opacity: 0, x: -8 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.15, delay: index * 0.02 }}
+                          >
+                            <Button
+                              variant={isActive(item.view) ? 'secondary' : 'ghost'}
+                              className={cn(
+                                'w-full justify-start gap-3 h-10 sm:h-9 text-sm font-medium transition-all duration-200 rounded-lg',
+                                collapsed && !mobileOpen && 'lg:justify-center lg:px-0',
+                                isActive(item.view) 
+                                  ? 'bg-primary/10 text-primary hover:bg-primary/15' 
+                                  : 'hover:bg-muted/60'
+                              )}
+                              onClick={() => handleNavClick(item.view)}
+                            >
+                              <span className="relative">
+                                {item.icon}
+                                {isActive(item.view) && (
+                                  <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 rounded-full bg-primary" />
+                                )}
+                              </span>
+                              {(!collapsed || mobileOpen) && <span className="truncate">{item.label}</span>}
+                            </Button>
+                          </motion.div>
+                        </TooltipTrigger>
+                        {collapsed && !mobileOpen && (
+                          <TooltipContent side="right" className="font-medium">
+                            {item.label}
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    ))}
+                  </>
                 )}
-              </div>
-              <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                {pendingCount !== null ? pendingCount : '--'}
-              </p>
-            </div>
-            <div className="rounded-lg bg-gradient-to-br from-red-50 to-amber-50/80 dark:from-red-950/50 dark:to-amber-900/20 p-3 border border-red-200/50 dark:border-red-800/30">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium text-red-700 dark:text-red-400">Cobranças Atrasadas</p>
-                {overdueCount !== null && prevOverdueCount !== null && overdueCount !== prevOverdueCount && (
-                  <span className={`text-[10px] font-semibold flex items-center gap-0.5 ${
-                    overdueCount < prevOverdueCount ? 'text-emerald-600' : 'text-red-600'
-                  }`}>
-                    {overdueCount < prevOverdueCount ? '↓' : '↑'}
-                    {Math.abs(overdueCount - prevOverdueCount)}
-                  </span>
-                )}
-              </div>
-              <p className="text-lg font-bold text-red-600 dark:text-red-400">
-                {overdueCount !== null ? overdueCount : '--'}
-              </p>
-            </div>
-          </motion.div>
-        )}
-        {collapsed && (
-          <div className="px-2 py-3 border-t space-y-1.5">
-            <div className="rounded-md bg-gradient-to-br from-emerald-50 to-emerald-100/80 dark:from-emerald-950/50 dark:to-emerald-900/30 p-1.5 text-center border border-emerald-200/50 dark:border-emerald-800/30">
-              <p className="text-[9px] font-medium text-emerald-700 dark:text-emerald-400">Pend.</p>
-              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                {pendingCount !== null ? pendingCount : '--'}
-              </p>
-            </div>
-            <div className="rounded-md bg-gradient-to-br from-red-50 to-amber-50/80 dark:from-red-950/50 dark:to-amber-900/20 p-1.5 text-center border border-red-200/50 dark:border-red-800/30">
-              <p className="text-[9px] font-medium text-red-700 dark:text-red-400">Atras.</p>
-              <p className="text-xs font-bold text-red-600 dark:text-red-400">
-                {overdueCount !== null ? overdueCount : '--'}
-              </p>
-            </div>
+              </nav>
+            </TooltipProvider>
           </div>
-        )}
 
-        {/* Bottom section */}
-        <div className="border-t p-3 space-y-1 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <Button
-            variant="ghost"
-            className={cn('w-full justify-start gap-3 h-10 sm:h-9 text-sm transition-all duration-200', collapsed && !mobileOpen && 'lg:justify-center lg:px-0')}
-            onClick={() => navigate('perfil')}
-          >
-            <User className="h-4 w-4" />
-            {(!collapsed || mobileOpen) && <span className="truncate">Perfil</span>}
-          </Button>
-          <Button
-            variant="ghost"
-            className={cn('w-full justify-start gap-3 h-10 sm:h-9 text-sm text-destructive hover:text-destructive transition-all duration-200', collapsed && !mobileOpen && 'lg:justify-center lg:px-0')}
-            onClick={handleLogout}
-          >
-            <LogOut className="h-4 w-4" />
-            {(!collapsed || mobileOpen) && <span className="truncate">Sair</span>}
-          </Button>
+          {/* Quick Stats Section */}
+          {!collapsed && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="px-4 py-3 border-t space-y-2"
+            >
+              <div className="rounded-lg bg-gradient-to-br from-emerald-50 to-emerald-100/80 dark:from-emerald-950/50 dark:to-emerald-900/30 p-3 border border-emerald-200/50 dark:border-emerald-800/30">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Cobranças Pendentes</p>
+                  {pendingCount !== null && prevPendingCount !== null && pendingCount !== prevPendingCount && (
+                    <span className={`text-[10px] font-semibold flex items-center gap-0.5 ${
+                      pendingCount < prevPendingCount ? 'text-emerald-600' : 'text-amber-600'
+                    }`}>
+                      {pendingCount < prevPendingCount ? '↓' : '↑'}
+                      {Math.abs(pendingCount - prevPendingCount)}
+                    </span>
+                  )}
+                </div>
+                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                  {pendingCount !== null ? pendingCount : '--'}
+                </p>
+              </div>
+              <div className="rounded-lg bg-gradient-to-br from-red-50 to-amber-50/80 dark:from-red-950/50 dark:to-amber-900/20 p-3 border border-red-200/50 dark:border-red-800/30">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-red-700 dark:text-red-400">Cobranças Atrasadas</p>
+                  {overdueCount !== null && prevOverdueCount !== null && overdueCount !== prevOverdueCount && (
+                    <span className={`text-[10px] font-semibold flex items-center gap-0.5 ${
+                      overdueCount < prevOverdueCount ? 'text-emerald-600' : 'text-red-600'
+                    }`}>
+                      {overdueCount < prevOverdueCount ? '↓' : '↑'}
+                      {Math.abs(overdueCount - prevOverdueCount)}
+                    </span>
+                  )}
+                </div>
+                <p className="text-lg font-bold text-red-600 dark:text-red-400">
+                  {overdueCount !== null ? overdueCount : '--'}
+                </p>
+              </div>
+            </motion.div>
+          )}
+          {collapsed && (
+            <div className="px-2 py-3 border-t space-y-1.5">
+              <div className="rounded-md bg-gradient-to-br from-emerald-50 to-emerald-100/80 dark:from-emerald-950/50 dark:to-emerald-900/30 p-1.5 text-center border border-emerald-200/50 dark:border-emerald-800/30">
+                <p className="text-[9px] font-medium text-emerald-700 dark:text-emerald-400">Pend.</p>
+                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                  {pendingCount !== null ? pendingCount : '--'}
+                </p>
+              </div>
+              <div className="rounded-md bg-gradient-to-br from-red-50 to-amber-50/80 dark:from-red-950/50 dark:to-amber-900/20 p-1.5 text-center border border-red-200/50 dark:border-red-800/30">
+                <p className="text-[9px] font-medium text-red-700 dark:text-red-400">Atras.</p>
+                <p className="text-xs font-bold text-red-600 dark:text-red-400">
+                  {overdueCount !== null ? overdueCount : '--'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Bottom section */}
+          <div className="border-t p-3 space-y-1 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <Button
+              variant="ghost"
+              className={cn('w-full justify-start gap-3 h-10 sm:h-9 text-sm transition-all duration-200', collapsed && !mobileOpen && 'lg:justify-center lg:px-0')}
+              onClick={() => navigate('perfil')}
+            >
+              <User className="h-4 w-4" />
+              {(!collapsed || mobileOpen) && <span className="truncate">Perfil</span>}
+            </Button>
+            <Button
+              variant="ghost"
+              className={cn('w-full justify-start gap-3 h-10 sm:h-9 text-sm text-destructive hover:text-destructive transition-all duration-200', collapsed && !mobileOpen && 'lg:justify-center lg:px-0')}
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4" />
+              {(!collapsed || mobileOpen) && <span className="truncate">Sair</span>}
+            </Button>
+          </div>
         </div>
       </aside>
 

@@ -288,11 +288,11 @@ export function ClienteDetalheView() {
                   `Olá, ${cliente.nomeExibicao}! \n\nTemos cobranças pendentes em aberto no valor de R$ ${saldoDevedor}.\n\nPor favor, entre em contato para regularizar.\n\nApp Cobranças - Sistema de Gestão`
                 )
                 window.open(`https://web.whatsapp.com/send?phone=${phoneWithCountry}&text=${message}`, '_blank')
-                toast.success('Lembrete aberto no WhatsApp')
+                toast.success('Mensagem aberta no WhatsApp')
               }}
             >
               <MessageCircle className="h-4 w-4" />
-              Enviar Lembrete
+              Enviar Mensagem
             </Button>
           )}
           <Button

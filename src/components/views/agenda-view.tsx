@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigation } from '@/lib/store/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -46,14 +46,14 @@ export function AgendaView() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('calendar')
 
-  const monthStart = startOfMonth(currentDate)
-  const monthEnd = endOfMonth(currentDate)
+  // Memoize monthStart/monthEnd to prevent infinite re-renders from new Date objects every render
+  const monthStart = useMemo(() => startOfMonth(currentDate), [currentDate])
+  const monthEnd = useMemo(() => endOfMonth(currentDate), [currentDate])
 
   const fetchCobrancas = useCallback(async () => {
-    setLoading(true)
+    const dataInicio = format(monthStart, 'yyyy-MM-dd')
+    const dataFim = format(monthEnd, 'yyyy-MM-dd')
     try {
-      const dataInicio = format(monthStart, 'yyyy-MM-dd')
-      const dataFim = format(monthEnd, 'yyyy-MM-dd')
       const res = await fetch(`/api/agenda?dataInicio=${dataInicio}&dataFim=${dataFim}`)
       if (res.ok) {
         const data = await res.json()
@@ -66,7 +66,13 @@ export function AgendaView() {
     }
   }, [monthStart, monthEnd])
 
+  const hasFetched = useRef(false)
   useEffect(() => {
+    // Prevent duplicate fetches on strict mode / re-renders
+    if (!hasFetched.current) {
+      setLoading(true)
+      hasFetched.current = true
+    }
     fetchCobrancas()
   }, [fetchCobrancas])
 

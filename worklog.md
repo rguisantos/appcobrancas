@@ -617,3 +617,48 @@ The App Cobranças system is a comprehensive, production-ready billing managemen
 3. Add PWA support for mobile install
 4. Add PDF generation for cobrança receipts
 5. Performance optimization for large datasets
+
+---
+Task ID: user-fixes-2
+Agent: Main Agent
+Task: Fix open cobranças position, WhatsApp button text, agenda flickering, sidebar mobile scroll
+
+Work Log:
+1. Cobrança Form - Moved "Cobranças em Aberto" section UP (cobranca-form-view.tsx):
+   - Moved the open cobranças Card from after "Observação" to right after "Cálculo Automático"
+   - Now shows near the calculations section as requested
+   - Added "Total a receber" summary display when items are selected:
+     - Shows "Valor desta cobrança" (current cobrança's totalClientePaga)
+     - Shows "Total em aberto selecionado" (sum of selected open cobranças' saldoDevedor)
+     - Shows "Total a receber" (sum of both) in large green bold text
+   - Separator line between breakdown and total for visual clarity
+   - FIFO explanation text preserved
+
+2. WhatsApp Button Text Change (cliente-detalhe-view.tsx):
+   - Changed "Enviar Lembrete" to "Enviar Mensagem" in the client detail header
+   - Changed toast message from "Lembrete aberto no WhatsApp" to "Mensagem aberta no WhatsApp"
+   - Per-cobrança WhatsApp buttons in the table remain as icon-only (MessageCircle)
+
+3. Agenda Calendar Flickering Fix (agenda-view.tsx):
+   - Root cause: `monthStart` and `monthEnd` were computed directly every render (`startOfMonth(currentDate)`, `endOfMonth(currentDate)`)
+   - This created new Date objects each render, causing `fetchCobrancas` useCallback to see different dependencies
+   - Fixed by wrapping in `useMemo(() => startOfMonth(currentDate), [currentDate])` and same for monthEnd
+   - Added `useRef` for `hasFetched` to prevent duplicate fetches on strict mode / re-renders
+   - Moved `setLoading(true)` to only run on initial fetch, not on subsequent re-fetches
+   - Added `useRef` to imports
+
+4. Sidebar Mobile Scroll Fix (app-shell.tsx):
+   - Replaced `ScrollArea` component (from shadcn/radix) with native `overflow-y-auto overscroll-contain` div
+   - The ScrollArea component had issues with touch scrolling on mobile browsers
+   - Native scrolling works reliably on all mobile browsers and handles touch events properly
+   - All sidebar content (nav items, quick stats, bottom buttons) now scrolls together as one unit
+   - Removed `ScrollArea` import (no longer needed)
+   - `overscroll-contain` prevents scroll chaining to the main content
+
+Stage Summary:
+- 4 bug fixes/feature improvements implemented across 4 files
+- Cobrança form: open cobranças section moved up with total-to-receive display
+- Cliente detalhe: WhatsApp button now says "Enviar Mensagem"
+- Agenda: calendar flickering fixed by memoizing date calculations
+- Sidebar: mobile scrolling fixed by replacing ScrollArea with native scroll
+- Zero lint errors, server running normally

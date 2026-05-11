@@ -820,6 +820,73 @@ export function CobrancaFormView() {
             </Card>
           )}
 
+          {/* Cobranças em Aberto (FIFO) - MOVED UP near calculations */}
+          {openCobrancas.length > 0 && !isEditing && (
+            <Card className="shadow-sm border-amber-200 dark:border-amber-800">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  Cobranças em Aberto
+                </CardTitle>
+                <CardDescription>
+                  Selecione cobranças em aberto para incluir no pagamento. O pagamento segue a ordem das mais antigas primeiro (FIFO).
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {openCobrancas.map((c) => (
+                  <label key={c.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted/70">
+                    <Checkbox
+                      checked={selectedOpenIds.has(c.id)}
+                      onCheckedChange={(checked) => {
+                        setSelectedOpenIds(prev => {
+                          const next = new Set(prev)
+                          if (checked) next.add(c.id)
+                          else next.delete(c.id)
+                          return next
+                        })
+                      }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{c.produtoIdentificador}</span>
+                        <span className="text-xs text-muted-foreground">Venc: {c.dataVencimento ? format(parseISO(c.dataVencimento), 'dd/MM/yyyy') : '—'}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Saldo: <span className="font-medium text-amber-600">{formatarMoeda(c.saldoDevedor)}</span>
+                      </div>
+                    </div>
+                  </label>
+                ))}
+
+                {/* Total summary when items are selected */}
+                {selectedOpenIds.size > 0 && (() => {
+                  const selectedTotal = openCobrancas.filter(c => selectedOpenIds.has(c.id)).reduce((acc, c) => acc + c.saldoDevedor, 0)
+                  const totalAReceber = calcResult.totalClientePaga + selectedTotal
+                  return (
+                    <div className="p-3 bg-amber-50 dark:bg-amber-950 rounded-lg space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Valor desta cobrança:</span>
+                        <span className="font-medium">{formatarMoeda(calcResult.totalClientePaga)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Total em aberto selecionado:</span>
+                        <span className="font-medium text-amber-600">{formatarMoeda(selectedTotal)}</span>
+                      </div>
+                      <div className="h-px bg-amber-200 dark:bg-amber-700 my-1" />
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-semibold">Total a receber:</span>
+                        <span className="text-lg font-bold text-green-700 dark:text-green-300">{formatarMoeda(totalAReceber)}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Ao registrar o pagamento, as cobranças mais antigas serão pagas primeiro (FIFO).
+                      </p>
+                    </div>
+                  )
+                })()}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Pagamento */}
           <Card className="shadow-sm">
             <CardHeader>
@@ -879,57 +946,6 @@ export function CobrancaFormView() {
               />
             </CardContent>
           </Card>
-
-          {/* Cobranças em Aberto (FIFO) */}
-          {openCobrancas.length > 0 && !isEditing && (
-            <Card className="shadow-sm border-amber-200 dark:border-amber-800">
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  Cobranças em Aberto
-                </CardTitle>
-                <CardDescription>
-                  Selecione cobranças em aberto para incluir no pagamento. O pagamento segue a ordem das mais antigas primeiro (FIFO).
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {openCobrancas.map((c) => (
-                  <label key={c.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted/70">
-                    <Checkbox
-                      checked={selectedOpenIds.has(c.id)}
-                      onCheckedChange={(checked) => {
-                        setSelectedOpenIds(prev => {
-                          const next = new Set(prev)
-                          if (checked) next.add(c.id)
-                          else next.delete(c.id)
-                          return next
-                        })
-                      }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{c.produtoIdentificador}</span>
-                        <span className="text-xs text-muted-foreground">Venc: {c.dataVencimento ? format(parseISO(c.dataVencimento), 'dd/MM/yyyy') : '—'}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Saldo: <span className="font-medium text-amber-600">{formatarMoeda(c.saldoDevedor)}</span>
-                      </div>
-                    </div>
-                  </label>
-                ))}
-                {selectedOpenIds.size > 0 && (
-                  <div className="p-3 bg-amber-50 dark:bg-amber-950 rounded-lg text-sm">
-                    <p className="font-medium">Total em aberto selecionado: {formatarMoeda(
-                      openCobrancas.filter(c => selectedOpenIds.has(c.id)).reduce((acc, c) => acc + c.saldoDevedor, 0)
-                    )}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Ao registrar o pagamento, as cobranças mais antigas serão pagas primeiro (FIFO).
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
         </div>
 
         {/* Actions */}
