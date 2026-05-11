@@ -414,7 +414,7 @@ export function AdminUsuariosView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Usuários</h1>
+          <h1 className="text-lg sm:text-2xl font-bold">Usuários</h1>
           <p className="text-muted-foreground text-sm">
             {total} usuário{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}
           </p>

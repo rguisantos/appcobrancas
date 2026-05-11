@@ -299,7 +299,7 @@ export function ProdutosView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Produtos</h1>
+          <h1 className="text-lg sm:text-2xl font-bold">Produtos</h1>
           <p className="text-muted-foreground text-sm">
             {total} produto{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}
           </p>
@@ -339,16 +339,16 @@ export function ProdutosView() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {summaryCards.map((card) => (
           <Card key={card.title} className={`shadow-sm ${card.accent} bg-gradient-to-br ${card.gradient} ${card.cardClass}`}>
             <CardContent className="p-3 sm:p-5">
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground font-medium">{card.title}</p>
-                  <p className="text-xl sm:text-2xl font-bold">{card.value}</p>
+                  <p className="text-lg sm:text-2xl font-bold">{card.value}</p>
                 </div>
-                <div className={`rounded-xl p-2 sm:p-2.5 ${card.iconBg} shadow-sm`}>
+                <div className={`rounded-lg p-1.5 sm:p-2.5 ${card.iconBg} shadow-sm`}>
                   <span className={card.iconColor}>{card.icon}</span>
                 </div>
               </div>
@@ -360,18 +360,18 @@ export function ProdutosView() {
       {/* Filters */}
       <Card className="shadow-sm bg-muted/30">
         <CardContent className="p-3 sm:p-4">
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Buscar por identificador..."
-                className="pl-8 h-9 text-sm"
+                className="pl-8 h-8 sm:h-9 text-sm"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
               />
             </div>
             <Select value={tipoId} onValueChange={(v) => { setTipoId(v); setPage(1) }}>
-              <SelectTrigger className="w-full sm:w-[200px] h-9 text-sm">
+              <SelectTrigger className="w-full sm:w-[200px] h-8 sm:h-9 text-sm">
                 <SelectValue placeholder="Todos os tipos" />
               </SelectTrigger>
               <SelectContent>
@@ -384,7 +384,7 @@ export function ProdutosView() {
               </SelectContent>
             </Select>
             <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1) }}>
-              <SelectTrigger className="w-full sm:w-[160px] h-9 text-sm">
+              <SelectTrigger className="w-full sm:w-[160px] h-8 sm:h-9 text-sm">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -400,7 +400,7 @@ export function ProdutosView() {
                 checked={disponiveis}
                 onCheckedChange={(checked) => { setDisponiveis(checked === true); setPage(1) }}
               />
-              <Label htmlFor="disponiveis" className="text-sm cursor-pointer whitespace-nowrap">
+              <Label htmlFor="disponiveis" className="text-xs sm:text-sm cursor-pointer whitespace-nowrap">
                 Disponíveis
               </Label>
             </div>

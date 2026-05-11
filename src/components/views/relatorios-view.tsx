@@ -364,7 +364,7 @@ export function RelatoriosView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Relatórios</h1>
+          <h1 className="text-lg sm:text-2xl font-bold">Relatórios</h1>
           <p className="text-muted-foreground text-sm">
             Análises e relatórios do sistema de cobranças
           </p>
@@ -373,22 +373,24 @@ export function RelatoriosView() {
           <Button
             variant="outline"
             size="sm"
-            className="h-9 gap-1.5 text-xs"
+            className="h-8 sm:h-9 gap-1.5 text-xs"
             disabled={exporting}
             onClick={() => handleExport('xlsx')}
           >
             <FileSpreadsheet className="h-3.5 w-3.5" />
-            {exporting ? 'Exportando...' : 'Exportar Excel'}
+            <span className="hidden sm:inline">{exporting ? 'Exportando...' : 'Exportar Excel'}</span>
+            <span className="sm:hidden">Excel</span>
           </Button>
           <Button
             variant="outline"
             size="sm"
-            className="h-9 gap-1.5 text-xs"
+            className="h-8 sm:h-9 gap-1.5 text-xs"
             disabled={exporting}
             onClick={() => handleExport('csv')}
           >
             <Download className="h-3.5 w-3.5" />
-            Exportar CSV
+            <span className="hidden sm:inline">Exportar CSV</span>
+            <span className="sm:hidden">CSV</span>
           </Button>
         </div>
       </div>
@@ -396,23 +398,23 @@ export function RelatoriosView() {
       {/* Date Range Filter */}
       <Card className="shadow-sm">
         <CardContent className="p-3 sm:p-4">
-          <div className="flex flex-col sm:flex-row items-end gap-2 sm:gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2 sm:gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Data Início</Label>
+              <Label className="text-xs hidden sm:block">Data Início</Label>
               <Input
                 type="date"
                 value={dataInicio}
                 onChange={(e) => setDataInicio(e.target.value)}
-                className="w-full sm:w-auto h-9 text-sm"
+                className="w-full sm:w-auto h-8 sm:h-9 text-sm"
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Data Fim</Label>
+              <Label className="text-xs hidden sm:block">Data Fim</Label>
               <Input
                 type="date"
                 value={dataFim}
                 onChange={(e) => setDataFim(e.target.value)}
-                className="w-full sm:w-auto h-9 text-sm"
+                className="w-full sm:w-auto h-8 sm:h-9 text-sm"
               />
             </div>
             <div className="text-sm text-muted-foreground">
@@ -436,7 +438,7 @@ export function RelatoriosView() {
         {/* FINANCEIRO */}
         <TabsContent value="financeiro" className="space-y-6">
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="shadow-sm border-l-4 border-l-green-500 stat-card-blue shine-effect">
               <CardContent className="p-5">
                 <p className="text-sm text-muted-foreground">Total Geral</p>

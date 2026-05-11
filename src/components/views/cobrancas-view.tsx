@@ -541,7 +541,7 @@ export function CobrancasView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Cobranças</h1>
+          <h1 className="text-lg sm:text-2xl font-bold">Cobranças</h1>
           <p className="text-muted-foreground text-sm">
             {total} cobrança{total !== 1 ? 's' : ''} encontrada{total !== 1 ? 's' : ''}
           </p>
@@ -563,16 +563,16 @@ export function CobrancasView() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {summaryCards.map((card) => (
           <Card key={card.title} className={`shadow-sm hover:shadow-md transition-shadow shine-effect ${card.accent} bg-gradient-to-br ${card.gradient} ${card.cardClass}`}>
             <CardContent className="p-3 sm:p-5">
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground font-medium">{card.title}</p>
-                  <p className="text-xl sm:text-3xl font-extrabold tracking-tight">{card.value}</p>
+                  <p className="text-lg sm:text-3xl font-extrabold tracking-tight">{card.value}</p>
                 </div>
-                <div className={`rounded-full p-2 sm:p-2.5 shadow-md ${card.iconBg}`}>
+                <div className={`rounded-full p-1.5 sm:p-2.5 shadow-md ${card.iconBg}`}>
                   <span className={card.iconColor}>{card.icon}</span>
                 </div>
               </div>
@@ -583,20 +583,20 @@ export function CobrancasView() {
 
       {/* Total em cobranças summary */}
       <div className="flex items-center justify-between px-1">
-        <p className="text-sm text-muted-foreground">
-          Total em cobranças: <span className="font-bold text-foreground count-up">{formatarMoeda(summary.totalGeral)}</span>
+        <p className="text-xs sm:text-sm text-muted-foreground">
+          Total: <span className="font-bold text-foreground count-up">{formatarMoeda(summary.totalGeral)}</span>
         </p>
-        <p className="text-xs text-muted-foreground">
-          {total} cobrança{total !== 1 ? 's' : ''} nesta página
+        <p className="text-[10px] sm:text-xs text-muted-foreground">
+          {total} cobrança{total !== 1 ? 's' : ''}
         </p>
       </div>
 
       {/* Filters */}
       <Card className="shadow-sm bg-muted/30 border-dashed">
-        <CardContent className="p-3 sm:p-4">
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+        <CardContent className="p-2 sm:p-4">
+          <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-3">
             <Select value={status} onValueChange={handleStatusChange}>
-              <SelectTrigger className="w-full sm:w-[180px] rounded-lg h-9 text-sm">
+              <SelectTrigger className="w-full sm:w-[180px] rounded-lg h-8 sm:h-9 text-sm">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -613,7 +613,7 @@ export function CobrancasView() {
                 value={dataInicio}
                 onChange={(e) => setDataInicio(e.target.value)}
                 placeholder="Data início"
-                className="w-full sm:w-auto rounded-lg h-9 text-sm"
+                className="w-full sm:w-auto rounded-lg h-8 sm:h-9 text-sm"
               />
               <span className="text-muted-foreground text-xs">a</span>
               <Input
@@ -621,14 +621,14 @@ export function CobrancasView() {
                 value={dataFim}
                 onChange={(e) => setDataFim(e.target.value)}
                 placeholder="Data fim"
-                className="w-full sm:w-auto rounded-lg h-9 text-sm"
+                className="w-full sm:w-auto rounded-lg h-8 sm:h-9 text-sm"
               />
             </div>
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="ID do cliente..."
-                className="pl-8 rounded-lg h-9 text-sm"
+                className="pl-8 rounded-lg h-8 sm:h-9 text-sm"
                 value={clienteInput}
                 onChange={(e) => setClienteInput(e.target.value)}
               />
@@ -665,15 +665,15 @@ export function CobrancasView() {
           }}
           variant="outline"
         >
-          <ToggleGroupItem value="flat" className="gap-2 px-4 py-2">
-            <LayoutList className="h-4 w-4" />
-            <span className="text-sm font-medium">Lista</span>
-            <span className="inline-flex items-center justify-center rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">{total}</span>
+          <ToggleGroupItem value="flat" className="gap-1.5 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2">
+            <LayoutList className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="text-xs sm:text-sm font-medium">Lista</span>
+            <span className="inline-flex items-center justify-center rounded-full bg-muted px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-semibold text-muted-foreground">{total}</span>
           </ToggleGroupItem>
-          <ToggleGroupItem value="agrupado" className="gap-2 px-4 py-2">
-            <FolderTree className="h-4 w-4" />
-            <span className="text-sm font-medium">Agrupado</span>
-            <span className="inline-flex items-center justify-center rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">{groupedData.length} {groupedData.length === 1 ? 'rota' : 'rotas'}</span>
+          <ToggleGroupItem value="agrupado" className="gap-1.5 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2">
+            <FolderTree className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="text-xs sm:text-sm font-medium">Agrupado</span>
+            <span className="inline-flex items-center justify-center rounded-full bg-muted px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-semibold text-muted-foreground">{groupedData.length} {groupedData.length === 1 ? 'rota' : 'rotas'}</span>
           </ToggleGroupItem>
         </ToggleGroup>
         {viewMode === 'agrupado' && (
@@ -712,7 +712,7 @@ export function CobrancasView() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[40px]">
+                      <TableHead className="w-[40px] hidden sm:table-cell">
                         <Checkbox
                           checked={selectedIds.size === cobrancas.length && cobrancas.length > 0}
                           onCheckedChange={toggleSelectAll}
@@ -720,7 +720,7 @@ export function CobrancasView() {
                         />
                       </TableHead>
                       <TableHead>Cliente</TableHead>
-                      <TableHead>Produto</TableHead>
+                      <TableHead className="hidden sm:table-cell">Produto</TableHead>
                       <TableHead className="hidden md:table-cell">Período</TableHead>
                       <TableHead>Valor</TableHead>
                       <TableHead className="hidden md:table-cell">Recebido</TableHead>
@@ -740,7 +740,7 @@ export function CobrancasView() {
                         className={`stagger-row cursor-pointer hover:bg-muted/50 transition-colors ${statusBorder} ${isSelected ? 'bg-primary/5' : ''} ${idx % 2 === 1 ? 'bg-muted/10' : ''}`}
                         onClick={() => navigate('cobranca-detalhe', cobranca.id)}
                       >
-                        <TableCell onClick={(e) => e.stopPropagation()}>
+                        <TableCell onClick={(e) => e.stopPropagation()} className="hidden sm:table-cell">
                           <Checkbox
                             checked={isSelected}
                             onCheckedChange={() => toggleSelect(cobranca.id)}
@@ -750,7 +750,7 @@ export function CobrancasView() {
                         <TableCell className="font-medium">
                           {cobranca.clienteNome || cobranca.cliente?.nomeExibicao}
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
+                        <TableCell className="hidden sm:table-cell text-muted-foreground">
                           {cobranca.produtoIdentificador || cobranca.produto?.identificador}
                         </TableCell>
                         <TableCell className="hidden md:table-cell text-muted-foreground text-xs">

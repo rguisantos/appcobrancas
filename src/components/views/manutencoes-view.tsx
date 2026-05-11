@@ -384,7 +384,7 @@ export function ManutencoesView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Manutenções</h1>
+          <h1 className="text-lg sm:text-2xl font-bold">Manutenções</h1>
           <p className="text-muted-foreground text-sm">
             {total} manutenç{total !== 1 ? 'ões' : 'ão'} encontrada{total !== 1 ? 's' : ''}
           </p>
@@ -404,7 +404,7 @@ export function ManutencoesView() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground font-medium">{card.title}</p>
-                  <p className="text-xl sm:text-2xl font-bold">{card.value}</p>
+                  <p className="text-lg sm:text-2xl font-bold">{card.value}</p>
                 </div>
                 <div className={`rounded-lg p-2 sm:p-2.5 ${card.iconBg} ${card.pulse ? 'status-pulse' : ''}`}>
                   <span className={card.iconColor}>{card.icon}</span>
@@ -420,20 +420,21 @@ export function ManutencoesView() {
         <Button
           variant={viewMode === 'list' ? 'default' : 'outline'}
           size="sm"
-          className="gap-1.5"
+          className="gap-1 sm:gap-1.5 h-8 sm:h-9 text-xs sm:text-sm"
           onClick={() => setViewMode('list')}
         >
-          <List className="h-4 w-4" />
+          <List className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           Lista
         </Button>
         <Button
           variant={viewMode === 'calendar' ? 'default' : 'outline'}
           size="sm"
-          className="gap-1.5"
+          className="gap-1 sm:gap-1.5 h-8 sm:h-9 text-xs sm:text-sm"
           onClick={() => setViewMode('calendar')}
         >
-          <Calendar className="h-4 w-4" />
-          Calendário
+          <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          <span className="hidden sm:inline">Calendário</span>
+          <span className="sm:hidden">Cal</span>
         </Button>
       </div>
 
@@ -442,9 +443,9 @@ export function ManutencoesView() {
           {/* Filters */}
           <Card className="shadow-sm">
             <CardContent className="p-3 sm:p-4">
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-3">
                 <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1) }}>
-                  <SelectTrigger className="w-full sm:w-[180px] h-9 text-sm">
+                  <SelectTrigger className="w-full sm:w-[180px] h-8 sm:h-9 text-sm">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -455,7 +456,7 @@ export function ManutencoesView() {
                   </SelectContent>
                 </Select>
                 <Select value={tipoFilter} onValueChange={(v) => { setTipoFilter(v); setPage(1) }}>
-                  <SelectTrigger className="w-full sm:w-[180px] h-9 text-sm">
+                  <SelectTrigger className="w-full sm:w-[180px] h-8 sm:h-9 text-sm">
                     <SelectValue placeholder="Tipo" />
                   </SelectTrigger>
                   <SelectContent>
@@ -490,7 +491,7 @@ export function ManutencoesView() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Produto</TableHead>
-                      <TableHead>Tipo</TableHead>
+                      <TableHead className="hidden sm:table-cell">Tipo</TableHead>
                       <TableHead className="hidden md:table-cell">Descrição</TableHead>
                       <TableHead>Data Início</TableHead>
                       <TableHead className="hidden md:table-cell">Data Fim</TableHead>
@@ -505,7 +506,7 @@ export function ManutencoesView() {
                         <TableCell className="font-medium">
                           {m.produtoIdentificador || m.produto?.identificador || '—'}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden sm:table-cell">
                           <Badge
                             variant="outline"
                             className={`text-xs border-0 ${tipoColors[m.tipo] || 'bg-gray-100 text-gray-800'}`}

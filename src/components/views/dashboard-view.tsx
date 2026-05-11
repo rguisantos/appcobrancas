@@ -629,7 +629,7 @@ export function DashboardView() {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {kpiCards.map((kpi, index) => (
           <motion.div
             key={kpi.title}
@@ -2095,7 +2095,7 @@ function DashboardSkeleton() {
         <div />
         <Skeleton className="h-8 w-32" />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <Card key={i} className="shadow-sm">
             <CardContent className="p-5">

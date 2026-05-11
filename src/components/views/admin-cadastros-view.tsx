@@ -74,18 +74,20 @@ export function AdminCadastrosView() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold">Cadastros</h1>
-        <p className="text-muted-foreground text-sm">
-          Gerencie tipos, descrições, tamanhos e estabelecimentos
-        </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-lg sm:text-2xl font-bold">Cadastros</h1>
+          <p className="text-muted-foreground text-sm">
+            Gerencie tipos, descrições, tamanhos e estabelecimentos
+          </p>
+        </div>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
+        <TabsList className="w-full sm:w-auto">
           {tabs.map((tab) => (
-            <TabsTrigger key={tab.key} value={tab.key} className="gap-2">
+            <TabsTrigger key={tab.key} value={tab.key} className="gap-1 sm:gap-2 flex-1 sm:flex-none">
               {tab.icon}
               <span className="hidden sm:inline">{tab.label}</span>
             </TabsTrigger>

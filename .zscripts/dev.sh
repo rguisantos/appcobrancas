@@ -37,5 +37,5 @@ fi
 echo "[DEV] Starting production server on port 3000..."
 export PORT=3000
 export HOSTNAME=0.0.0.0
-export DATABASE_URL="file:/home/z/my-project/db/custom.db"
+export DATABASE_URL="postgresql://neondb_owner:npg_pi6qTMJUg5yk@ep-misty-dew-acdbyy9l-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require"
 exec node .next/standalone/server.js

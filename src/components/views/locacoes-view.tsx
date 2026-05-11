@@ -278,7 +278,7 @@ export function LocacoesView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Locações</h1>
+          <h1 className="text-lg sm:text-2xl font-bold">Locações</h1>
           <p className="text-muted-foreground text-sm">
             {total} locaç{total !== 1 ? 'ões' : 'ão'} encontrada{total !== 1 ? 's' : ''}
           </p>
@@ -300,16 +300,16 @@ export function LocacoesView() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {summaryCards.map((card) => (
           <Card key={card.title} className={`shadow-sm ${card.accent} bg-gradient-to-br ${card.gradient}`}>
             <CardContent className="p-3 sm:p-5">
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground font-medium">{card.title}</p>
-                  <p className="text-xl sm:text-2xl font-bold">{card.value}</p>
+                  <p className="text-lg sm:text-2xl font-bold">{card.value}</p>
                 </div>
-                <div className={`rounded-xl p-2 sm:p-2.5 ${card.iconBg} shadow-sm`}>
+                <div className={`rounded-lg p-1.5 sm:p-2.5 ${card.iconBg} shadow-sm`}>
                   <span className={card.iconColor}>{card.icon}</span>
                 </div>
               </div>
@@ -334,9 +334,9 @@ export function LocacoesView() {
       {/* Filters */}
       <Card className="shadow-sm bg-muted/30">
         <CardContent className="p-3 sm:p-4">
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-3">
             <Select value={status} onValueChange={handleStatusChange}>
-              <SelectTrigger className="w-full sm:w-[180px] h-9 text-sm">
+              <SelectTrigger className="w-full sm:w-[180px] h-8 sm:h-9 text-sm">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -350,7 +350,7 @@ export function LocacoesView() {
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nome do cliente..."
-                className="pl-8 h-9 text-sm"
+                className="pl-8 h-8 sm:h-9 text-sm"
                 value={clienteInput}
                 onChange={(e) => setClienteInput(e.target.value)}
               />
@@ -359,7 +359,7 @@ export function LocacoesView() {
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Buscar por produto..."
-                className="pl-8 h-9 text-sm"
+                className="pl-8 h-8 sm:h-9 text-sm"
                 value={produtoInput}
                 onChange={(e) => setProdutoInput(e.target.value)}
               />
@@ -378,15 +378,15 @@ export function LocacoesView() {
           }}
           variant="outline"
         >
-          <ToggleGroupItem value="flat" className="gap-2 px-4 py-2">
-            <LayoutList className="h-4 w-4" />
-            <span className="text-sm font-medium">Lista</span>
-            <span className="inline-flex items-center justify-center rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">{total}</span>
+          <ToggleGroupItem value="flat" className="gap-1.5 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2">
+            <LayoutList className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="text-xs sm:text-sm font-medium">Lista</span>
+            <span className="inline-flex items-center justify-center rounded-full bg-muted px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-semibold text-muted-foreground">{total}</span>
           </ToggleGroupItem>
-          <ToggleGroupItem value="agrupado" className="gap-2 px-4 py-2">
-            <FolderTree className="h-4 w-4" />
-            <span className="text-sm font-medium">Agrupado</span>
-            <span className="inline-flex items-center justify-center rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">{groupedData.length} {groupedData.length === 1 ? 'rota' : 'rotas'}</span>
+          <ToggleGroupItem value="agrupado" className="gap-1.5 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2">
+            <FolderTree className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="text-xs sm:text-sm font-medium">Agrupado</span>
+            <span className="inline-flex items-center justify-center rounded-full bg-muted px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-semibold text-muted-foreground">{groupedData.length} {groupedData.length === 1 ? 'rota' : 'rotas'}</span>
           </ToggleGroupItem>
         </ToggleGroup>
         {viewMode === 'agrupado' && (

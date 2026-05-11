@@ -241,8 +241,8 @@ export function ClientesView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Clientes</h1>
-          <div className="gradient-line mt-2 w-32" />
+          <h1 className="text-lg sm:text-2xl font-bold">Clientes</h1>
+          <div className="gradient-line mt-1.5 w-20 sm:w-32" />
           <p className="text-muted-foreground text-sm mt-1">
             {total} cliente{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}
           </p>
@@ -308,18 +308,18 @@ export function ClientesView() {
       {/* Filters */}
       <Card className="shadow-sm bg-muted/30">
         <CardContent className="p-3 sm:p-4">
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nome ou identificador..."
-                className="pl-8 h-9 text-sm"
+                className="pl-8 h-8 sm:h-9 text-sm"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
               />
             </div>
             <Select value={rotaId} onValueChange={(v) => { setRotaId(v); setPage(1) }}>
-              <SelectTrigger className="w-full sm:w-[200px] h-9 text-sm">
+              <SelectTrigger className="w-full sm:w-[200px] h-8 sm:h-9 text-sm">
                 <SelectValue placeholder="Todas as rotas" />
               </SelectTrigger>
               <SelectContent>
@@ -332,7 +332,7 @@ export function ClientesView() {
               </SelectContent>
             </Select>
             <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1) }}>
-              <SelectTrigger className="w-full sm:w-[160px] h-9 text-sm">
+              <SelectTrigger className="w-full sm:w-[160px] h-8 sm:h-9 text-sm">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -349,11 +349,11 @@ export function ClientesView() {
       {rotas.length > 0 && (
         <TooltipProvider>
           <Card className="shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-semibold">Clientes por Rota</span>
-                <span className="text-xs text-muted-foreground">({total} total)</span>
+            <CardContent className="p-2 sm:p-4">
+              <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
+                <span className="text-xs sm:text-sm font-semibold">Clientes por Rota</span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground">({total} total)</span>
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 {/* Sem rota */}

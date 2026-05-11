@@ -236,7 +236,7 @@ export function AdminAuditoriaView() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold">Auditoria</h1>
+        <h1 className="text-lg sm:text-2xl font-bold">Auditoria</h1>
         <p className="text-muted-foreground text-sm">
           {total} registro{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}
         </p>
@@ -247,7 +247,7 @@ export function AdminAuditoriaView() {
         <CardContent className="p-3 sm:p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
             <Select value={acaoFilter} onValueChange={handleFilterChange(setAcaoFilter)}>
-              <SelectTrigger className="h-9 text-sm">
+              <SelectTrigger className="h-8 sm:h-9 text-sm">
                 <SelectValue placeholder="Ação" />
               </SelectTrigger>
               <SelectContent>
@@ -259,7 +259,7 @@ export function AdminAuditoriaView() {
             </Select>
 
             <Select value={entidadeFilter} onValueChange={handleFilterChange(setEntidadeFilter)}>
-              <SelectTrigger className="h-9 text-sm">
+              <SelectTrigger className="h-8 sm:h-9 text-sm">
                 <SelectValue placeholder="Entidade" />
               </SelectTrigger>
               <SelectContent>
@@ -271,7 +271,7 @@ export function AdminAuditoriaView() {
             </Select>
 
             <Select value={severidadeFilter} onValueChange={handleFilterChange(setSeveridadeFilter)}>
-              <SelectTrigger className="h-9 text-sm">
+              <SelectTrigger className="h-8 sm:h-9 text-sm">
                 <SelectValue placeholder="Severidade" />
               </SelectTrigger>
               <SelectContent>
@@ -284,7 +284,7 @@ export function AdminAuditoriaView() {
             </Select>
 
             <Select value={origemFilter} onValueChange={handleFilterChange(setOrigemFilter)}>
-              <SelectTrigger className="h-9 text-sm">
+              <SelectTrigger className="h-8 sm:h-9 text-sm">
                 <SelectValue placeholder="Origem" />
               </SelectTrigger>
               <SelectContent>
@@ -302,7 +302,7 @@ export function AdminAuditoriaView() {
                 value={dataInicio}
                 onChange={(e) => { setDataInicio(e.target.value); setPage(1) }}
                 placeholder="Data início"
-                className="h-9 text-sm"
+                className="h-8 sm:h-9 text-sm"
               />
             </div>
 
@@ -312,7 +312,7 @@ export function AdminAuditoriaView() {
                 value={dataFim}
                 onChange={(e) => { setDataFim(e.target.value); setPage(1) }}
                 placeholder="Data fim"
-                className="h-9 text-sm"
+                className="h-8 sm:h-9 text-sm"
               />
             </div>
           </div>

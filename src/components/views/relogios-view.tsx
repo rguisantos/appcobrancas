@@ -242,7 +242,7 @@ export function RelogiosView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Histórico de Relógio</h1>
+          <h1 className="text-lg sm:text-2xl font-bold">Histórico de Relógio</h1>
           <p className="text-muted-foreground text-sm">
             {historicos.length} registro{historicos.length !== 1 ? 's' : ''} encontrado{historicos.length !== 1 ? 's' : ''}
           </p>
@@ -257,11 +257,11 @@ export function RelogiosView() {
       {/* Filter */}
       <Card className="shadow-sm">
         <CardContent className="p-3 sm:p-4">
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-3">
             <div className="relative flex-1" ref={filterDropdownRef}>
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
-                className="pl-8 h-9 text-sm"
+                className="pl-8 h-8 sm:h-9 text-sm"
                 placeholder="Filtrar por produto..."
                 value={produtoIdFilter ? `✓ ${produtoInputFilter}` : produtoInputFilter}
                 onChange={(e) => {

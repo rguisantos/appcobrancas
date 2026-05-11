@@ -173,7 +173,7 @@ export function AgendaView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Agenda</h1>
+          <h1 className="text-lg sm:text-2xl font-bold">Agenda</h1>
           <p className="text-muted-foreground text-sm">
             Acompanhe cobranças por data de vencimento e pagamento
           </p>
@@ -224,18 +224,19 @@ export function AgendaView() {
 
       {/* Navigation */}
       <Card className="shadow-sm">
-        <CardContent className="p-4">
+        <CardContent className="p-3 sm:p-4">
           <div className="flex items-center justify-between">
             <Button
               variant="ghost"
               size="icon"
+              className="h-8 w-8 sm:h-10 sm:w-10"
               onClick={() => setCurrentDate(viewMode === 'week' ? subWeeks(currentDate, 1) : subMonths(currentDate, 1))}
             >
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
             <div className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5 text-muted-foreground" />
-              <h2 className="text-lg font-semibold capitalize">
+              <CalendarIcon className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+              <h2 className="text-sm sm:text-lg font-semibold capitalize">
                 {viewMode === 'week'
                   ? (() => {
                       const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 })
@@ -251,16 +252,17 @@ export function AgendaView() {
                 variant="outline"
                 size="sm"
                 onClick={() => setCurrentDate(new Date())}
-                className="text-xs"
+                className="text-xs h-7 sm:h-8"
               >
                 Hoje
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
+                className="h-8 w-8 sm:h-10 sm:w-10"
                 onClick={() => setCurrentDate(viewMode === 'week' ? addWeeks(currentDate, 1) : addMonths(currentDate, 1))}
               >
-                <ChevronRight className="h-5 w-5" />
+                <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
             </div>
           </div>

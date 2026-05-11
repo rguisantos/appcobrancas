@@ -177,8 +177,8 @@ export function NotificacoesView() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Bell className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">Notificações</h1>
+          <Bell className="h-5 w-5 sm:h-6 sm:w-6" />
+          <h1 className="text-lg sm:text-2xl font-bold">Notificações</h1>
           {unreadCount > 0 && (
             <Badge className="bg-red-500 text-white hover:bg-red-600">
               {unreadCount}
@@ -240,7 +240,7 @@ export function NotificacoesView() {
           </TabsList>
         </Tabs>
         <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as TypeFilter)}>
-          <SelectTrigger className="w-full sm:w-[200px]">
+          <SelectTrigger className="w-full sm:w-[200px] h-8 sm:h-9 text-sm">
             <SelectValue placeholder="Filtrar por tipo" />
           </SelectTrigger>
           <SelectContent>

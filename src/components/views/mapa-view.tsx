@@ -236,7 +236,7 @@ export function MapaView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Mapa de Rotas</h1>
+          <h1 className="text-lg sm:text-2xl font-bold">Mapa de Rotas</h1>
           <p className="text-muted-foreground text-sm">
             Visualize clientes e rotas no mapa
           </p>
@@ -265,7 +265,7 @@ export function MapaView() {
       {!loading && (
         <Card className="shadow-sm">
           <CardContent className="p-3 sm:p-4">
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-3">
               {/* Search input */}
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -273,7 +273,7 @@ export function MapaView() {
                   placeholder="Buscar cliente pelo nome ou ID..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-4 h-9 text-sm"
+                  className="pl-8 pr-4 h-8 sm:h-9 text-sm"
                 />
               </div>
               {/* Localizar button */}
@@ -321,7 +321,7 @@ export function MapaView() {
                   <span className="text-xs sm:text-sm font-semibold text-muted-foreground">Filtrar Rota:</span>
                 </div>
                 <Select value={selectedRotaId} onValueChange={setSelectedRotaId}>
-                  <SelectTrigger className="w-full sm:w-[200px] h-9 text-sm">
+                  <SelectTrigger className="w-full sm:w-[200px] h-8 sm:h-9 text-sm">
                     <SelectValue placeholder="Todas as Rotas" />
                   </SelectTrigger>
                   <SelectContent>
@@ -373,7 +373,7 @@ export function MapaView() {
 
       {/* Stats Cards */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i} className="shadow-sm">
               <CardContent className="p-5">
@@ -389,14 +389,14 @@ export function MapaView() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {statsCards.map((card) => (
             <Card key={card.title} className={`shadow-sm ${card.accent} ${card.gradient}`}>
               <CardContent className="p-3 sm:p-5">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground font-medium">{card.title}</p>
-                    <p className="text-xl sm:text-2xl font-bold">{card.value}</p>
+                    <p className="text-lg sm:text-2xl font-bold">{card.value}</p>
                   </div>
                   <div className={`rounded-lg p-2 sm:p-2.5 ${card.iconBg}`}>
                     <span className={card.iconColor}>{card.icon}</span>

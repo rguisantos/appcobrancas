@@ -201,16 +201,17 @@ export function AdminDispositivosView() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Dispositivos</h1>
+          <h1 className="text-lg sm:text-2xl font-bold">Dispositivos</h1>
           <p className="text-muted-foreground text-sm">
             {dispositivos.length} dispositivo{dispositivos.length !== 1 ? 's' : ''} cadastrado{dispositivos.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <Button onClick={openNewDialog} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Dispositivo
+        <Button onClick={openNewDialog} size="sm" className="gap-1.5 h-8 sm:h-auto text-xs sm:text-sm sm:gap-2">
+          <Plus className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Novo Dispositivo</span>
+          <span className="sm:hidden">Novo</span>
         </Button>
       </div>
 
