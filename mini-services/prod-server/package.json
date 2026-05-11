@@ -1,0 +1,7 @@
+{
+  "name": "prod-server",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "node /home/z/my-project/.next/standalone/server.js"
+  }
+}

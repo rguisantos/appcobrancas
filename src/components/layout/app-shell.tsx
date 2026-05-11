@@ -33,35 +33,45 @@ import {
   User,
   Bell,
 } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import { TopBar } from '@/components/layout/top-bar'
 import { PageTransition } from '@/components/layout/page-transition'
-import { DashboardView } from '@/components/views/dashboard-view'
-import { ClientesView } from '@/components/views/clientes-view'
-import { ClienteFormView } from '@/components/views/cliente-form-view'
-import { ClienteDetalheView } from '@/components/views/cliente-detalhe-view'
-import { ProdutosView } from '@/components/views/produtos-view'
-import { ProdutoFormView } from '@/components/views/produto-form-view'
-import { ProdutoDetalheView } from '@/components/views/produto-detalhe-view'
-import { LocacoesView } from '@/components/views/locacoes-view'
-import { LocacaoFormView } from '@/components/views/locacao-form-view'
-import { LocacaoDetalheView } from '@/components/views/locacao-detalhe-view'
-import { CobrancasView } from '@/components/views/cobrancas-view'
-import { CobrancaFormView } from '@/components/views/cobranca-form-view'
-import { CobrancaDetalheView } from '@/components/views/cobranca-detalhe-view'
-import { RelatoriosView } from '@/components/views/relatorios-view'
-import { MapaView } from '@/components/views/mapa-view'
-import { AgendaView } from '@/components/views/agenda-view'
-import { ManutencoesView } from '@/components/views/manutencoes-view'
-import { RelogiosView } from '@/components/views/relogios-view'
-import { AdminUsuariosView } from '@/components/views/admin-usuarios-view'
-import { AdminRotasView } from '@/components/views/admin-rotas-view'
-import { AdminCadastrosView } from '@/components/views/admin-cadastros-view'
-import { AdminDispositivosView } from '@/components/views/admin-dispositivos-view'
-import { AdminAuditoriaView } from '@/components/views/admin-auditoria-view'
-import { AdminMetasView } from '@/components/views/admin-metas-view'
-import { PerfilView } from '@/components/views/perfil-view'
-import { NotificacoesView } from '@/components/views/notificacoes-view'
 import { KeyboardShortcuts } from '@/components/shared/keyboard-shortcuts'
+
+// Loading fallback spinner for dynamically loaded views
+const ViewLoading = () => (
+  <div className="flex items-center justify-center h-full min-h-[400px]">
+    <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+  </div>
+)
+
+// Dynamic imports with ssr: false to prevent OOM from loading all 27+ views during SSR
+const DashboardView = dynamic(() => import('@/components/views/dashboard-view').then(m => ({ default: m.DashboardView })), { ssr: false, loading: ViewLoading })
+const ClientesView = dynamic(() => import('@/components/views/clientes-view').then(m => ({ default: m.ClientesView })), { ssr: false, loading: ViewLoading })
+const ClienteFormView = dynamic(() => import('@/components/views/cliente-form-view').then(m => ({ default: m.ClienteFormView })), { ssr: false, loading: ViewLoading })
+const ClienteDetalheView = dynamic(() => import('@/components/views/cliente-detalhe-view').then(m => ({ default: m.ClienteDetalheView })), { ssr: false, loading: ViewLoading })
+const ProdutosView = dynamic(() => import('@/components/views/produtos-view').then(m => ({ default: m.ProdutosView })), { ssr: false, loading: ViewLoading })
+const ProdutoFormView = dynamic(() => import('@/components/views/produto-form-view').then(m => ({ default: m.ProdutoFormView })), { ssr: false, loading: ViewLoading })
+const ProdutoDetalheView = dynamic(() => import('@/components/views/produto-detalhe-view').then(m => ({ default: m.ProdutoDetalheView })), { ssr: false, loading: ViewLoading })
+const LocacoesView = dynamic(() => import('@/components/views/locacoes-view').then(m => ({ default: m.LocacoesView })), { ssr: false, loading: ViewLoading })
+const LocacaoFormView = dynamic(() => import('@/components/views/locacao-form-view').then(m => ({ default: m.LocacaoFormView })), { ssr: false, loading: ViewLoading })
+const LocacaoDetalheView = dynamic(() => import('@/components/views/locacao-detalhe-view').then(m => ({ default: m.LocacaoDetalheView })), { ssr: false, loading: ViewLoading })
+const CobrancasView = dynamic(() => import('@/components/views/cobrancas-view').then(m => ({ default: m.CobrancasView })), { ssr: false, loading: ViewLoading })
+const CobrancaFormView = dynamic(() => import('@/components/views/cobranca-form-view').then(m => ({ default: m.CobrancaFormView })), { ssr: false, loading: ViewLoading })
+const CobrancaDetalheView = dynamic(() => import('@/components/views/cobranca-detalhe-view').then(m => ({ default: m.CobrancaDetalheView })), { ssr: false, loading: ViewLoading })
+const RelatoriosView = dynamic(() => import('@/components/views/relatorios-view').then(m => ({ default: m.RelatoriosView })), { ssr: false, loading: ViewLoading })
+const MapaView = dynamic(() => import('@/components/views/mapa-view').then(m => ({ default: m.MapaView })), { ssr: false, loading: ViewLoading })
+const AgendaView = dynamic(() => import('@/components/views/agenda-view').then(m => ({ default: m.AgendaView })), { ssr: false, loading: ViewLoading })
+const ManutencoesView = dynamic(() => import('@/components/views/manutencoes-view').then(m => ({ default: m.ManutencoesView })), { ssr: false, loading: ViewLoading })
+const RelogiosView = dynamic(() => import('@/components/views/relogios-view').then(m => ({ default: m.RelogiosView })), { ssr: false, loading: ViewLoading })
+const AdminUsuariosView = dynamic(() => import('@/components/views/admin-usuarios-view').then(m => ({ default: m.AdminUsuariosView })), { ssr: false, loading: ViewLoading })
+const AdminRotasView = dynamic(() => import('@/components/views/admin-rotas-view').then(m => ({ default: m.AdminRotasView })), { ssr: false, loading: ViewLoading })
+const AdminCadastrosView = dynamic(() => import('@/components/views/admin-cadastros-view').then(m => ({ default: m.AdminCadastrosView })), { ssr: false, loading: ViewLoading })
+const AdminDispositivosView = dynamic(() => import('@/components/views/admin-dispositivos-view').then(m => ({ default: m.AdminDispositivosView })), { ssr: false, loading: ViewLoading })
+const AdminAuditoriaView = dynamic(() => import('@/components/views/admin-auditoria-view').then(m => ({ default: m.AdminAuditoriaView })), { ssr: false, loading: ViewLoading })
+const AdminMetasView = dynamic(() => import('@/components/views/admin-metas-view').then(m => ({ default: m.AdminMetasView })), { ssr: false, loading: ViewLoading })
+const PerfilView = dynamic(() => import('@/components/views/perfil-view').then(m => ({ default: m.PerfilView })), { ssr: false, loading: ViewLoading })
+const NotificacoesView = dynamic(() => import('@/components/views/notificacoes-view').then(m => ({ default: m.NotificacoesView })), { ssr: false, loading: ViewLoading })
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 
