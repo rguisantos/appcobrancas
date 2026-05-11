@@ -57,3 +57,5 @@ server.log
 *.db-journal
 skills/
 .seed-done
+db/*.db
+agent-ctx/

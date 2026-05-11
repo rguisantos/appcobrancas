@@ -15,10 +15,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ArrowLeft, Loader2, Save, Search, Calculator, Info, Lightbulb } from 'lucide-react'
+import { ArrowLeft, Loader2, Save, Search, Calculator, Info, Lightbulb, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatarMoeda, calcularCobranca, determinarStatusPagamento, type CobrancaCalcResult } from '@/lib/cobranca-calculos'
 import { Breadcrumb } from '@/components/layout/breadcrumb'
+import { Checkbox } from '@/components/ui/checkbox'
+import { format, parseISO } from 'date-fns'
 
 interface Locacao {
   id: string
@@ -34,6 +36,8 @@ interface Locacao {
   percentualCliente: number
   valorFixo: number | null
   periodicidade: string | null
+  dataLocacao: string
+  dataPrimeiraCobranca?: string
   ultimaLeituraRelogio: number | null
   status: string
   cliente: {
@@ -97,6 +101,10 @@ export function CobrancaFormView() {
   const [formData, setFormData] = useState<CobrancaFormData>(initialFormData)
   const [loading, setLoading] = useState(isEditing)
   const [submitting, setSubmitting] = useState(false)
+
+  // Open cobranças for FIFO payment
+  const [openCobrancas, setOpenCobrancas] = useState<Array<{id: string; dataVencimento: string; totalClientePaga: number; valorRecebido: number; saldoDevedor: number; produtoIdentificador: string}>>([])
+  const [selectedOpenIds, setSelectedOpenIds] = useState<Set<string>>(new Set())
 
   // Locação search
   const [locacaoSearch, setLocacaoSearch] = useState('')
@@ -237,6 +245,7 @@ export function CobrancaFormView() {
 
   // Select locação
   const handleSelectLocacao = (locacao: Locacao) => {
+    const today = new Date().toISOString().split('T')[0]
     setFormData((prev) => ({
       ...prev,
       locacaoId: locacao.id,
@@ -250,11 +259,54 @@ export function CobrancaFormView() {
       valorFixo: locacao.valorFixo || null,
       relogioAnterior: locacao.ultimaLeituraRelogio || parseFloat(locacao.numeroRelogio) || 0,
       relogioAtual: 0,
+      dataFim: today,
+      dataInicio: '',
     }))
     setLocacaoSearch(
       `${locacao.clienteNome || locacao.cliente?.nomeExibicao || ''} — ${locacao.produtoIdentificador || locacao.produto?.identificador || ''}`
     )
     setShowLocacaoDropdown(false)
+
+    // Fetch last cobrança for this locação to get dataInicio
+    fetch(`/api/cobrancas?locacaoId=${locacao.id}&limit=1&status=Pago,Pendente,Parcial`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        const cobrancas = data?.data || []
+        if (cobrancas.length > 0) {
+          const lastDataFim = cobrancas[0].dataFim
+          if (lastDataFim) {
+            handleChange('dataInicio', lastDataFim)
+          }
+        } else {
+          // No previous cobrança, use locação's dataLocacao or dataPrimeiraCobranca
+          const dataInicio = locacao.dataLocacao || locacao.dataPrimeiraCobranca || today
+          handleChange('dataInicio', dataInicio.split ? dataInicio.split('T')[0] : dataInicio)
+        }
+      })
+      .catch(() => {
+        // Fallback: use locação date
+        const dataInicio = locacao.dataLocacao || today
+        handleChange('dataInicio', dataInicio.split ? dataInicio.split('T')[0] : dataInicio)
+      })
+
+    // Fetch open cobranças for this client
+    fetch(`/api/cobrancas?clienteId=${locacao.clienteId}&status=Pendente,Atrasado,Parcial&limit=50`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        const items = (data?.data || [])
+          .filter((c: {id: string}) => c.id !== selectedId) // Exclude current cobrança if editing
+          .map((c: {id: string; dataVencimento?: string; totalClientePaga?: number; valorRecebido?: number; produtoIdentificador?: string}) => ({
+            id: c.id,
+            dataVencimento: c.dataVencimento || '',
+            totalClientePaga: c.totalClientePaga || 0,
+            valorRecebido: c.valorRecebido || 0,
+            saldoDevedor: (c.totalClientePaga || 0) - (c.valorRecebido || 0),
+            produtoIdentificador: c.produtoIdentificador || '',
+          }))
+          .sort((a: {dataVencimento: string}, b: {dataVencimento: string}) => a.dataVencimento.localeCompare(b.dataVencimento)) // FIFO: oldest first
+        setOpenCobrancas(items)
+      })
+      .catch(() => setOpenCobrancas([]))
   }
 
   // Live calculation preview
@@ -302,6 +354,13 @@ export function CobrancaFormView() {
     const isVencido = dataVencimento ? new Date(dataVencimento) < new Date() : false
     return determinarStatusPagamento(calcResult.totalClientePaga, formData.valorRecebido, isVencido)
   }, [calcResult.totalClientePaga, formData.valorRecebido, formData.dataFim])
+
+  // Auto-sync status with autoStatus for new cobranças
+  useEffect(() => {
+    if (!isEditing && formData.locacaoId) {
+      setFormData(prev => ({ ...prev, status: autoStatus }))
+    }
+  }, [autoStatus, isEditing, formData.locacaoId])
 
   // Submit form
   const handleSubmit = async (e: React.FormEvent) => {
@@ -352,6 +411,30 @@ export function CobrancaFormView() {
       }
 
       if (res.ok) {
+        // FIFO payment for selected open cobranças
+        if (selectedOpenIds.size > 0 && formData.valorRecebido > calcResult.totalClientePaga) {
+          let remaining = formData.valorRecebido - calcResult.totalClientePaga
+          // Sort by dataVencimento ascending (FIFO)
+          const sortedOpen = openCobrancas
+            .filter(c => selectedOpenIds.has(c.id))
+            .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento))
+
+          for (const cobranca of sortedOpen) {
+            if (remaining <= 0) break
+            const payAmount = Math.min(cobranca.saldoDevedor, remaining)
+            const newValorRecebido = cobranca.valorRecebido + payAmount
+            const newStatus = newValorRecebido >= cobranca.totalClientePaga ? 'Pago' : 'Parcial'
+
+            await fetch(`/api/cobrancas/${cobranca.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ _partial: true, valorRecebido: newValorRecebido, status: newStatus }),
+            })
+            remaining -= payAmount
+          }
+          toast.success(`${selectedOpenIds.size} cobrança(s) em aberto também foram atualizadas`)
+        }
+
         toast.success(isEditing ? 'Cobrança atualizada com sucesso' : 'Cobrança criada com sucesso')
         navigate('cobrancas')
       } else {
@@ -796,6 +879,57 @@ export function CobrancaFormView() {
               />
             </CardContent>
           </Card>
+
+          {/* Cobranças em Aberto (FIFO) */}
+          {openCobrancas.length > 0 && !isEditing && (
+            <Card className="shadow-sm border-amber-200 dark:border-amber-800">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  Cobranças em Aberto
+                </CardTitle>
+                <CardDescription>
+                  Selecione cobranças em aberto para incluir no pagamento. O pagamento segue a ordem das mais antigas primeiro (FIFO).
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {openCobrancas.map((c) => (
+                  <label key={c.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted/70">
+                    <Checkbox
+                      checked={selectedOpenIds.has(c.id)}
+                      onCheckedChange={(checked) => {
+                        setSelectedOpenIds(prev => {
+                          const next = new Set(prev)
+                          if (checked) next.add(c.id)
+                          else next.delete(c.id)
+                          return next
+                        })
+                      }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{c.produtoIdentificador}</span>
+                        <span className="text-xs text-muted-foreground">Venc: {c.dataVencimento ? format(parseISO(c.dataVencimento), 'dd/MM/yyyy') : '—'}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Saldo: <span className="font-medium text-amber-600">{formatarMoeda(c.saldoDevedor)}</span>
+                      </div>
+                    </div>
+                  </label>
+                ))}
+                {selectedOpenIds.size > 0 && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950 rounded-lg text-sm">
+                    <p className="font-medium">Total em aberto selecionado: {formatarMoeda(
+                      openCobrancas.filter(c => selectedOpenIds.has(c.id)).reduce((acc, c) => acc + c.saldoDevedor, 0)
+                    )}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Ao registrar o pagamento, as cobranças mais antigas serão pagas primeiro (FIFO).
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Actions */}

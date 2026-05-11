@@ -76,21 +76,24 @@ export function ProdutoFormView() {
   const [tipos, setTipos] = useState<TipoProduto[]>([])
   const [descricoes, setDescricoes] = useState<DescricaoProduto[]>([])
   const [tamanhos, setTamanhos] = useState<TamanhoProduto[]>([])
+  const [estabelecimentos, setEstabelecimentos] = useState<{id: string; nome: string}[]>([])
   const [loading, setLoading] = useState(isEditing)
   const [submitting, setSubmitting] = useState(false)
 
-  // Fetch tipos, descricoes, tamanhos
+  // Fetch tipos, descricoes, tamanhos, estabelecimentos
   useEffect(() => {
     async function fetchOptions() {
       try {
-        const [tiposRes, descricoesRes, tamanhosRes] = await Promise.all([
+        const [tiposRes, descricoesRes, tamanhosRes, estabRes] = await Promise.all([
           fetch('/api/tipos-produto'),
           fetch('/api/descricoes-produto'),
           fetch('/api/tamanhos-produto'),
+          fetch('/api/estabelecimentos'),
         ])
         if (tiposRes.ok) setTipos(await tiposRes.json())
         if (descricoesRes.ok) setDescricoes(await descricoesRes.json())
         if (tamanhosRes.ok) setTamanhos(await tamanhosRes.json())
+        if (estabRes.ok) setEstabelecimentos(await estabRes.json())
       } catch (error) {
         console.error('Erro ao buscar opções:', error)
       }
@@ -415,12 +418,19 @@ export function ProdutoFormView() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="estabelecimento">Estabelecimento</Label>
-                <Input
-                  id="estabelecimento"
-                  value={formData.estabelecimento}
-                  onChange={(e) => handleChange('estabelecimento', e.target.value)}
-                  placeholder="Nome do estabelecimento (opcional)"
-                />
+                <Select value={formData.estabelecimento || 'none'} onValueChange={(v) => handleChange('estabelecimento', v === 'none' ? '' : v)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione o estabelecimento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {estabelecimentos.map((e) => (
+                      <SelectItem key={e.id} value={e.nome}>
+                        {e.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="observacao">Observação</Label>

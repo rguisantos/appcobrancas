@@ -355,6 +355,38 @@ export function ClienteDetalheView() {
           <CardContent className="space-y-1.5">
             <InfoRow label="Telefone" value={cliente.telefonePrincipal} />
             <InfoRow label="Email" value={cliente.email} />
+            {cliente.contatos && (() => {
+              try {
+                const contatos = JSON.parse(cliente.contatos)
+                if (!Array.isArray(contatos) || contatos.length === 0) return null
+                return (
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium mb-2">Contatos Adicionais</h4>
+                    <div className="space-y-2">
+                      {contatos.map((c: {nome?: string; telefone?: string; funcao?: string}, i: number) => (
+                        <div key={i} className="flex items-center gap-2 text-sm">
+                          <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span>{c.nome || 'Contato'}</span>
+                          {c.funcao && <span className="text-muted-foreground">({c.funcao})</span>}
+                          <span className="text-muted-foreground">{c.telefone}</span>
+                          {c.telefone && (
+                            <a
+                              href={`https://wa.me/55${c.telefone.replace(/\D/g, '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-green-600 hover:text-green-700 text-xs ml-auto"
+                            >
+                              <MessageCircle className="h-3.5 w-3.5" />
+                              WhatsApp
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              } catch { return null }
+            })()}
           </CardContent>
         </Card>
 

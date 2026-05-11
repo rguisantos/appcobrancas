@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, Loader2, Save, Search } from 'lucide-react'
+import { ArrowLeft, Loader2, Save, Search, Navigation, X, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Breadcrumb } from '@/components/layout/breadcrumb'
 
@@ -85,6 +85,11 @@ export function ClienteFormView() {
   const [submitting, setSubmitting] = useState(false)
   const [cepLoading, setCepLoading] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [gpsLoading, setGpsLoading] = useState(false)
+  const [estados, setEstados] = useState<{id: number; sigla: string; nome: string}[]>([])
+  const [cidades, setCidades] = useState<{id: number; nome: string}[]>([])
+  const [cidadesLoading, setCidadesLoading] = useState(false)
+  const [contatosList, setContatosList] = useState<Array<{nome: string; telefone: string; funcao?: string}>>([])
 
   // Fetch rotas
   useEffect(() => {
@@ -100,6 +105,54 @@ export function ClienteFormView() {
       }
     }
     fetchRotas()
+  }, [])
+
+  // Fetch Brazilian states from IBGE API
+  useEffect(() => {
+    async function fetchEstados() {
+      try {
+        const res = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados')
+        if (res.ok) {
+          const data = await res.json()
+          setEstados(data.sort((a: {sigla: string}, b: {sigla: string}) => a.sigla.localeCompare(b.sigla)))
+        }
+      } catch { /* ignore */ }
+    }
+    fetchEstados()
+  }, [])
+
+  // Fetch cities when estado changes
+  useEffect(() => {
+    if (!formData.estado) {
+      setCidades([])
+      return
+    }
+    async function fetchCidades() {
+      setCidadesLoading(true)
+      try {
+        const estadoObj = estados.find(e => e.sigla === formData.estado)
+        if (!estadoObj) return
+        const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${estadoObj.id}/municipios`)
+        if (res.ok) {
+          const data = await res.json()
+          setCidades(data.sort((a: {nome: string}, b: {nome: string}) => a.nome.localeCompare(b.nome)))
+        }
+      } catch { /* ignore */ }
+      finally { setCidadesLoading(false) }
+    }
+    fetchCidades()
+  }, [formData.estado, estados])
+
+  // Parse existing contatos JSON on load
+  useEffect(() => {
+    if (formData.contatos) {
+      try {
+        const parsed = JSON.parse(formData.contatos)
+        if (Array.isArray(parsed)) {
+          setContatosList(parsed)
+        }
+      } catch { /* not valid JSON, ignore */ }
+    }
   }, [])
 
   // Load cliente data if editing
@@ -158,6 +211,83 @@ export function ClienteFormView() {
     if (validationErrors[field]) {
       setValidationErrors((prev) => { const next = {...prev}; delete next[field]; return next })
     }
+  }
+
+  // Helper function to convert Brazilian state names to UF
+  function getUfFromState(stateName: string): string {
+    const map: Record<string, string> = {
+      'Acre': 'AC', 'Alagoas': 'AL', 'Amapá': 'AP', 'Amazonas': 'AM', 'Bahia': 'BA',
+      'Ceará': 'CE', 'Distrito Federal': 'DF', 'Espírito Santo': 'ES', 'Goiás': 'GO',
+      'Maranhão': 'MA', 'Mato Grosso': 'MT', 'Mato Grosso do Sul': 'MS', 'Minas Gerais': 'MG',
+      'Pará': 'PA', 'Paraíba': 'PB', 'Paraná': 'PR', 'Pernambuco': 'PE', 'Piauí': 'PI',
+      'Rio de Janeiro': 'RJ', 'Rio Grande do Norte': 'RN', 'Rio Grande do Sul': 'RS',
+      'Rondônia': 'RO', 'Roraima': 'RR', 'Santa Catarina': 'SC', 'São Paulo': 'SP',
+      'Sergipe': 'SE', 'Tocantins': 'TO',
+    }
+    return map[stateName] || stateName
+  }
+
+  // GPS Geolocation lookup
+  const handleGpsLookup = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocalização não disponível neste navegador')
+      return
+    }
+    setGpsLoading(true)
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`)
+          if (res.ok) {
+            const data = await res.json()
+            const addr = data.address || {}
+            setFormData((prev) => ({
+              ...prev,
+              logradouro: (!prev.logradouro.trim() && (addr.road || '')) ? addr.road : prev.logradouro,
+              bairro: (!prev.bairro.trim() && (addr.suburb || addr.neighbourhood || '')) ? (addr.suburb || addr.neighbourhood) : prev.bairro,
+              cidade: (!prev.cidade.trim() && (addr.city || addr.town || '')) ? (addr.city || addr.town) : prev.cidade,
+              estado: (!prev.estado.trim() && (addr.state ? getUfFromState(addr.state) : '')) ? getUfFromState(addr.state) : prev.estado,
+              cep: (!prev.cep.trim() && (addr.postcode || '')) ? addr.postcode.replace(/\D/g, '') : prev.cep,
+              numero: (!prev.numero.trim() && (addr.house_number || '')) ? addr.house_number : prev.numero,
+              complemento: (!prev.complemento.trim() && (addr.complement || '')) ? addr.complement : prev.complemento,
+            }))
+            toast.success('Localização preenchida automaticamente')
+          } else {
+            toast.error('Erro ao buscar endereço pela localização')
+          }
+        } catch {
+          toast.error('Erro ao buscar endereço pela localização')
+        } finally {
+          setGpsLoading(false)
+        }
+      },
+      (error) => {
+        setGpsLoading(false)
+        if (error.code === error.PERMISSION_DENIED) {
+          toast.error('Permissão de localização negada')
+        } else {
+          toast.error('Erro ao obter localização')
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    )
+  }
+
+  // Contatos helpers
+  const addContato = () => {
+    setContatosList(prev => [...prev, { nome: '', telefone: '', funcao: '' }])
+  }
+
+  const removeContato = (index: number) => {
+    setContatosList(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const updateContato = (index: number, field: string, value: string) => {
+    setContatosList(prev => prev.map((c, i) => i === index ? { ...c, [field]: value } : c))
+    // Also update formData.contatos to keep in sync
+    const updated = contatosList.map((c, i) => i === index ? { ...c, [field]: value } : c)
+    setFormData(prev => ({ ...prev, contatos: JSON.stringify(updated.filter(c => c.nome || c.telefone)) }))
   }
 
   // ViaCEP lookup - only fills empty fields
@@ -441,18 +571,48 @@ export function ClienteFormView() {
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="contatos">Contatos Adicionais (JSON)</Label>
-                  <Textarea
-                    id="contatos"
-                    value={formData.contatos}
-                    onChange={(e) => handleChange('contatos', e.target.value)}
-                    placeholder='[{"nome": "Contato", "telefone": "(00) 00000-0000"}]'
-                    rows={4}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Formato JSON para contatos adicionais do cliente
-                  </p>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Contatos Adicionais</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addContato} className="gap-1">
+                      <Plus className="h-3.5 w-3.5" /> Adicionar
+                    </Button>
+                  </div>
+                  {contatosList.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4 text-center">
+                      Nenhum contato adicional. Clique em "Adicionar" para incluir.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {contatosList.map((contato, index) => (
+                        <div key={index} className="flex gap-2 items-start p-3 bg-muted/50 rounded-lg">
+                          <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <Input
+                              placeholder="Nome"
+                              value={contato.nome}
+                              onChange={(e) => updateContato(index, 'nome', e.target.value)}
+                              className="h-9"
+                            />
+                            <Input
+                              placeholder="Telefone"
+                              value={contato.telefone}
+                              onChange={(e) => updateContato(index, 'telefone', e.target.value)}
+                              className="h-9"
+                            />
+                            <Input
+                              placeholder="Função"
+                              value={contato.funcao || ''}
+                              onChange={(e) => updateContato(index, 'funcao', e.target.value)}
+                              className="h-9"
+                            />
+                          </div>
+                          <Button type="button" variant="ghost" size="icon" className="shrink-0 h-9 w-9" onClick={() => removeContato(index)}>
+                            <X className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -466,6 +626,21 @@ export function ClienteFormView() {
                 <CardDescription>Endereço do cliente com busca automática por CEP</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* GPS Button */}
+                <div className="flex gap-2 mb-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGpsLookup}
+                    disabled={gpsLoading}
+                    className="gap-1.5"
+                  >
+                    {gpsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Navigation className="h-3.5 w-3.5" />}
+                    Usar Localização GPS
+                  </Button>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="cep">CEP</Label>
@@ -551,23 +726,44 @@ export function ClienteFormView() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="cidade">Cidade</Label>
-                    <Input
-                      id="cidade"
-                      value={formData.cidade}
-                      onChange={(e) => handleChange('cidade', e.target.value)}
-                      placeholder="Cidade"
-                    />
+                    <Label htmlFor="estado">Estado</Label>
+                    <Select
+                      value={formData.estado}
+                      onValueChange={(v) => {
+                        handleChange('estado', v)
+                        handleChange('cidade', '') // Reset city when state changes
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione o estado" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {estados.map((e) => (
+                          <SelectItem key={e.id} value={e.sigla}>
+                            {e.sigla} - {e.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="estado">Estado</Label>
-                    <Input
-                      id="estado"
-                      value={formData.estado}
-                      onChange={(e) => handleChange('estado', e.target.value)}
-                      placeholder="UF"
-                      maxLength={2}
-                    />
+                    <Label htmlFor="cidade">Cidade</Label>
+                    <Select
+                      value={formData.cidade}
+                      onValueChange={(v) => handleChange('cidade', v)}
+                      disabled={!formData.estado || cidadesLoading}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={cidadesLoading ? 'Carregando...' : !formData.estado ? 'Selecione o estado primeiro' : 'Selecione a cidade'} />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {cidades.map((c) => (
+                          <SelectItem key={c.id} value={c.nome}>
+                            {c.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </CardContent>

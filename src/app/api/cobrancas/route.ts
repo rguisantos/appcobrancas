@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
   const skip = (page - 1) * limit
   const status = searchParams.get('status') || ''
   const clienteId = searchParams.get('clienteId') || ''
+  const locacaoId = searchParams.get('locacaoId') || ''
   const periodoInicio = searchParams.get('periodoInicio') || ''
   const periodoFim = searchParams.get('periodoFim') || ''
 
@@ -22,8 +23,16 @@ export async function GET(request: NextRequest) {
     deletedAt: null,
   }
 
-  if (status) where.status = status
+  if (status) {
+    const statuses = status.split(',')
+    if (statuses.length === 1) {
+      where.status = statuses[0]
+    } else {
+      where.status = { in: statuses }
+    }
+  }
   if (clienteId) where.clienteId = clienteId
+  if (locacaoId) where.locacaoId = locacaoId
 
   if (periodoInicio && periodoFim) {
     where.AND = [

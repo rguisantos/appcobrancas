@@ -38,6 +38,32 @@ export async function PUT(
 
   try {
     const body = await request.json()
+
+    // Support partial updates (e.g., for FIFO payment)
+    if (body._partial && (body.valorRecebido !== undefined || body.status !== undefined)) {
+      const updateData: Record<string, unknown> = {}
+      if (body.valorRecebido !== undefined) updateData.valorRecebido = body.valorRecebido
+      if (body.status !== undefined) updateData.status = body.status
+
+      // Recalculate saldo devedor if valorRecebido changed
+      if (body.valorRecebido !== undefined) {
+        const { saldoDevedorGerado } = calcularSaldoDevedor(existing.totalClientePaga, body.valorRecebido)
+        updateData.saldoDevedorGerado = saldoDevedorGerado
+      }
+
+      // Set payment date if status changed to Pago/Parcial
+      if ((body.status === 'Pago' || body.status === 'Parcial') && !existing.dataPagamento) {
+        updateData.dataPagamento = new Date().toISOString().split('T')[0]
+      }
+
+      const cobranca = await db.cobranca.update({
+        where: { id },
+        data: { ...updateData, version: { increment: 1 } },
+      })
+
+      return NextResponse.json(cobranca)
+    }
+
     const data = cobrancaSchema.parse(body)
     const antes = existing as Record<string, unknown>
 
