@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
-import { MapPin, Users, TrendingUp, AlertTriangle, Layers, Navigation } from 'lucide-react'
+import { MapPin, Users, TrendingUp, AlertTriangle, Layers, Navigation, MapPinned, Route, ChevronDown, ChevronUp } from 'lucide-react'
 
 const MapInner = dynamic(() => import('./map-inner'), {
   ssr: false,
@@ -19,6 +19,13 @@ const MapInner = dynamic(() => import('./map-inner'), {
   ),
 })
 
+interface CobrancasResumo {
+  pendente: number
+  atrasado: number
+  pago: number
+  parcial: number
+}
+
 interface ClienteMapa {
   id: string
   identificador: string
@@ -28,9 +35,23 @@ interface ClienteMapa {
   longitude: number | null
   rotaId: string | null
   rota: { id: string; descricao: string; cor: string } | null
-  locacoesAtivas: number
+  locacoesAtivas: string[]
+  cobrancasResumo: CobrancasResumo
   totalRecebido: number
   totalPendente: number
+  temAtrasado: boolean
+}
+
+interface ClienteSemCoordenada {
+  id: string
+  identificador: string
+  nomeExibicao: string
+  telefonePrincipal: string
+  rotaId: string | null
+  rota: { id: string; descricao: string; cor: string } | null
+  cobrancasResumo: CobrancasResumo
+  totalPendente: number
+  temAtrasado: boolean
 }
 
 interface RotaMapa {
@@ -49,6 +70,7 @@ interface StatsMapa {
 
 export function MapaView() {
   const [clientes, setClientes] = useState<ClienteMapa[]>([])
+  const [clientesSemCoordenadas, setClientesSemCoordenadas] = useState<ClienteSemCoordenada[]>([])
   const [rotas, setRotas] = useState<RotaMapa[]>([])
   const [stats, setStats] = useState<StatsMapa>({
     totalClientes: 0,
@@ -58,6 +80,8 @@ export function MapaView() {
   })
   const [loading, setLoading] = useState(true)
   const [hiddenRotas, setHiddenRotas] = useState<Set<string>>(new Set())
+  const [showRouteLines, setShowRouteLines] = useState(false)
+  const [showSemCoordenadas, setShowSemCoordenadas] = useState(false)
 
   useEffect(() => {
     async function fetchData() {
@@ -66,6 +90,7 @@ export function MapaView() {
         if (res.ok) {
           const data = await res.json()
           setClientes(data.clientes || [])
+          setClientesSemCoordenadas(data.clientesSemCoordenadas || [])
           setRotas(data.rotas || [])
           setStats(data.stats || { totalClientes: 0, clientesComCoordenadas: 0, totalRecebido: 0, totalPendente: 0 })
         }
@@ -93,6 +118,9 @@ export function MapaView() {
   const filteredClientes = clientes.filter(
     (c) => c.latitude != null && c.longitude != null && !hiddenRotas.has(c.rotaId || '')
   )
+
+  // All active clients for route stats (includes those without coordinates)
+  const allClientesForStats = [...clientes, ...clientesSemCoordenadas]
 
   const statsCards = [
     {
@@ -139,9 +167,23 @@ export function MapaView() {
             Visualize clientes e rotas no mapa
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Layers className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">{rotas.length} rota{rotas.length !== 1 ? 's' : ''}</span>
+        <div className="flex items-center gap-3">
+          {/* Route lines toggle */}
+          <button
+            onClick={() => setShowRouteLines(!showRouteLines)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
+              showRouteLines
+                ? 'bg-primary/10 text-primary border-primary/30'
+                : 'bg-muted text-muted-foreground border-muted-foreground/20'
+            }`}
+          >
+            <Route className="h-3.5 w-3.5" />
+            Rotas
+          </button>
+          <div className="flex items-center gap-2">
+            <Layers className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">{rotas.length} rota{rotas.length !== 1 ? 's' : ''}</span>
+          </div>
         </div>
       </div>
 
@@ -180,6 +222,73 @@ export function MapaView() {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Clients without coordinates warning */}
+      {!loading && clientesSemCoordenadas.length > 0 && (
+        <Card className="shadow-sm border-amber-200 dark:border-amber-800">
+          <CardContent className="p-4">
+            <button
+              onClick={() => setShowSemCoordenadas(!showSemCoordenadas)}
+              className="w-full flex items-center justify-between"
+            >
+              <div className="flex items-center gap-2">
+                <div className="rounded-lg p-2 bg-amber-100 dark:bg-amber-900">
+                  <MapPinned className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                    {clientesSemCoordenadas.length} cliente{clientesSemCoordenadas.length !== 1 ? 's' : ''} sem coordenadas
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Adicione localização para visualizá-los no mapa
+                  </p>
+                </div>
+              </div>
+              {showSemCoordenadas ? (
+                <ChevronUp className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              )}
+            </button>
+
+            {showSemCoordenadas && (
+              <div className="mt-3 max-h-64 overflow-y-auto custom-scrollbar">
+                <div className="space-y-1.5">
+                  {clientesSemCoordenadas.map((cliente) => (
+                    <div
+                      key={cliente.id}
+                      className="flex items-center justify-between py-2 px-3 rounded-lg bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: cliente.rota?.cor || '#6b7280' }}
+                        />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{cliente.nomeExibicao}</p>
+                          <p className="text-[10px] text-muted-foreground">ID: {cliente.identificador}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {cliente.temAtrasado && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">
+                            {cliente.cobrancasResumo.atrasado} atrasado
+                          </span>
+                        )}
+                        {cliente.totalPendente > 0 && (
+                          <span className="text-xs font-semibold text-red-600 dark:text-red-400">
+                            {formatarMoeda(cliente.totalPendente)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Legend */}
@@ -224,9 +333,10 @@ export function MapaView() {
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {rotas.map((rota) => {
-                const rotaClientes = clientes.filter(c => c.rotaId === rota.id)
+                const rotaClientes = allClientesForStats.filter(c => c.rotaId === rota.id)
                 const rotaPendente = rotaClientes.reduce((acc, c) => acc + c.totalPendente, 0)
                 const rotaRecebido = rotaClientes.reduce((acc, c) => acc + c.totalRecebido, 0)
+                const rotaAtrasados = rotaClientes.filter(c => c.temAtrasado).length
                 return (
                   <div
                     key={rota.id}
@@ -257,6 +367,12 @@ export function MapaView() {
                         <p className="text-[10px] text-muted-foreground">Pendente</p>
                       </div>
                     </div>
+                    {rotaAtrasados > 0 && (
+                      <div className="mt-2 flex items-center gap-1 text-[10px] text-red-600 dark:text-red-400">
+                        <AlertTriangle className="h-3 w-3" />
+                        {rotaAtrasados} com cobranças atrasadas
+                      </div>
+                    )}
                   </div>
                 )
               })}
@@ -266,7 +382,7 @@ export function MapaView() {
               const rotasComPendente = rotas
                 .map(r => ({
                   ...r,
-                  pendente: clientes.filter(c => c.rotaId === r.id).reduce((acc, c) => acc + c.totalPendente, 0)
+                  pendente: allClientesForStats.filter(c => c.rotaId === r.id).reduce((acc, c) => acc + c.totalPendente, 0)
                 }))
                 .filter(r => r.pendente > 0)
                 .sort((a, b) => b.pendente - a.pendente)
@@ -296,7 +412,7 @@ export function MapaView() {
 
       {/* Map */}
       {!loading && (
-        <MapInner clientes={filteredClientes} rotas={rotas} stats={stats} />
+        <MapInner clientes={filteredClientes} rotas={rotas} stats={stats} showRouteLines={showRouteLines} />
       )}
     </div>
   )

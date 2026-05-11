@@ -29,7 +29,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Repeat, Warehouse, ChevronLeft, ChevronRight, Download, DollarSign, CheckCircle, XCircle, PauseCircle, Table2, Music, Gamepad2, Wind, CircleDot } from 'lucide-react'
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from '@/components/ui/collapsible'
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from '@/components/ui/toggle-group'
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Repeat, Warehouse, ChevronLeft, ChevronRight, Download, DollarSign, CheckCircle, XCircle, PauseCircle, Table2, Music, Gamepad2, Wind, CircleDot, ChevronDown, ChevronRight as ChevronRightIcon, LayoutList, FolderTree, MapPin, User, Package } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
 import { format } from 'date-fns'
@@ -60,6 +69,33 @@ interface Locacao {
   }
 }
 
+interface GroupedLocacao extends Locacao {
+  cliente: {
+    id: string
+    nomeExibicao: string
+    rota: {
+      id: string
+      descricao: string
+      cor: string
+    } | null
+  }
+}
+
+interface GroupedData {
+  rota: {
+    id: string
+    descricao: string
+    cor: string
+  }
+  clientes: {
+    cliente: {
+      id: string
+      nomeExibicao: string
+    }
+    locacoes: GroupedLocacao[]
+  }[]
+}
+
 export function LocacoesView() {
   const { navigate } = useNavigation()
 
@@ -68,6 +104,11 @@ export function LocacoesView() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
 
+  // View mode
+  const [viewMode, setViewMode] = useState<'flat' | 'agrupado'>('flat')
+  const [groupedData, setGroupedData] = useState<GroupedData[]>([])
+  const [groupedLoading, setGroupedLoading] = useState(false)
+
   // Filter state
   const [page, setPage] = useState(1)
   const [status, setStatus] = useState<string>('all')
@@ -75,7 +116,7 @@ export function LocacoesView() {
   const [produtoSearch, setProdutoSearch] = useState('')
   const limit = 20
 
-  // Fetch locacoes
+  // Fetch locacoes (flat)
   const fetchLocacoes = useCallback(async () => {
     setLoading(true)
     try {
@@ -100,9 +141,35 @@ export function LocacoesView() {
     }
   }, [page, status, clienteSearch, produtoSearch])
 
+  // Fetch locacoes (grouped)
+  const fetchGrouped = useCallback(async () => {
+    setGroupedLoading(true)
+    try {
+      const params = new URLSearchParams({ groupBy: 'route' })
+      if (status && status !== 'all') params.set('status', status)
+      if (clienteSearch) params.set('clienteId', clienteSearch)
+      if (produtoSearch) params.set('produtoId', produtoSearch)
+
+      const res = await fetch(`/api/locacoes?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setGroupedData(data.data || [])
+        setTotal(data.total || 0)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar locações agrupadas:', error)
+    } finally {
+      setGroupedLoading(false)
+    }
+  }, [status, clienteSearch, produtoSearch])
+
   useEffect(() => {
-    fetchLocacoes()
-  }, [fetchLocacoes])
+    if (viewMode === 'flat') {
+      fetchLocacoes()
+    } else {
+      fetchGrouped()
+    }
+  }, [viewMode, fetchLocacoes, fetchGrouped])
 
   // Debounced search for cliente
   const [clienteInput, setClienteInput] = useState('')
@@ -299,163 +366,396 @@ export function LocacoesView() {
         </CardContent>
       </Card>
 
-      {/* Data Table */}
-      <Card className="shadow-sm">
-        <CardContent className="p-0">
-          {loading ? (
-            <TableSkeleton />
-          ) : locacoes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center mb-6 shadow-sm">
-                <DollarSign className="h-10 w-10 text-muted-foreground/50" />
-              </div>
-              <p className="text-lg font-semibold">Nenhuma locação encontrada</p>
-              <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-                Tente ajustar os filtros ou crie uma nova locação para começar
-              </p>
-              <Button
-                className="mt-4 gap-2"
-                onClick={() => navigate('locacao-nova')}
-              >
-                <Plus className="h-4 w-4" />
-                Criar Primeira Locação
-              </Button>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Produto</TableHead>
-                  <TableHead className="hidden md:table-cell">Tipo</TableHead>
-                  <TableHead>Data Locação</TableHead>
-                  <TableHead className="hidden md:table-cell">Pagamento</TableHead>
-                  <TableHead className="hidden lg:table-cell">Relógio</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[50px]">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {locacoes.map((locacao, idx) => (
-                  <TableRow
-                    key={locacao.id}
-                    className={`stagger-row cursor-pointer hover:bg-muted/50 transition-colors ${statusBorderColor(locacao.status)} ${idx % 2 === 1 ? 'bg-muted/10' : ''}`}
-                    onClick={() => navigate('locacao-detalhe', locacao.id)}
+      {/* View mode toggle */}
+      <div className="flex items-center gap-3">
+        <ToggleGroup
+          type="single"
+          value={viewMode}
+          onValueChange={(value) => {
+            if (value) setViewMode(value as 'flat' | 'agrupado')
+          }}
+          variant="outline"
+          size="sm"
+        >
+          <ToggleGroupItem value="flat" className="gap-1.5 px-3">
+            <LayoutList className="h-3.5 w-3.5" />
+            <span className="text-xs">Lista</span>
+          </ToggleGroupItem>
+          <ToggleGroupItem value="agrupado" className="gap-1.5 px-3">
+            <FolderTree className="h-3.5 w-3.5" />
+            <span className="text-xs">Agrupado</span>
+          </ToggleGroupItem>
+        </ToggleGroup>
+        {viewMode === 'agrupado' && (
+          <span className="text-xs text-muted-foreground">
+            Agrupado por Rota {'>'} Cliente
+          </span>
+        )}
+      </div>
+
+      {/* Conditional view rendering */}
+      {viewMode === 'flat' ? (
+        /* ============ FLAT TABLE VIEW ============ */
+        <>
+          <Card className="shadow-sm">
+            <CardContent className="p-0">
+              {loading ? (
+                <TableSkeleton />
+              ) : locacoes.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center mb-6 shadow-sm">
+                    <DollarSign className="h-10 w-10 text-muted-foreground/50" />
+                  </div>
+                  <p className="text-lg font-semibold">Nenhuma locação encontrada</p>
+                  <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+                    Tente ajustar os filtros ou crie uma nova locação para começar
+                  </p>
+                  <Button
+                    className="mt-4 gap-2"
+                    onClick={() => navigate('locacao-nova')}
                   >
-                    <TableCell className="font-medium">{locacao.clienteNome || locacao.cliente?.nomeExibicao}</TableCell>
-                    <TableCell>{locacao.produtoIdentificador || locacao.produto?.identificador}</TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground">
-                      <div className="flex items-center gap-1.5">
-                        {getProductTypeIcon(locacao.produtoTipo || locacao.produto?.tipoNome)}
-                        <span>{locacao.produtoTipo || locacao.produto?.tipoNome}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {locacao.dataLocacao}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <span className="text-xs">{formatFormaPagamento(locacao.formaPagamento)}</span>
-                      {locacao.formaPagamento === 'Periodo' && locacao.valorFixo ? (
-                        <span className="block text-xs text-muted-foreground">
-                          {formatarMoeda(locacao.valorFixo)}
-                        </span>
-                      ) : null}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell text-muted-foreground">
-                      {locacao.numeroRelogio}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={locacao.status} />
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              navigate('locacao-detalhe', locacao.id)
-                            }}
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            Visualizar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              navigate('locacao-editar', locacao.id)
-                            }}
-                          >
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              navigate('locacao-editar', locacao.id, { relocar: 'true' })
-                            }}
-                          >
-                            <Repeat className="mr-2 h-4 w-4" />
-                            Relocar
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              toast.info('Funcionalidade de enviar para estoque será implementada')
-                            }}
-                          >
-                            <Warehouse className="mr-2 h-4 w-4" />
-                            Enviar Estoque
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    <Plus className="h-4 w-4" />
+                    Criar Primeira Locação
+                  </Button>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Produto</TableHead>
+                      <TableHead className="hidden md:table-cell">Tipo</TableHead>
+                      <TableHead>Data Locação</TableHead>
+                      <TableHead className="hidden md:table-cell">Pagamento</TableHead>
+                      <TableHead className="hidden lg:table-cell">Relógio</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-[50px]">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {locacoes.map((locacao, idx) => (
+                      <TableRow
+                        key={locacao.id}
+                        className={`stagger-row cursor-pointer hover:bg-muted/50 transition-colors ${statusBorderColor(locacao.status)} ${idx % 2 === 1 ? 'bg-muted/10' : ''}`}
+                        onClick={() => navigate('locacao-detalhe', locacao.id)}
+                      >
+                        <TableCell className="font-medium">{locacao.clienteNome || locacao.cliente?.nomeExibicao}</TableCell>
+                        <TableCell>{locacao.produtoIdentificador || locacao.produto?.identificador}</TableCell>
+                        <TableCell className="hidden md:table-cell text-muted-foreground">
+                          <div className="flex items-center gap-1.5">
+                            {getProductTypeIcon(locacao.produtoTipo || locacao.produto?.tipoNome)}
+                            <span>{locacao.produtoTipo || locacao.produto?.tipoNome}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {locacao.dataLocacao}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <span className="text-xs">{formatFormaPagamento(locacao.formaPagamento)}</span>
+                          {locacao.formaPagamento === 'Periodo' && locacao.valorFixo ? (
+                            <span className="block text-xs text-muted-foreground">
+                              {formatarMoeda(locacao.valorFixo)}
+                            </span>
+                          ) : null}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell text-muted-foreground">
+                          {locacao.numeroRelogio}
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge status={locacao.status} />
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  navigate('locacao-detalhe', locacao.id)
+                                }}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                Visualizar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  navigate('locacao-editar', locacao.id)
+                                }}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  navigate('locacao-editar', locacao.id, { relocar: 'true' })
+                                }}
+                              >
+                                <Repeat className="mr-2 h-4 w-4" />
+                                Relocar
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  toast.info('Funcionalidade de enviar para estoque será implementada')
+                                }}
+                              >
+                                <Warehouse className="mr-2 h-4 w-4" />
+                                Enviar Estoque
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Página {page} de {totalPages}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => setPage(page - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(page + 1)}
+                >
+                  Próximo
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
           )}
+        </>
+      ) : (
+        /* ============ GROUPED VIEW ============ */
+        <GroupedLocacoesView
+          data={groupedData}
+          loading={groupedLoading}
+          navigate={navigate}
+          getProductTypeIcon={getProductTypeIcon}
+          formatFormaPagamento={formatFormaPagamento}
+          formatarMoeda={formatarMoeda}
+        />
+      )}
+    </div>
+  )
+}
+
+/* ============ GROUPED VIEW COMPONENT ============ */
+
+function GroupedLocacoesView({
+  data,
+  loading,
+  navigate,
+  getProductTypeIcon,
+  formatFormaPagamento,
+  formatarMoeda: formatarMoedaProp,
+}: {
+  data: GroupedData[]
+  loading: boolean
+  navigate: (view: string, id?: string) => void
+  getProductTypeIcon: (tipoNome: string) => React.ReactNode
+  formatFormaPagamento: (fp: string) => string
+  formatarMoeda: (valor: number) => string
+}) {
+  const [openRotas, setOpenRotas] = useState<Record<string, boolean>>({})
+  const [openClientes, setOpenClientes] = useState<Record<string, boolean>>({})
+
+  if (loading) {
+    return (
+      <Card className="shadow-sm">
+        <CardContent className="p-4 space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
         </CardContent>
       </Card>
+    )
+  }
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Página {page} de {totalPages}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage(page - 1)}
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Anterior
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => setPage(page + 1)}
-            >
-              Próximo
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
+  if (data.length === 0) {
+    return (
+      <Card className="shadow-sm">
+        <CardContent className="p-0">
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center mb-6 shadow-sm">
+              <FolderTree className="h-10 w-10 text-muted-foreground/50" />
+            </div>
+            <p className="text-lg font-semibold">Nenhuma locação agrupada</p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+              Nenhuma locação encontrada com os filtros atuais para agrupamento por rota
+            </p>
           </div>
-        </div>
-      )}
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const toggleRota = (rotaId: string) => {
+    setOpenRotas(prev => ({ ...prev, [rotaId]: !prev[rotaId] }))
+  }
+
+  const toggleCliente = (clienteId: string) => {
+    setOpenClientes(prev => ({ ...prev, [clienteId]: !prev[clienteId] }))
+  }
+
+  return (
+    <div className="space-y-3">
+      {data.map((rotaGroup) => {
+        const rotaId = rotaGroup.rota.id
+        const isRotaOpen = openRotas[rotaId] ?? false
+        const totalLocacoes = rotaGroup.clientes.reduce(
+          (acc, c) => acc + c.locacoes.length, 0
+        )
+        const clientCount = rotaGroup.clientes.length
+
+        return (
+          <Collapsible
+            key={rotaId}
+            open={isRotaOpen}
+            onOpenChange={() => toggleRota(rotaId)}
+          >
+            <Card className="shadow-sm overflow-hidden">
+              {/* Route header */}
+              <CollapsibleTrigger asChild>
+                <div
+                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/30 transition-colors"
+                  style={{ borderLeftWidth: '4px', borderLeftColor: rotaGroup.rota.cor }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="h-3 w-3 rounded-full shrink-0"
+                      style={{ backgroundColor: rotaGroup.rota.cor }}
+                    />
+                    <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div>
+                      <h3 className="font-semibold text-sm">{rotaGroup.rota.descricao}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {clientCount} cliente{clientCount !== 1 ? 's' : ''} • {totalLocacoes} locação{totalLocacoes !== 1 ? 'ões' : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isRotaOpen ? (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+              </CollapsibleTrigger>
+
+              <CollapsibleContent>
+                <div className="border-t px-4 pb-3 pt-2 space-y-2">
+                  {rotaGroup.clientes.map((clienteGroup) => {
+                    const clId = clienteGroup.cliente.id
+                    const isClienteOpen = openClientes[clId] ?? false
+
+                    return (
+                      <Collapsible
+                        key={clId}
+                        open={isClienteOpen}
+                        onOpenChange={() => toggleCliente(clId)}
+                      >
+                        <div className="rounded-lg border bg-muted/20">
+                          {/* Client header */}
+                          <CollapsibleTrigger asChild>
+                            <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/40 transition-colors rounded-t-lg">
+                              <div className="flex items-center gap-2">
+                                <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                <span className="font-medium text-sm">{clienteGroup.cliente.nomeExibicao}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  ({clienteGroup.locacoes.length} locação{clienteGroup.locacoes.length !== 1 ? 'ões' : ''})
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {isClienteOpen ? (
+                                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                                ) : (
+                                  <ChevronRightIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                                )}
+                              </div>
+                            </div>
+                          </CollapsibleTrigger>
+
+                          <CollapsibleContent>
+                            <div className="px-3 pb-3 space-y-1.5">
+                              {clienteGroup.locacoes.map((loc) => {
+                                const statusColor = loc.status === 'Ativa' ? '#22c55e' : loc.status === 'Finalizada' ? '#9ca3af' : loc.status === 'Cancelada' ? '#ef4444' : '#9ca3af'
+
+                                return (
+                                  <div
+                                    key={loc.id}
+                                    className="flex items-center justify-between gap-3 p-3 rounded-md border bg-background hover:bg-muted/20 cursor-pointer transition-colors"
+                                    style={{ borderLeftWidth: '3px', borderLeftColor: statusColor }}
+                                    onClick={() => navigate('locacao-detalhe', loc.id)}
+                                  >
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                        <span className="text-sm font-medium">{loc.produtoIdentificador || loc.produto?.identificador}</span>
+                                      </div>
+                                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                                        <div className="flex items-center gap-1">
+                                          {getProductTypeIcon(loc.produtoTipo || loc.produto?.tipoNome)}
+                                          <span>{loc.produtoTipo || loc.produto?.tipoNome}</span>
+                                        </div>
+                                        <span>•</span>
+                                        <span>{formatFormaPagamento(loc.formaPagamento)}</span>
+                                        {loc.formaPagamento === 'Periodo' && loc.valorFixo ? (
+                                          <>
+                                            <span>•</span>
+                                            <span className="font-medium">{formatarMoedaProp(loc.valorFixo)}</span>
+                                          </>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                    <div className="shrink-0">
+                                      <StatusBadge status={loc.status} size="pill" />
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </CollapsibleContent>
+                        </div>
+                      </Collapsible>
+                    )
+                  })}
+                </div>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )
+      })}
     </div>
   )
 }

@@ -43,6 +43,15 @@ import {
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from '@/components/ui/collapsible'
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from '@/components/ui/toggle-group'
+import {
   Plus,
   Search,
   MoreHorizontal,
@@ -61,6 +70,13 @@ import {
   Bell,
   Clock,
   XCircle,
+  ChevronDown,
+  ChevronRight as ChevronRightIcon,
+  LayoutList,
+  FolderTree,
+  MapPin,
+  Package,
+  User,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -106,6 +122,37 @@ interface Cobranca {
   } | null
 }
 
+interface GroupedCobranca extends Cobranca {
+  cliente: {
+    id: string
+    nomeExibicao: string
+    rota: {
+      id: string
+      descricao: string
+      cor: string
+    } | null
+  }
+}
+
+interface GroupedData {
+  rota: {
+    id: string
+    descricao: string
+    cor: string
+  }
+  clientes: {
+    cliente: {
+      id: string
+      nomeExibicao: string
+    }
+    locacoes: {
+      locacaoId: string
+      produtoIdentificador: string
+      cobrancas: GroupedCobranca[]
+    }[]
+  }[]
+}
+
 interface Summary {
   totalRecebido: number
   totalPendente: number
@@ -126,6 +173,11 @@ export function CobrancasView() {
     totalAtrasado: 0,
     totalGeral: 0,
   })
+
+  // View mode
+  const [viewMode, setViewMode] = useState<'flat' | 'agrupado'>('flat')
+  const [groupedData, setGroupedData] = useState<GroupedData[]>([])
+  const [groupedLoading, setGroupedLoading] = useState(false)
 
   // Filter state
   const [page, setPage] = useState(1)
@@ -154,7 +206,7 @@ export function CobrancasView() {
   const [batchPaymentDone, setBatchPaymentDone] = useState(0)
   const [batchPaymentSubmitting, setBatchPaymentSubmitting] = useState(false)
 
-  // Fetch cobrancas
+  // Fetch cobrancas (flat)
   const fetchCobrancas = useCallback(async () => {
     setLoading(true)
     try {
@@ -198,9 +250,36 @@ export function CobrancasView() {
     }
   }, [page, status, dataInicio, dataFim, clienteSearch])
 
+  // Fetch cobrancas (grouped)
+  const fetchGrouped = useCallback(async () => {
+    setGroupedLoading(true)
+    try {
+      const params = new URLSearchParams({ groupBy: 'route' })
+      if (status && status !== 'all') params.set('status', status)
+      if (dataInicio) params.set('periodoInicio', dataInicio)
+      if (dataFim) params.set('periodoFim', dataFim)
+      if (clienteSearch) params.set('clienteId', clienteSearch)
+
+      const res = await fetch(`/api/cobrancas?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setGroupedData(data.data || [])
+        setTotal(data.total || 0)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar cobranças agrupadas:', error)
+    } finally {
+      setGroupedLoading(false)
+    }
+  }, [status, dataInicio, dataFim, clienteSearch])
+
   useEffect(() => {
-    fetchCobrancas()
-  }, [fetchCobrancas])
+    if (viewMode === 'flat') {
+      fetchCobrancas()
+    } else {
+      fetchGrouped()
+    }
+  }, [viewMode, fetchCobrancas, fetchGrouped])
 
   // Debounced search for cliente
   const [clienteInput, setClienteInput] = useState('')
@@ -261,7 +340,8 @@ export function CobrancasView() {
       if (res.ok) {
         toast.success('Pagamento registrado com sucesso')
         setPaymentDialogOpen(false)
-        fetchCobrancas()
+        if (viewMode === 'flat') fetchCobrancas()
+        else fetchGrouped()
       } else {
         const data = await res.json()
         toast.error(data.error || 'Erro ao registrar pagamento')
@@ -569,191 +649,232 @@ export function CobrancasView() {
         </CardContent>
       </Card>
 
-      {/* Data Table */}
-      <Card className="shadow-sm">
-        <CardContent className="p-0">
-          {loading ? (
-            <TableSkeleton />
-          ) : cobrancas.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center mb-6 shadow-sm">
-                <CreditCard className="h-10 w-10 text-muted-foreground/50" />
-              </div>
-              <p className="text-lg font-semibold">Nenhuma cobrança encontrada</p>
-              <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-                Tente ajustar os filtros ou crie uma nova cobrança para começar
-              </p>
-              <Button
-                className="mt-4 gap-2"
-                onClick={() => navigate('cobranca-nova')}
-              >
-                <Plus className="h-4 w-4" />
-                Criar Primeira Cobrança
-              </Button>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[40px]">
-                    <Checkbox
-                      checked={selectedIds.size === cobrancas.length && cobrancas.length > 0}
-                      onCheckedChange={toggleSelectAll}
-                      aria-label="Selecionar todos"
-                    />
-                  </TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Produto</TableHead>
-                  <TableHead className="hidden md:table-cell">Período</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead className="hidden md:table-cell">Recebido</TableHead>
-                  <TableHead className="hidden lg:table-cell">Saldo Devedor</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden lg:table-cell">Data Pagamento</TableHead>
-                  <TableHead className="w-[50px]">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cobrancas.map((cobranca, idx) => {
-                  const statusBorder = cobranca.status === 'Pago' ? 'border-l-4 border-l-green-500' : cobranca.status === 'Pendente' ? 'border-l-4 border-l-yellow-500' : cobranca.status === 'Atrasado' ? 'border-l-4 border-l-red-500' : cobranca.status === 'Parcial' ? 'border-l-4 border-l-orange-500' : 'border-l-4 border-l-gray-400'
-                  const isSelected = selectedIds.has(cobranca.id)
-                  return (
-                  <TableRow
-                    key={cobranca.id}
-                    className={`stagger-row cursor-pointer hover:bg-muted/50 transition-colors ${statusBorder} ${isSelected ? 'bg-primary/5' : ''} ${idx % 2 === 1 ? 'bg-muted/10' : ''}`}
-                    onClick={() => navigate('cobranca-detalhe', cobranca.id)}
-                  >
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => toggleSelect(cobranca.id)}
-                        aria-label={`Selecionar cobrança de ${cobranca.clienteNome}`}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {cobranca.clienteNome || cobranca.cliente?.nomeExibicao}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {cobranca.produtoIdentificador || cobranca.produto?.identificador}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground text-xs">
-                      {formatDate(cobranca.dataInicio)} - {formatDate(cobranca.dataFim)}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {formatarMoeda(cobranca.totalClientePaga)}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-green-600 dark:text-green-400">
-                      {formatarMoeda(cobranca.valorRecebido)}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {cobranca.saldoDevedorGerado > 0 ? (
-                        <span className="text-red-600 dark:text-red-400">
-                          {formatarMoeda(cobranca.saldoDevedorGerado)}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <StatusBadge status={cobranca.status} size="pill" />
-                        {cobranca.status === 'Parcial' && cobranca.totalClientePaga > 0 && (
-                          <div className="mini-progress w-16">
-                            <div
-                              className="h-full rounded-full bg-blue-500 progress-animated"
-                              style={{ width: `${Math.min(100, (cobranca.valorRecebido / cobranca.totalClientePaga) * 100)}%` }}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">
-                      {cobranca.dataPagamento ? formatDate(cobranca.dataPagamento) : '—'}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              navigate('cobranca-detalhe', cobranca.id)
-                            }}
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            Visualizar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              navigate('cobranca-editar', cobranca.id)
-                            }}
-                          >
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              openPaymentDialog(cobranca)
-                            }}
-                          >
-                            <CreditCard className="mr-2 h-4 w-4" />
-                            Registrar Pagamento
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {/* View mode toggle */}
+      <div className="flex items-center gap-3">
+        <ToggleGroup
+          type="single"
+          value={viewMode}
+          onValueChange={(value) => {
+            if (value) setViewMode(value as 'flat' | 'agrupado')
+          }}
+          variant="outline"
+          size="sm"
+        >
+          <ToggleGroupItem value="flat" className="gap-1.5 px-3">
+            <LayoutList className="h-3.5 w-3.5" />
+            <span className="text-xs">Lista</span>
+          </ToggleGroupItem>
+          <ToggleGroupItem value="agrupado" className="gap-1.5 px-3">
+            <FolderTree className="h-3.5 w-3.5" />
+            <span className="text-xs">Agrupado</span>
+          </ToggleGroupItem>
+        </ToggleGroup>
+        {viewMode === 'agrupado' && (
+          <span className="text-xs text-muted-foreground">
+            Agrupado por Rota {'>'} Cliente {'>'} Locação
+          </span>
+        )}
+      </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Página {page} de {totalPages}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage(page - 1)}
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Anterior
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => setPage(page + 1)}
-            >
-              Próximo
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          </div>
-        </div>
+      {/* Conditional view rendering */}
+      {viewMode === 'flat' ? (
+        /* ============ FLAT TABLE VIEW ============ */
+        <>
+          <Card className="shadow-sm">
+            <CardContent className="p-0">
+              {loading ? (
+                <TableSkeleton />
+              ) : cobrancas.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center mb-6 shadow-sm">
+                    <CreditCard className="h-10 w-10 text-muted-foreground/50" />
+                  </div>
+                  <p className="text-lg font-semibold">Nenhuma cobrança encontrada</p>
+                  <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+                    Tente ajustar os filtros ou crie uma nova cobrança para começar
+                  </p>
+                  <Button
+                    className="mt-4 gap-2"
+                    onClick={() => navigate('cobranca-nova')}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Criar Primeira Cobrança
+                  </Button>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[40px]">
+                        <Checkbox
+                          checked={selectedIds.size === cobrancas.length && cobrancas.length > 0}
+                          onCheckedChange={toggleSelectAll}
+                          aria-label="Selecionar todos"
+                        />
+                      </TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Produto</TableHead>
+                      <TableHead className="hidden md:table-cell">Período</TableHead>
+                      <TableHead>Valor</TableHead>
+                      <TableHead className="hidden md:table-cell">Recebido</TableHead>
+                      <TableHead className="hidden lg:table-cell">Saldo Devedor</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="hidden lg:table-cell">Data Pagamento</TableHead>
+                      <TableHead className="w-[50px]">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {cobrancas.map((cobranca, idx) => {
+                      const statusBorder = cobranca.status === 'Pago' ? 'border-l-4 border-l-green-500' : cobranca.status === 'Pendente' ? 'border-l-4 border-l-yellow-500' : cobranca.status === 'Atrasado' ? 'border-l-4 border-l-red-500' : cobranca.status === 'Parcial' ? 'border-l-4 border-l-orange-500' : 'border-l-4 border-l-gray-400'
+                      const isSelected = selectedIds.has(cobranca.id)
+                      return (
+                      <TableRow
+                        key={cobranca.id}
+                        className={`stagger-row cursor-pointer hover:bg-muted/50 transition-colors ${statusBorder} ${isSelected ? 'bg-primary/5' : ''} ${idx % 2 === 1 ? 'bg-muted/10' : ''}`}
+                        onClick={() => navigate('cobranca-detalhe', cobranca.id)}
+                      >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleSelect(cobranca.id)}
+                            aria-label={`Selecionar cobrança de ${cobranca.clienteNome}`}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {cobranca.clienteNome || cobranca.cliente?.nomeExibicao}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {cobranca.produtoIdentificador || cobranca.produto?.identificador}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-muted-foreground text-xs">
+                          {formatDate(cobranca.dataInicio)} - {formatDate(cobranca.dataFim)}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {formatarMoeda(cobranca.totalClientePaga)}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-green-600 dark:text-green-400">
+                          {formatarMoeda(cobranca.valorRecebido)}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          {cobranca.saldoDevedorGerado > 0 ? (
+                            <span className="text-red-600 dark:text-red-400">
+                              {formatarMoeda(cobranca.saldoDevedorGerado)}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <StatusBadge status={cobranca.status} size="pill" />
+                            {cobranca.status === 'Parcial' && cobranca.totalClientePaga > 0 && (
+                              <div className="mini-progress w-16">
+                                <div
+                                  className="h-full rounded-full bg-blue-500 progress-animated"
+                                  style={{ width: `${Math.min(100, (cobranca.valorRecebido / cobranca.totalClientePaga) * 100)}%` }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">
+                          {cobranca.dataPagamento ? formatDate(cobranca.dataPagamento) : '—'}
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  navigate('cobranca-detalhe', cobranca.id)
+                                }}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                Visualizar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  navigate('cobranca-editar', cobranca.id)
+                                }}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openPaymentDialog(cobranca)
+                                }}
+                              >
+                                <CreditCard className="mr-2 h-4 w-4" />
+                                Registrar Pagamento
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Página {page} de {totalPages}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => setPage(page - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(page + 1)}
+                >
+                  Próximo
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        /* ============ GROUPED VIEW ============ */
+        <GroupedCobrancasView
+          data={groupedData}
+          loading={groupedLoading}
+          navigate={navigate}
+          formatDate={formatDate}
+          openPaymentDialog={openPaymentDialog}
+        />
       )}
 
       {/* Floating Batch Action Bar */}
-      {selectedIds.size > 0 && (
+      {viewMode === 'flat' && selectedIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300 backdrop-blur-bar">
           <div className="flex items-center gap-3 bg-foreground/95 text-background px-5 py-3 rounded-xl shadow-xl ring-1 ring-white/10">
             <span className="text-sm font-medium whitespace-nowrap">
@@ -953,6 +1074,264 @@ export function CobrancasView() {
       </Dialog>
     </div>
   )
+}
+
+/* ============ GROUPED VIEW COMPONENT ============ */
+
+function GroupedCobrancasView({
+  data,
+  loading,
+  navigate,
+  formatDate,
+  openPaymentDialog,
+}: {
+  data: GroupedData[]
+  loading: boolean
+  navigate: (view: string, id?: string) => void
+  formatDate: (dateStr: string | null) => string
+  openPaymentDialog: (cobranca: Cobranca) => void
+}) {
+  const [openRotas, setOpenRotas] = useState<Record<string, boolean>>({})
+  const [openClientes, setOpenClientes] = useState<Record<string, boolean>>({})
+  const [openLocacoes, setOpenLocacoes] = useState<Record<string, boolean>>({})
+
+  if (loading) {
+    return (
+      <Card className="shadow-sm">
+        <CardContent className="p-4 space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (data.length === 0) {
+    return (
+      <Card className="shadow-sm">
+        <CardContent className="p-0">
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center mb-6 shadow-sm">
+              <FolderTree className="h-10 w-10 text-muted-foreground/50" />
+            </div>
+            <p className="text-lg font-semibold">Nenhuma cobrança agrupada</p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+              Nenhuma cobrança encontrada com os filtros atuais para agrupamento por rota
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const toggleRota = (rotaId: string) => {
+    setOpenRotas(prev => ({ ...prev, [rotaId]: !prev[rotaId] }))
+  }
+
+  const toggleCliente = (clienteId: string) => {
+    setOpenClientes(prev => ({ ...prev, [clienteId]: !prev[clienteId] }))
+  }
+
+  const toggleLocacao = (locacaoId: string) => {
+    setOpenLocacoes(prev => ({ ...prev, [locacaoId]: !prev[locacaoId] }))
+  }
+
+  return (
+    <div className="space-y-3">
+      {data.map((rotaGroup) => {
+        const rotaId = rotaGroup.rota.id
+        const isRotaOpen = openRotas[rotaId] ?? false
+        const totalCobrancas = rotaGroup.clientes.reduce(
+          (acc, c) => acc + c.locacoes.reduce((a, l) => a + l.cobrancas.length, 0), 0
+        )
+        const totalAmount = rotaGroup.clientes.reduce(
+          (acc, c) => acc + c.locacoes.reduce(
+            (a, l) => a + l.cobrancas.reduce((s, cob) => s + cob.totalClientePaga, 0), 0
+          ), 0
+        )
+        const clientCount = rotaGroup.clientes.length
+
+        return (
+          <Collapsible
+            key={rotaId}
+            open={isRotaOpen}
+            onOpenChange={() => toggleRota(rotaId)}
+          >
+            <Card className="shadow-sm overflow-hidden">
+              {/* Route header */}
+              <CollapsibleTrigger asChild>
+                <div
+                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/30 transition-colors"
+                  style={{ borderLeftWidth: '4px', borderLeftColor: rotaGroup.rota.cor }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="h-3 w-3 rounded-full shrink-0"
+                      style={{ backgroundColor: rotaGroup.rota.cor }}
+                    />
+                    <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div>
+                      <h3 className="font-semibold text-sm">{rotaGroup.rota.descricao}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {clientCount} cliente{clientCount !== 1 ? 's' : ''} • {totalCobrancas} cobrança{totalCobrancas !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-bold">{formatarMoedaStatic(totalAmount)}</span>
+                    {isRotaOpen ? (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+              </CollapsibleTrigger>
+
+              <CollapsibleContent>
+                <div className="border-t px-4 pb-3 pt-2 space-y-2">
+                  {rotaGroup.clientes.map((clienteGroup) => {
+                    const clId = clienteGroup.cliente.id
+                    const isClienteOpen = openClientes[clId] ?? false
+                    const clienteTotal = clienteGroup.locacoes.reduce(
+                      (acc, l) => acc + l.cobrancas.reduce((s, cob) => s + cob.totalClientePaga, 0), 0
+                    )
+                    const clienteCobCount = clienteGroup.locacoes.reduce(
+                      (acc, l) => acc + l.cobrancas.length, 0
+                    )
+
+                    return (
+                      <Collapsible
+                        key={clId}
+                        open={isClienteOpen}
+                        onOpenChange={() => toggleCliente(clId)}
+                      >
+                        <div className="rounded-lg border bg-muted/20">
+                          {/* Client header */}
+                          <CollapsibleTrigger asChild>
+                            <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/40 transition-colors rounded-t-lg">
+                              <div className="flex items-center gap-2">
+                                <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                <span className="font-medium text-sm">{clienteGroup.cliente.nomeExibicao}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  ({clienteCobCount} cobrança{clienteCobCount !== 1 ? 's' : ''})
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold">{formatarMoedaStatic(clienteTotal)}</span>
+                                {isClienteOpen ? (
+                                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                                ) : (
+                                  <ChevronRightIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                                )}
+                              </div>
+                            </div>
+                          </CollapsibleTrigger>
+
+                          <CollapsibleContent>
+                            <div className="px-3 pb-3 space-y-2">
+                              {clienteGroup.locacoes.map((locacaoGroup) => {
+                                const locId = locacaoGroup.locacaoId
+                                const isLocOpen = openLocacoes[locId] ?? false
+                                const locTotal = locacaoGroup.cobrancas.reduce(
+                                  (acc, cob) => acc + cob.totalClientePaga, 0
+                                )
+
+                                return (
+                                  <Collapsible
+                                    key={locId}
+                                    open={isLocOpen}
+                                    onOpenChange={() => toggleLocacao(locId)}
+                                  >
+                                    <div className="rounded-md border bg-background">
+                                      {/* Locação header */}
+                                      <CollapsibleTrigger asChild>
+                                        <div className="flex items-center justify-between p-2.5 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-md">
+                                          <div className="flex items-center gap-2">
+                                            <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                            <span className="text-sm font-medium">{locacaoGroup.produtoIdentificador}</span>
+                                            <span className="text-xs text-muted-foreground">
+                                              ({locacaoGroup.cobrancas.length})
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-xs font-semibold">{formatarMoedaStatic(locTotal)}</span>
+                                            {isLocOpen ? (
+                                              <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                                            ) : (
+                                              <ChevronRightIcon className="h-3 w-3 text-muted-foreground" />
+                                            )}
+                                          </div>
+                                        </div>
+                                      </CollapsibleTrigger>
+
+                                      <CollapsibleContent>
+                                        <div className="px-2.5 pb-2.5 space-y-1.5">
+                                          {locacaoGroup.cobrancas.map((cob) => (
+                                            <div
+                                              key={cob.id}
+                                              className="flex items-center justify-between gap-2 p-2 rounded-md border bg-muted/10 hover:bg-muted/20 cursor-pointer transition-colors"
+                                              style={{ borderLeftWidth: '3px', borderLeftColor: cob.status === 'Pago' ? '#22c55e' : cob.status === 'Pendente' ? '#eab308' : cob.status === 'Atrasado' ? '#ef4444' : cob.status === 'Parcial' ? '#f97316' : '#9ca3af' }}
+                                              onClick={() => navigate('cobranca-detalhe', cob.id)}
+                                            >
+                                              <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                  <span className="text-xs text-muted-foreground">
+                                                    {formatDate(cob.dataInicio)} - {formatDate(cob.dataFim)}
+                                                  </span>
+                                                </div>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                  <span className="text-sm font-medium">{formatarMoedaStatic(cob.totalClientePaga)}</span>
+                                                  <span className="text-xs text-green-600 dark:text-green-400">
+                                                    Recebido: {formatarMoedaStatic(cob.valorRecebido)}
+                                                  </span>
+                                                </div>
+                                              </div>
+                                              <div className="flex items-center gap-2 shrink-0">
+                                                <StatusBadge status={cob.status} size="pill" />
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-7 w-7"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    openPaymentDialog(cob)
+                                                  }}
+                                                >
+                                                  <CreditCard className="h-3.5 w-3.5" />
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </CollapsibleContent>
+                                    </div>
+                                  </Collapsible>
+                                )
+                              })}
+                            </div>
+                          </CollapsibleContent>
+                        </div>
+                      </Collapsible>
+                    )
+                  })}
+                </div>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )
+      })}
+    </div>
+  )
+}
+
+// Static helper to avoid import issues in sub-component
+function formatarMoedaStatic(valor: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(valor)
 }
 
 function TableSkeleton() {

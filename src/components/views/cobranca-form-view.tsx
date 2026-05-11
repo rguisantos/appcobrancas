@@ -347,13 +347,82 @@ export function CobrancaFormView() {
     formData.descontoDinheiro,
   ])
 
-  // Auto-determine status based on valorRecebido and totalClientePaga
+  // Payment distribution: FIFO — oldest open cobranças first, then current cobrança
+  const paymentDistribution = useMemo(() => {
+    const distribution: Array<{
+      id: string
+      tipo: 'aberto' | 'atual'
+      produtoIdentificador: string
+      dataVencimento: string
+      saldoDevedor: number
+      totalClientePaga: number
+      payAmount: number
+      statusApos: string
+    }> = []
+
+    if (!formData.locacaoId || selectedOpenIds.size === 0) return distribution
+
+    let remaining = formData.valorRecebido
+
+    // Sort selected open cobranças by dataVencimento ascending (FIFO: oldest first)
+    const sortedOpen = openCobrancas
+      .filter(c => selectedOpenIds.has(c.id))
+      .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento))
+
+    for (const cobranca of sortedOpen) {
+      const payAmount = Math.min(cobranca.saldoDevedor, remaining)
+      const newValorRecebido = cobranca.valorRecebido + payAmount
+      const statusApos = newValorRecebido >= cobranca.totalClientePaga ? 'Pago' : payAmount > 0 ? 'Parcial' : ''
+      distribution.push({
+        id: cobranca.id,
+        tipo: 'aberto',
+        produtoIdentificador: cobranca.produtoIdentificador,
+        dataVencimento: cobranca.dataVencimento,
+        saldoDevedor: cobranca.saldoDevedor,
+        totalClientePaga: cobranca.totalClientePaga,
+        payAmount,
+        statusApos,
+      })
+      remaining -= payAmount
+      if (remaining <= 0) break
+    }
+
+    // Current cobrança gets whatever is left
+    const currentPayAmount = Math.max(0, remaining)
+    const currentStatusApos = currentPayAmount >= calcResult.totalClientePaga
+      ? 'Pago'
+      : currentPayAmount > 0
+        ? 'Parcial'
+        : 'Pendente'
+    distribution.push({
+      id: '__current__',
+      tipo: 'atual',
+      produtoIdentificador: formData.produtoIdentificador,
+      dataVencimento: formData.dataFim,
+      saldoDevedor: calcResult.totalClientePaga,
+      totalClientePaga: calcResult.totalClientePaga,
+      payAmount: currentPayAmount,
+      statusApos: currentStatusApos,
+    })
+
+    return distribution
+  }, [formData.valorRecebido, formData.locacaoId, formData.produtoIdentificador, formData.dataFim, selectedOpenIds, openCobrancas, calcResult.totalClientePaga])
+
+  // Auto-determine status based on payment distribution for current cobrança
   // dataVencimento is auto-set to dataFim on create
   const autoStatus = useMemo(() => {
+    // If there are selected open cobranças, the current cobrança's status is determined
+    // by how much remains after paying the open ones (FIFO)
+    if (selectedOpenIds.size > 0 && paymentDistribution.length > 0) {
+      const currentItem = paymentDistribution.find(d => d.tipo === 'atual')
+      if (currentItem) {
+        return currentItem.statusApos as 'Pago' | 'Parcial' | 'Pendente'
+      }
+    }
     const dataVencimento = formData.dataFim
     const isVencido = dataVencimento ? new Date(dataVencimento) < new Date() : false
     return determinarStatusPagamento(calcResult.totalClientePaga, formData.valorRecebido, isVencido)
-  }, [calcResult.totalClientePaga, formData.valorRecebido, formData.dataFim])
+  }, [calcResult.totalClientePaga, formData.valorRecebido, formData.dataFim, selectedOpenIds, paymentDistribution])
 
   // Auto-sync status with autoStatus for new cobranças
   useEffect(() => {
@@ -381,6 +450,38 @@ export function CobrancaFormView() {
 
     setSubmitting(true)
     try {
+      // Calculate FIFO distribution: pay oldest open cobranças first, then current
+      let currentCobrancaValorRecebido = formData.valorRecebido
+      const openPayments: Array<{id: string; newValorRecebido: number; newStatus: string}> = []
+
+      if (selectedOpenIds.size > 0 && !isEditing) {
+        let remaining = formData.valorRecebido
+        // Sort selected open cobranças by dataVencimento ascending (FIFO: oldest first)
+        const sortedOpen = openCobrancas
+          .filter(c => selectedOpenIds.has(c.id))
+          .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento))
+
+        for (const cobranca of sortedOpen) {
+          const payAmount = Math.min(cobranca.saldoDevedor, remaining)
+          const newValorRecebido = cobranca.valorRecebido + payAmount
+          const newStatus = newValorRecebido >= cobranca.totalClientePaga ? 'Pago' : 'Parcial'
+          if (payAmount > 0) {
+            openPayments.push({ id: cobranca.id, newValorRecebido, newStatus })
+          }
+          remaining -= payAmount
+        }
+
+        // Whatever is left after paying open cobranças goes to the current cobrança
+        currentCobrancaValorRecebido = Math.max(0, remaining)
+      }
+
+      // Determine current cobrança status based on remaining amount
+      const currentStatus = currentCobrancaValorRecebido >= calcResult.totalClientePaga
+        ? 'Pago'
+        : currentCobrancaValorRecebido > 0
+          ? 'Parcial'
+          : 'Pendente'
+
       const payload = {
         locacaoId: formData.locacaoId,
         dataInicio: formData.dataInicio,
@@ -390,8 +491,8 @@ export function CobrancaFormView() {
         descontoPartidasQtd: formData.descontoPartidasQtd || undefined,
         descontoPartidasValor: formData.descontoPartidasValor || undefined,
         descontoDinheiro: formData.descontoDinheiro || undefined,
-        valorRecebido: formData.valorRecebido,
-        status: formData.status || autoStatus,
+        valorRecebido: selectedOpenIds.size > 0 && !isEditing ? currentCobrancaValorRecebido : formData.valorRecebido,
+        status: selectedOpenIds.size > 0 && !isEditing ? currentStatus : (formData.status || autoStatus),
         observacao: formData.observacao || undefined,
       }
 
@@ -411,28 +512,20 @@ export function CobrancaFormView() {
       }
 
       if (res.ok) {
-        // FIFO payment for selected open cobranças
-        if (selectedOpenIds.size > 0 && formData.valorRecebido > calcResult.totalClientePaga) {
-          let remaining = formData.valorRecebido - calcResult.totalClientePaga
-          // Sort by dataVencimento ascending (FIFO)
-          const sortedOpen = openCobrancas
-            .filter(c => selectedOpenIds.has(c.id))
-            .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento))
-
-          for (const cobranca of sortedOpen) {
-            if (remaining <= 0) break
-            const payAmount = Math.min(cobranca.saldoDevedor, remaining)
-            const newValorRecebido = cobranca.valorRecebido + payAmount
-            const newStatus = newValorRecebido >= cobranca.totalClientePaga ? 'Pago' : 'Parcial'
-
-            await fetch(`/api/cobrancas/${cobranca.id}`, {
+        // Update open cobranças with FIFO payments
+        if (openPayments.length > 0) {
+          let updatedCount = 0
+          for (const payment of openPayments) {
+            const updateRes = await fetch(`/api/cobrancas/${payment.id}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ _partial: true, valorRecebido: newValorRecebido, status: newStatus }),
+              body: JSON.stringify({ _partial: true, valorRecebido: payment.newValorRecebido, status: payment.newStatus }),
             })
-            remaining -= payAmount
+            if (updateRes.ok) updatedCount++
           }
-          toast.success(`${selectedOpenIds.size} cobrança(s) em aberto também foram atualizadas`)
+          if (updatedCount > 0) {
+            toast.success(`${updatedCount} cobrança(s) em aberto quitada(s) com o pagamento`)
+          }
         }
 
         toast.success(isEditing ? 'Cobrança atualizada com sucesso' : 'Cobrança criada com sucesso')
@@ -829,7 +922,7 @@ export function CobrancaFormView() {
                   Cobranças em Aberto
                 </CardTitle>
                 <CardDescription>
-                  Selecione cobranças em aberto para incluir no pagamento. O pagamento segue a ordem das mais antigas primeiro (FIFO).
+                  Ao registrar o pagamento, as cobranças em aberto mais antigas serão quitadas primeiro (FIFO). O saldo restante será aplicado nesta cobrança.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -865,21 +958,65 @@ export function CobrancaFormView() {
                   return (
                     <div className="p-3 bg-amber-50 dark:bg-amber-950 rounded-lg space-y-2">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Valor desta cobrança:</span>
-                        <span className="font-medium">{formatarMoeda(calcResult.totalClientePaga)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Total em aberto selecionado:</span>
                         <span className="font-medium text-amber-600">{formatarMoeda(selectedTotal)}</span>
                       </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Valor desta cobrança:</span>
+                        <span className="font-medium">{formatarMoeda(calcResult.totalClientePaga)}</span>
+                      </div>
                       <div className="h-px bg-amber-200 dark:bg-amber-700 my-1" />
                       <div className="flex items-center justify-between text-sm">
-                        <span className="font-semibold">Total a receber:</span>
+                        <span className="font-semibold">Total a receber (para quitar tudo):</span>
                         <span className="text-lg font-bold text-green-700 dark:text-green-300">{formatarMoeda(totalAReceber)}</span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Ao registrar o pagamento, as cobranças mais antigas serão pagas primeiro (FIFO).
+                        As cobranças em aberto mais antigas serão quitadas primeiro (FIFO). O saldo restante será aplicado nesta cobrança.
                       </p>
+                    </div>
+                  )
+                })()}
+
+                {/* Distribuição do Pagamento preview */}
+                {selectedOpenIds.size > 0 && formData.valorRecebido > 0 && paymentDistribution.length > 0 && (() => {
+                  const totalPagoAberto = paymentDistribution.filter(d => d.tipo === 'aberto').reduce((acc, d) => acc + d.payAmount, 0)
+                  const excesso = formData.valorRecebido - totalPagoAberto - calcResult.totalClientePaga
+                  return (
+                    <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg space-y-2 border border-blue-200 dark:border-blue-800">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Calculator className="h-4 w-4 text-blue-500" />
+                        <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">Distribuição do Pagamento</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Com <span className="font-medium">{formatarMoeda(formData.valorRecebido)}</span> recebido:
+                      </p>
+                      {paymentDistribution.map((d) => (
+                        <div key={d.id} className={`flex items-center justify-between text-sm py-1.5 px-2 rounded ${d.tipo === 'atual' ? 'bg-green-100 dark:bg-green-900 mt-1' : 'bg-blue-100/50 dark:bg-blue-900/50'}`}>
+                          <div className="flex items-center gap-2 min-w-0">
+                            {d.tipo === 'aberto' ? (
+                              <span className="text-xs bg-amber-200 dark:bg-amber-700 text-amber-800 dark:text-amber-200 px-1.5 py-0.5 rounded shrink-0">Aberto</span>
+                            ) : (
+                              <span className="text-xs bg-green-200 dark:bg-green-700 text-green-800 dark:text-green-200 px-1.5 py-0.5 rounded shrink-0">Atual</span>
+                            )}
+                            <span className="text-xs text-muted-foreground truncate">{d.produtoIdentificador}</span>
+                            <span className="text-xs text-muted-foreground">({formatarMoeda(d.saldoDevedor)})</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-medium">{formatarMoeda(d.payAmount)}</span>
+                            {d.statusApos && (
+                              <span className={`text-xs px-1.5 py-0.5 rounded ${d.statusApos === 'Pago' ? 'bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200' : d.statusApos === 'Parcial' ? 'bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200' : 'bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200'}`}>
+                                {d.statusApos}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      {excesso > 0 && (
+                        <div className="flex items-center justify-between text-sm py-1.5 px-2 bg-emerald-100 dark:bg-emerald-900 rounded">
+                          <span className="text-emerald-700 dark:text-emerald-300">Excesso (troco)</span>
+                          <span className="font-medium text-emerald-700 dark:text-emerald-300">{formatarMoeda(excesso)}</span>
+                        </div>
+                      )}
                     </div>
                   )
                 })()}

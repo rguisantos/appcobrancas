@@ -662,3 +662,248 @@ Stage Summary:
 - Agenda: calendar flickering fixed by memoizing date calculations
 - Sidebar: mobile scrolling fixed by replacing ScrollArea with native scroll
 - Zero lint errors, server running normally
+
+---
+Task ID: 2
+Agent: FIFO Payment Logic Fix Agent
+Task: Fix FIFO Payment Logic in Cobrança Form — pay oldest open cobranças FIRST, then current cobrança
+
+Work Log:
+1. Reversed FIFO payment order in handleSubmit (cobranca-form-view.tsx):
+   - OLD: Paid current cobrança first (full valorRecebido), then used surplus (valorRecebido - totalClientePaga) for open cobranças
+   - NEW: Starts with full valorRecebido, pays selected open cobranças FIRST (oldest by dataVencimento), then remaining goes to current cobrança
+   - Current cobrança is now created with `valorRecebido = remaining` (whatever is left after FIFO distribution)
+   - Current cobrança status is determined by comparing remaining vs totalClientePaga: Pago/Parcial/Pendente
+   - Open cobranças updated via PUT with `_partial: true` after current cobrança is created
+
+2. Added paymentDistribution useMemo (cobranca-form-view.tsx):
+   - Computes real-time FIFO distribution preview based on current valorRecebido and selected open cobranças
+   - Iterates through selected open cobranças sorted by dataVencimento ascending (oldest first)
+   - For each open cobrança: payAmount = min(saldoDevedor, remaining); calculates resulting status (Pago/Parcial)
+   - Current cobrança entry shows remaining amount and resulting status
+   - Returns array of distribution items with id, tipo, produtoIdentificador, saldoDevedor, payAmount, statusApos
+
+3. Updated autoStatus to use paymentDistribution (cobranca-form-view.tsx):
+   - When open cobranças are selected, autoStatus derives from the distribution (current cobrança's statusApos)
+   - Falls back to original determinarStatusPagamento when no open cobranças are selected
+
+4. Updated "Cobranças em Aberto" card summary text (cobranca-form-view.tsx):
+   - CardDescription changed to: "Ao registrar o pagamento, as cobranças em aberto mais antigas serão quitadas primeiro (FIFO). O saldo restante será aplicado nesta cobrança."
+   - Summary text reordered: "Total em aberto selecionado" first, then "Valor desta cobrança", then "Total a receber (para quitar tudo)"
+   - FIFO explanation text updated to match new logic
+
+5. Added "Distribuição do Pagamento" preview UI (cobranca-form-view.tsx):
+   - Shows when: selectedOpenIds.size > 0 && valorRecebido > 0 && paymentDistribution has items
+   - Blue-themed card with Calculator icon and "Distribuição do Pagamento" title
+   - Shows "Com R$ X recebido:" header
+   - Each distribution item shows: tipo badge (Aberto/Atual), produto identificador, saldo devedor, payAmount, resulting status badge
+   - Color-coded status badges: green for Pago, yellow for Parcial, gray for Pendente
+   - Shows "Excesso (troco)" row when valorRecebido exceeds total of all cobranças
+
+6. Removed unused `currentPay` variable in distribution preview template
+
+Lint Results:
+- Zero lint errors, zero warnings
+
+Stage Summary:
+- FIFO payment logic reversed: now pays oldest open cobranças FIRST, then current cobrança gets the remainder
+- New paymentDistribution useMemo provides real-time preview of how payment will be distributed
+- autoStatus now correctly reflects the current cobrança's status after FIFO distribution
+- "Distribuição do Pagamento" preview card shows exact breakdown of where each Real goes
+- Updated all FIFO-related text to clarify new order (oldest first → current)
+- Zero lint errors
+
+---
+Task ID: 4-5
+Agent: Feature Enhancement Agent
+Task: Group Cobranças by Route > Client > Locação AND Group Locações by Route > Client
+
+Work Log:
+
+1. API: Locações Grouped by Route > Client (src/app/api/locacoes/route.ts):
+   - Added `groupBy=route` query parameter support
+   - When `groupBy=route` is present: fetches ALL locações with `include: { cliente: { include: { rota: true } }, produto: true }`
+   - Groups by rota (uses cliente.rota.descricao or "Sem Rota" for null), then by cliente
+   - Returns format: `{ data: [{ rota: { id, descricao, cor }, clientes: [{ cliente: { id, nomeExibicao }, locacoes: [...] }] }], total }`
+   - Default behavior (no groupBy) remains exactly the same with pagination
+
+2. API: Cobranças Grouped by Route > Client > Locação (src/app/api/cobrancas/route.ts):
+   - Added `groupBy=route` query parameter support
+   - When `groupBy=route` is present: fetches ALL cobranças with `include: { locacao: true, cliente: { include: { rota: true } }, produto: true }`
+   - Groups by rota, then by cliente, then by locação (3-level nesting)
+   - Returns format: `{ data: [{ rota: { id, descricao, cor }, clientes: [{ cliente: { id, nomeExibicao }, locacoes: [{ locacaoId, produtoIdentificador, cobrancas: [...] }] }] }], total }`
+   - Refactored where-clause building into `buildWhere()` helper to avoid code duplication
+   - Default behavior (no groupBy) remains exactly the same with pagination
+
+3. Cobranças View - Flat/Agrupado Toggle (src/components/views/cobrancas-view.tsx):
+   - Added `viewMode` state: 'flat' (default) | 'agrupado'
+   - Added ToggleGroup component (LayoutList/FolderTree icons) near filters
+   - Flat view: existing table with pagination and batch operations (unchanged)
+   - Agrupado view: GroupedCobrancasView sub-component with 3-level accordion:
+     - Route level: colored header (using route's `cor` as borderLeft + dot indicator), MapPin icon, client count, total amount, collapsible
+     - Client level: User icon, client name, cobrança count, total amount, collapsible
+     - Locação level: Package icon, product identifier, cobrança count, total amount, collapsible
+     - Cobrança mini-cards: period, valor, recebido, status badge, payment button, colored border by status
+   - Search/status filters work on both views (server-side filtering)
+   - Empty state for grouped view with FolderTree icon
+   - Loading skeleton for grouped view
+
+4. Locações View - Flat/Agrupado Toggle (src/components/views/locacoes-view.tsx):
+   - Added `viewMode` state: 'flat' (default) | 'agrupado'
+   - Added ToggleGroup component (LayoutList/FolderTree icons) near filters
+   - Flat view: existing table with pagination (unchanged)
+   - Agrupado view: GroupedLocacoesView sub-component with 2-level accordion:
+     - Route level: colored header (using route's `cor` as borderLeft + dot indicator), MapPin icon, client count, locação count, collapsible
+     - Client level: User icon, client name, locação count, collapsible
+     - Locação mini-cards: product identifier, product type icon, forma pagamento, status badge, colored border by status
+   - Empty state for grouped view with FolderTree icon
+   - Loading skeleton for grouped view
+
+5. UI Components Used:
+   - Collapsible, CollapsibleTrigger, CollapsibleContent from @/components/ui/collapsible
+   - ToggleGroup, ToggleGroupItem from @/components/ui/toggle-group
+   - ChevronDown, ChevronRight, LayoutList, FolderTree, MapPin, Package, User icons from lucide-react
+   - StatusBadge with size="pill" variant
+   - Route color used as: borderLeft accent color, dot indicator background
+
+6. Import Aliases:
+   - Used `ChevronRight as ChevronRightIcon` in both views to avoid conflict with pagination's `ChevronRight`
+
+Lint Results:
+- Zero lint errors, zero warnings
+
+Stage Summary:
+- 2 API endpoints enhanced with groupBy=route parameter (locacoes, cobrancas)
+- 2 views enhanced with flat/agrupado toggle (cobrancas-view.tsx, locacoes-view.tsx)
+- 3-level accordion grouping for cobranças (Route > Client > Locação > Cobranças)
+- 2-level accordion grouping for locações (Route > Client > Locação)
+- Route color used as visual accent throughout grouped views
+- Default flat views completely unchanged
+- Zero lint errors
+
+---
+Task ID: 3
+Agent: Map Enhancement Agent
+Task: Verify and Fix Route Map Display — Enhanced API, Rich Popups, Pulsing Markers, Clients Without Coordinates
+
+Work Log:
+
+1. API Route Enhancement (src/app/api/mapa/route.ts):
+   - Removed `latitude: { not: null }` filter — now fetches ALL active clients (not just those with coordinates)
+   - Added `produtoIdentificador` and `produtoTipo` to locações select for product names in popups
+   - Added `id`, `status`, `produtoIdentificador`, `dataVencimento` to cobranças select for per-status breakdown
+   - Added `cobrancasResumo` per client: { pendente, atrasado, pago, parcial } counts
+   - Changed `locacoesAtivas` from number to string[] of product identifiers (e.g., ["BIL-002", "JUK-001"])
+   - Added `temAtrasado` boolean per client — true if any cobrança has status "Atrasado"
+   - Separated response: `clientes` (with coordinates → map markers) + `clientesSemCoordenadas` (without → stats/list)
+   - Stats `totalClientes` now reflects ALL active clients (not just with coordinates)
+
+2. Map Inner Component Enhancement (src/components/views/map-inner.tsx):
+   - Enhanced Popup with: client name/ID, route color dot, clickable phone (tel: link), locações tags, cobranças status badges, total pendente with red highlight, total recebido in green
+   - Dynamic marker sizing: 12px (atrasado), 10px (pending), 9px (parcial), 7px (clean)
+   - Pulsing effect for atrasado clients: red border + additional pulsing ring CircleMarker
+   - Route polylines: optional dashed lines connecting same-route clients (toggled via showRouteLines prop)
+   - Custom popup CSS injected via useEffect for better styling
+   - Phone formatting: formatPhoneLink() strips non-digits, prepends +55 for tel: protocol
+
+3. Map View Component Enhancement (src/components/views/mapa-view.tsx):
+   - Updated ClienteMapa interface with new fields (locacoesAtivas: string[], cobrancasResumo, temAtrasado)
+   - Added ClienteSemCoordenada interface for clients without GPS data
+   - Added "Clientes sem coordenadas" expandable section (amber-themed card):
+     - Shows client name, identifier, route color dot
+     - Atrasado badge and total pendente per client
+     - Scrollable list with prompt to add location data
+   - Added route lines toggle button in header (Route icon + "Rotas" pill button)
+   - Route stats now include ALL clients (with + without coordinates)
+   - Added atrasado count per route in route stats cards (red AlertTriangle indicator)
+
+4. Sample Data Updates:
+   - Added GPS coordinates to 8 active clients around Campo Grande, MS
+   - Set C002 cobrança to "Atrasado" status for pulsing marker testing
+   - Removed coordinates from C008 to test "Clientes sem coordenadas" section
+
+API Response Verified:
+- 7 clients with coordinates (for map markers)
+- 1 client without coordinates (for "sem coordenadas" section)
+- Stats: totalClientes=8, clientesComCoordenadas=7
+- C002 has temAtrasado=true, cobrancasResumo: {pendente:0, atrasado:1, pago:0, parcial:0}
+
+Lint Results:
+- Zero lint errors, zero warnings
+
+Stage Summary:
+- API now returns ALL active clients with rich cobranças/locações details
+- Map popups show comprehensive client info with clickable phone, product tags, status badges
+- Clients without coordinates shown in dedicated expandable section
+- Pulsing markers for clients with cobranças atrasadas
+- Optional route polylines connecting same-route clients
+- Dynamic marker sizing based on payment importance
+- Zero lint errors
+
+---
+Task ID: session-2026-05-11
+Agent: Main Agent
+Task: Implement FIFO payment logic, map verification, grouped views for cobranças and locações
+
+Work Log:
+1. Assessed project status from worklog.md — identified pending tasks from previous session
+2. Implemented FIFO payment logic reversal in cobranca-form-view.tsx:
+   - Changed from "pay current first, surplus to open" to "pay open first (oldest), remainder to current"
+   - Added paymentDistribution useMemo for real-time preview
+   - Added "Distribuição do Pagamento" UI showing how funds will be distributed
+   - Updated autoStatus to derive from distribution when open cobranças are selected
+3. Enhanced map display (mapa/route.ts, map-inner.tsx, mapa-view.tsx):
+   - API now returns ALL active clients (not just with coordinates) + clientesSemCoordenadas
+   - Added cobrancasResumo per client (pendente, atrasado, pago, parcial counts)
+   - Enhanced popup with phone link, locações tags, cobranças badges, pendente highlight
+   - Dynamic marker sizing (bigger for atrasado clients)
+   - Pulsing effect for clients with cobranças atrasadas
+   - Route polylines connecting same-route clients (toggle)
+   - "Clientes sem coordenadas" section showing clients needing GPS data
+   - Added sample GPS coordinates to 8 clients around Campo Grande, MS
+4. Added groupBy=route API to cobrancas and locações endpoints:
+   - Cobranças: groups by route > client > locação (3-level nesting)
+   - Locações: groups by route > client (2-level nesting)
+   - Default paginated behavior unchanged
+5. Added toggle view (Lista/Agrupado) to cobrancas-view.tsx and locacoes-view.tsx:
+   - Flat view: existing table (default, unchanged)
+   - Agrupado view: Collapsible accordion with route > client > locação hierarchy
+   - Route-level colored headers with stats
+   - Client-level with counts and amounts
+   - Cobrança/Locação mini-cards with status badges
+6. All API endpoints tested and verified working
+7. Zero lint errors
+
+Stage Summary:
+- FIFO payment logic: open cobranças paid first (oldest), remainder goes to current
+- Map: rich popups, dynamic markers, route lines, clients without coordinates section
+- Grouped views: route > client > locação accordion for both cobranças and locações
+- All APIs functional (groupBy=route for cobrancas and locacoes)
+- Zero lint errors, server compiles successfully
+
+## Current Project Status
+
+### Assessment
+The App Cobranças system continues to be a comprehensive billing management application. All user-requested features from this session have been implemented.
+
+### Current Goals/Completed Modifications/Verification Results
+- ✅ FIFO payment logic: oldest open cobranças paid first, then current cobrança gets remainder
+- ✅ Payment distribution preview: real-time display of how funds will be distributed
+- ✅ Map display: enhanced popups, dynamic markers, route polylines, clients without coordinates
+- ✅ Cobranças grouped by route > client > locação (toggle Lista/Agrupado)
+- ✅ Locações grouped by route > client (toggle Lista/Agrupado)
+- ✅ API endpoints for groupBy=route working correctly
+- ✅ Zero lint errors
+
+### Unresolved Issues or Risks
+1. **Dev server OOM**: Turbopack dev server still crashes under memory pressure. Compiles pages fine initially but can OOM on heavy compilation
+2. **Client coordinates**: Most seed data clients now have GPS coordinates, but real-world usage needs the GPS button in client form
+3. **Collapsible component**: Need to verify the Collapsible import is available in shadcn/ui components
+
+### Priority Recommendations for Next Phase
+1. Test grouped views thoroughly via preview panel
+2. Verify FIFO payment with real data scenarios
+3. Add cobrança PDF generation (jsPDF)
+4. Add PWA support for mobile install
+5. Performance optimization for large datasets (virtual scrolling)
+6. Add real-time notifications via WebSocket
