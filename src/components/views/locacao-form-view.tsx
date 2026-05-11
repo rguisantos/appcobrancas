@@ -428,7 +428,6 @@ export function LocacaoFormView() {
                     type="date"
                     value={formData.dataLocacao}
                     onChange={(e) => handleChange('dataLocacao', e.target.value)}
-                    required
                   />
                 </div>
                 <div className="space-y-2">

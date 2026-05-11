@@ -307,7 +307,6 @@ export function ClienteFormView() {
                       value={formData.identificador}
                       onChange={(e) => handleChange('identificador', e.target.value)}
                       placeholder="Ex: C001"
-                      required
                     />
                   </div>
                   <div className="space-y-2">
@@ -317,7 +316,6 @@ export function ClienteFormView() {
                       value={formData.nomeExibicao}
                       onChange={(e) => handleChange('nomeExibicao', e.target.value)}
                       placeholder="Nome curto para exibição"
-                      required
                     />
                   </div>
                 </div>
@@ -403,7 +401,6 @@ export function ClienteFormView() {
                       value={formData.telefonePrincipal}
                       onChange={(e) => handleChange('telefonePrincipal', e.target.value)}
                       placeholder="(00) 00000-0000"
-                      required
                     />
                   </div>
                   <div className="space-y-2">

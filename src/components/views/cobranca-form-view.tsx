@@ -487,7 +487,6 @@ export function CobrancaFormView() {
                     type="date"
                     value={formData.dataInicio}
                     onChange={(e) => handleChange('dataInicio', e.target.value)}
-                    required
                   />
                 </div>
                 <div className="space-y-2">
@@ -497,7 +496,6 @@ export function CobrancaFormView() {
                     type="date"
                     value={formData.dataFim}
                     onChange={(e) => handleChange('dataFim', e.target.value)}
-                    required
                   />
                 </div>
               </div>

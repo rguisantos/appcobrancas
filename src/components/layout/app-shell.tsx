@@ -132,35 +132,58 @@ export function AppShell() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+  // Prevent body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [mobileOpen])
+
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Mobile overlay */}
+    <div className="min-h-screen flex bg-background safe-top safe-right safe-bottom safe-left">
+      {/* Mobile overlay - covers content */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm transition-opacity"
           onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed lg:static inset-y-0 left-0 z-50 flex flex-col border-r bg-card transition-all duration-300',
+          'fixed lg:static inset-y-0 left-0 z-50 flex flex-col border-r bg-card transition-transform duration-300 ease-in-out',
           collapsed ? 'w-16' : 'w-64',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          // On mobile: overlay mode (translate off-screen when closed, on-screen when open)
+          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+          // Safe area for iOS
+          'pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)]'
         )}
+        style={{
+          // Ensure sidebar is above content on mobile
+          ...(mobileOpen ? { height: '100dvh' } : {}),
+        }}
       >
         {/* Logo */}
-        <div className={cn('flex items-center h-16 px-4 border-b', collapsed ? 'justify-center' : 'gap-3')}>
-          <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shrink-0">
-            <span className="text-lg font-bold text-primary-foreground">C</span>
-          </div>
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <h1 className="text-base font-bold truncate">Cobranças</h1>
-              <p className="text-[10px] text-muted-foreground truncate">Gestão de Cobranças</p>
+        <div className={cn('flex items-center h-14 px-4 border-b', collapsed && 'lg:justify-center', mobileOpen && 'justify-between')}>
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shrink-0">
+              <span className="text-lg font-bold text-primary-foreground">C</span>
             </div>
-          )}
+            {(!collapsed || mobileOpen) && (
+              <div className="flex-1 min-w-0">
+                <h1 className="text-base font-bold truncate">Cobranças</h1>
+                <p className="text-[10px] text-muted-foreground truncate">Gestão de Cobranças</p>
+              </div>
+            )}
+          </div>
+          {/* Desktop collapse toggle */}
           <Button
             variant="ghost"
             size="icon"
@@ -169,10 +192,11 @@ export function AppShell() {
           >
             {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
           </Button>
+          {/* Mobile close button */}
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden h-7 w-7"
+            className="lg:hidden h-7 w-7 shrink-0"
             onClick={() => setMobileOpen(false)}
           >
             <X className="h-4 w-4" />
@@ -194,17 +218,17 @@ export function AppShell() {
                     <Button
                       variant={isActive(item.view) ? 'secondary' : 'ghost'}
                       className={cn(
-                        'w-full justify-start gap-3 h-9 text-sm font-medium',
-                        collapsed && 'justify-center px-0',
+                        'w-full justify-start gap-3 h-10 sm:h-9 text-sm font-medium',
+                        collapsed && !mobileOpen && 'lg:justify-center lg:px-0',
                         isActive(item.view) && 'bg-primary/10 text-primary hover:bg-primary/15'
                       )}
                       onClick={() => handleNavClick(item.view)}
                     >
                       {item.icon}
-                      {!collapsed && <span className="truncate">{item.label}</span>}
+                      {(!collapsed || mobileOpen) && <span className="truncate">{item.label}</span>}
                     </Button>
                   </TooltipTrigger>
-                  {collapsed && (
+                  {collapsed && !mobileOpen && (
                     <TooltipContent side="right" className="font-medium">
                       {item.label}
                     </TooltipContent>
@@ -226,17 +250,17 @@ export function AppShell() {
                         <Button
                           variant={isActive(item.view) ? 'secondary' : 'ghost'}
                           className={cn(
-                            'w-full justify-start gap-3 h-9 text-sm font-medium',
-                            collapsed && 'justify-center px-0',
+                            'w-full justify-start gap-3 h-10 sm:h-9 text-sm font-medium',
+                            collapsed && !mobileOpen && 'lg:justify-center lg:px-0',
                             isActive(item.view) && 'bg-primary/10 text-primary hover:bg-primary/15'
                           )}
                           onClick={() => handleNavClick(item.view)}
                         >
                           {item.icon}
-                          {!collapsed && <span className="truncate">{item.label}</span>}
+                          {(!collapsed || mobileOpen) && <span className="truncate">{item.label}</span>}
                         </Button>
                       </TooltipTrigger>
-                      {collapsed && (
+                      {collapsed && !mobileOpen && (
                         <TooltipContent side="right" className="font-medium">
                           {item.label}
                         </TooltipContent>
@@ -250,28 +274,28 @@ export function AppShell() {
         </ScrollArea>
 
         {/* Bottom section */}
-        <div className="border-t p-3 space-y-1">
+        <div className="border-t p-3 space-y-1 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <Button
             variant="ghost"
-            className={cn('w-full justify-start gap-3 h-9 text-sm', collapsed && 'justify-center px-0')}
+            className={cn('w-full justify-start gap-3 h-10 sm:h-9 text-sm', collapsed && !mobileOpen && 'lg:justify-center lg:px-0')}
             onClick={() => navigate('perfil')}
           >
             <User className="h-4 w-4" />
-            {!collapsed && <span className="truncate">Perfil</span>}
+            {(!collapsed || mobileOpen) && <span className="truncate">Perfil</span>}
           </Button>
           <Button
             variant="ghost"
-            className={cn('w-full justify-start gap-3 h-9 text-sm text-destructive hover:text-destructive', collapsed && 'justify-center px-0')}
+            className={cn('w-full justify-start gap-3 h-10 sm:h-9 text-sm text-destructive hover:text-destructive', collapsed && !mobileOpen && 'lg:justify-center lg:px-0')}
             onClick={handleLogout}
           >
             <LogOut className="h-4 w-4" />
-            {!collapsed && <span className="truncate">Sair</span>}
+            {(!collapsed || mobileOpen) && <span className="truncate">Sair</span>}
           </Button>
         </div>
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 w-full">
         <TopBar onMenuClick={() => setMobileOpen(true)} />
         <main className="flex-1 overflow-auto">
           <ViewRouter currentView={currentView} />

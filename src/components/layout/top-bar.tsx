@@ -14,19 +14,41 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
 import { Menu, Bell, Search, LogOut, User, ChevronLeft } from 'lucide-react'
-import { Input } from '@/components/ui/input'
+import { ThemeToggle } from '@/components/layout/theme-toggle'
 import { getViewParent } from '@/lib/store/navigation'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import {
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from '@/components/ui/command'
+import { Users, Package, DollarSign, FileText } from 'lucide-react'
 
 export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   const { user, logout } = useAuth()
-  const { currentView, goBack, history } = useNavigation()
+  const { currentView, goBack, history, navigate } = useNavigation()
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<any>(null)
+  const [searching, setSearching] = useState(false)
   const [notifications, setNotifications] = useState<any[]>([])
-  const searchRef = useRef<HTMLDivElement>(null)
 
+  // Keyboard shortcut: Cmd+K / Ctrl+K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setSearchOpen((prev) => !prev)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  // Load notifications
   useEffect(() => {
     let cancelled = false
     async function load() {
@@ -42,8 +64,15 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
     return () => { cancelled = true }
   }, [])
 
+  // Debounced search
   useEffect(() => {
+    if (!searchOpen) {
+      setSearchQuery('')
+      setSearchResults(null)
+      return
+    }
     if (searchQuery.length >= 2) {
+      setSearching(true)
       const timer = setTimeout(async () => {
         try {
           const res = await fetch(`/api/busca-global?q=${encodeURIComponent(searchQuery)}`)
@@ -51,25 +80,17 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
             const data = await res.json()
             setSearchResults(data)
           }
-        } catch {}
+        } catch {
+        } finally {
+          setSearching(false)
+        }
       }, 300)
       return () => clearTimeout(timer)
+    } else {
+      setSearchResults(null)
+      setSearching(false)
     }
-    return () => {
-      // Cleanup
-    }
-  }, [searchQuery])
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setSearchOpen(false)
-        setSearchResults(null)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  }, [searchQuery, searchOpen])
 
   const unreadCount = notifications.filter((n: any) => !n.lida).length
 
@@ -115,166 +136,217 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   const currentLabel = viewLabels[currentView] || currentView
   const hasHistory = history.length > 0
 
-  const { navigate } = useNavigation()
+  const handleSelectResult = (type: string, id: string) => {
+    const viewMap: Record<string, string> = {
+      clientes: 'cliente-detalhe',
+      produtos: 'produto-detalhe',
+      locacoes: 'locacao-detalhe',
+      cobrancas: 'cobranca-detalhe',
+    }
+    navigate(viewMap[type] as any, id)
+    setSearchOpen(false)
+    setSearchQuery('')
+  }
+
+  const entityConfig: Record<string, { label: string; icon: React.ReactNode }> = {
+    clientes: { label: 'Clientes', icon: <Users className="h-4 w-4 text-blue-500" /> },
+    produtos: { label: 'Produtos', icon: <Package className="h-4 w-4 text-orange-500" /> },
+    locacoes: { label: 'Locações', icon: <DollarSign className="h-4 w-4 text-green-500" /> },
+    cobrancas: { label: 'Cobranças', icon: <FileText className="h-4 w-4 text-red-500" /> },
+  }
+
+  const hasAnyResults = searchResults && Object.values(searchResults).some((arr: any) => arr?.length > 0)
 
   return (
-    <header className="h-14 border-b bg-card flex items-center px-4 gap-3 shrink-0">
-      {/* Mobile menu button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="lg:hidden h-8 w-8"
-        onClick={onMenuClick}
-      >
-        <Menu className="h-4 w-4" />
-      </Button>
-
-      {/* Back button */}
-      {hasHistory && (
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goBack}>
-          <ChevronLeft className="h-4 w-4" />
+    <>
+      <header className="h-12 sm:h-14 border-b bg-card flex items-center px-3 sm:px-4 gap-2 sm:gap-3 shrink-0">
+        {/* Mobile menu button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="lg:hidden h-8 w-8"
+          onClick={onMenuClick}
+        >
+          <Menu className="h-4 w-4" />
         </Button>
-      )}
 
-      {/* Current view title */}
-      <h2 className="text-base font-semibold truncate">{currentLabel}</h2>
-
-      <div className="flex-1" />
-
-      {/* Search */}
-      <div className="relative" ref={searchRef}>
-        {searchOpen ? (
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              className="h-8 w-64 pl-8 text-sm"
-              placeholder="Buscar clientes, produtos..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value)
-                if (e.target.value.length < 2) setSearchResults(null)
-              }}
-              autoFocus
-            />
-          </div>
-        ) : (
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSearchOpen(true)}>
-            <Search className="h-4 w-4" />
+        {/* Back button */}
+        {hasHistory && (
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goBack}>
+            <ChevronLeft className="h-4 w-4" />
           </Button>
         )}
 
-        {/* Search results dropdown */}
-        {searchResults && searchQuery.length >= 2 && (
-          <div className="absolute right-0 top-full mt-1 w-80 bg-popover border rounded-lg shadow-lg z-50 max-h-96 overflow-auto">
-            {['clientes', 'produtos', 'locacoes', 'cobrancas'].map((type) => {
-              const items = searchResults[type] || []
-              if (items.length === 0) return null
-              return (
-                <div key={type} className="p-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase mb-1 px-2">
-                    {type === 'cobrancas' ? 'Cobranças' : type.charAt(0).toUpperCase() + type.slice(1)}
-                  </p>
-                  {items.slice(0, 5).map((item: any) => (
-                    <button
-                      key={item.id}
-                      className="w-full text-left px-2 py-1.5 rounded-md hover:bg-accent text-sm"
-                      onClick={() => {
-                        const viewMap: Record<string, string> = {
-                          clientes: 'cliente-detalhe',
-                          produtos: 'produto-detalhe',
-                          locacoes: 'locacao-detalhe',
-                          cobrancas: 'cobranca-detalhe',
-                        }
-                        navigate(viewMap[type] as any, item.id)
-                        setSearchOpen(false)
-                        setSearchQuery('')
-                      }}
-                    >
-                      <span className="font-medium">
+        {/* Current view title */}
+        <h2 className="text-sm sm:text-base font-semibold truncate">{currentLabel}</h2>
+
+        <div className="flex-1" />
+
+        {/* Search button with ⌘K hint */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-2 text-muted-foreground hidden sm:flex"
+          onClick={() => setSearchOpen(true)}
+        >
+          <Search className="h-3.5 w-3.5" />
+          <span className="text-xs">Buscar...</span>
+          <kbd className="pointer-events-none ml-1 inline-flex h-5 select-none items-center gap-0.5 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+            <span className="text-xs">⌘</span>K
+          </kbd>
+        </Button>
+        {/* Mobile search icon */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 sm:hidden"
+          onClick={() => setSearchOpen(true)}
+        >
+          <Search className="h-4 w-4" />
+        </Button>
+
+        {/* Theme toggle */}
+        <ThemeToggle />
+
+        {/* Notifications */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 relative">
+              <Bell className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-bold">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuLabel>Notificações</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {notifications.length === 0 ? (
+              <div className="p-4 text-center text-sm text-muted-foreground">
+                Nenhuma notificação
+              </div>
+            ) : (
+              notifications.slice(0, 5).map((n: any) => (
+                <DropdownMenuItem key={n.id} className="flex flex-col items-start gap-1 p-3">
+                  <span className="font-medium text-sm">{n.titulo}</span>
+                  <span className="text-xs text-muted-foreground line-clamp-2">{n.mensagem}</span>
+                </DropdownMenuItem>
+              ))
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* User menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 gap-2 px-2">
+              <Avatar className="h-7 w-7">
+                <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                  {user?.nome?.charAt(0)?.toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm font-medium hidden sm:inline-block max-w-[120px] truncate">
+                {user?.nome || 'Usuário'}
+              </span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>
+              <div className="flex flex-col">
+                <span>{user?.nome}</span>
+                <span className="text-xs font-normal text-muted-foreground">{user?.email}</span>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate('perfil')}>
+              <User className="mr-2 h-4 w-4" />
+              Perfil
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={logout} className="text-destructive">
+              <LogOut className="mr-2 h-4 w-4" />
+              Sair
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </header>
+
+      {/* Command Palette Search Dialog */}
+      <CommandDialog
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        title="Busca Global"
+        description="Buscar clientes, produtos, locações, cobranças..."
+        showCloseButton={false}
+        className="sm:max-w-lg"
+      >
+        <CommandInput
+          placeholder="Buscar clientes, produtos, locações, cobranças..."
+          value={searchQuery}
+          onValueChange={setSearchQuery}
+        />
+        <CommandList>
+          {searchQuery.length >= 2 && !searching && !hasAnyResults && (
+            <CommandEmpty>Nenhum resultado encontrado</CommandEmpty>
+          )}
+          {searchQuery.length < 2 && (
+            <div className="py-6 text-center text-sm text-muted-foreground">
+              Digite ao menos 2 caracteres para buscar
+            </div>
+          )}
+          {searching && (
+            <div className="py-6 text-center text-sm text-muted-foreground">
+              Buscando...
+            </div>
+          )}
+          {searchResults && !searching && ['clientes', 'produtos', 'locacoes', 'cobrancas'].map((type) => {
+            const items = searchResults[type] || []
+            if (items.length === 0) return null
+            const config = entityConfig[type]
+            return (
+              <CommandGroup key={type} heading={config.label}>
+                {items.slice(0, 8).map((item: any) => (
+                  <CommandItem
+                    key={item.id}
+                    value={`${type}-${item.id}`}
+                    onSelect={() => handleSelectResult(type, item.id)}
+                    className="flex items-center gap-3 cursor-pointer"
+                  >
+                    {config.icon}
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium text-sm truncate block">
                         {item.nomeExibicao || item.identificador || item.clienteNome || item.id}
                       </span>
-                      {item.status && (
-                        <Badge variant="outline" className="ml-2 text-[10px]">
-                          {item.status}
-                        </Badge>
+                      {item.identificador && item.nomeExibicao && (
+                        <span className="text-xs text-muted-foreground truncate block">
+                          {item.identificador}
+                        </span>
                       )}
-                    </button>
-                  ))}
-                </div>
-              )
-            })}
-            {Object.values(searchResults).every((arr: any) => !arr?.length) && (
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                Nenhum resultado encontrado
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Notifications */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 relative">
-            <Bell className="h-4 w-4" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-bold">
-                {unreadCount > 9 ? '9+' : unreadCount}
+                    </div>
+                    {item.status && (
+                      <Badge variant="outline" className="text-[10px] shrink-0">
+                        {item.status}
+                      </Badge>
+                    )}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )
+          })}
+          {searchQuery.length >= 2 && !searching && (
+            <div className="border-t px-4 py-2 flex items-center justify-between">
+              <span className="text-[10px] text-muted-foreground">
+                Enter para selecionar ·↑↓ para navegar
               </span>
-            )}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-80">
-          <DropdownMenuLabel>Notificações</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          {notifications.length === 0 ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              Nenhuma notificação
+              <span className="text-[10px] text-muted-foreground">
+                Esc para fechar
+              </span>
             </div>
-          ) : (
-            notifications.slice(0, 5).map((n: any) => (
-              <DropdownMenuItem key={n.id} className="flex flex-col items-start gap-1 p-3">
-                <span className="font-medium text-sm">{n.titulo}</span>
-                <span className="text-xs text-muted-foreground line-clamp-2">{n.mensagem}</span>
-              </DropdownMenuItem>
-            ))
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* User menu */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-8 gap-2 px-2">
-            <Avatar className="h-7 w-7">
-              <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                {user?.nome?.charAt(0)?.toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <span className="text-sm font-medium hidden sm:inline-block max-w-[120px] truncate">
-              {user?.nome || 'Usuário'}
-            </span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel>
-            <div className="flex flex-col">
-              <span>{user?.nome}</span>
-              <span className="text-xs font-normal text-muted-foreground">{user?.email}</span>
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => navigate('perfil')}>
-            <User className="mr-2 h-4 w-4" />
-            Perfil
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={logout} className="text-destructive">
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </header>
+        </CommandList>
+      </CommandDialog>
+    </>
   )
 }
