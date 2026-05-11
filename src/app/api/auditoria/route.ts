@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const searchParams = request.nextUrl.searchParams
   const page = parseInt(searchParams.get('page') || '1')
   const limit = parseInt(searchParams.get('limit') || '50')
@@ -46,4 +47,8 @@ export async function GET(request: NextRequest) {
   ])
 
   return NextResponse.json({ data, total, page, totalPages: Math.ceil(total / limit) })
+  } catch (error) {
+    console.error('Erro ao buscar logs de auditoria:', error)
+    return NextResponse.json({ error: 'Erro ao buscar logs de auditoria' }, { status: 500 })
+  }
 }

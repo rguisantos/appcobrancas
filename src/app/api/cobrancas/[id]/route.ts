@@ -12,6 +12,7 @@ export async function GET(
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const { id } = await params
   const { searchParams } = new URL(request.url)
   const include = searchParams.get('include')
@@ -23,6 +24,10 @@ export async function GET(
 
   if (!cobranca) return NextResponse.json({ error: 'Cobrança não encontrada' }, { status: 404 })
   return NextResponse.json(cobranca)
+  } catch (error) {
+    console.error('Erro ao buscar cobrança:', error)
+    return NextResponse.json({ error: 'Erro ao buscar cobrança' }, { status: 500 })
+  }
 }
 
 export async function PUT(
@@ -253,6 +258,7 @@ export async function DELETE(
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const { id } = await params
   const existing = await db.cobranca.findFirst({ where: { id, deletedAt: null } })
   if (!existing) return NextResponse.json({ error: 'Cobrança não encontrada' }, { status: 404 })
@@ -273,4 +279,8 @@ export async function DELETE(
   })
 
   return NextResponse.json({ message: 'Cobrança excluída com sucesso' })
+  } catch (error) {
+    console.error('Erro ao excluir cobrança:', error)
+    return NextResponse.json({ error: 'Erro ao excluir cobrança' }, { status: 500 })
+  }
 }

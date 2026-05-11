@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
+  try {
   const cobrancas = await db.cobranca.findMany({
     where: { deletedAt: null, status: { in: ['Atrasado', 'Parcial', 'Pendente'] } },
     orderBy: { dataVencimento: 'asc' },
@@ -31,4 +32,8 @@ export async function GET(request: NextRequest) {
     totalParciais: cobrancas.filter(c => c.status === 'Parcial').length,
     totalPendentes: cobrancas.filter(c => c.status === 'Pendente').length,
   })
+  } catch (error) {
+    console.error('Erro ao buscar inadimplência:', error)
+    return NextResponse.json({ error: 'Erro ao buscar inadimplência' }, { status: 500 })
+  }
 }

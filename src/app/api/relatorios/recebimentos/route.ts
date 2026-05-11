@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
+  try {
   const cobrancas = await db.cobranca.findMany({
     where: { deletedAt: null, status: { in: ['Pago', 'Parcial'] } },
     orderBy: { dataPagamento: 'desc' },
@@ -22,4 +23,8 @@ export async function GET(request: NextRequest) {
     porMes: Object.entries(porMes).map(([mes, total]) => ({ mes, total })).sort((a, b) => a.mes.localeCompare(b.mes)),
     totalRecebido: cobrancas.reduce((s, c) => s + c.valorRecebido, 0),
   })
+  } catch (error) {
+    console.error('Erro ao buscar recebimentos:', error)
+    return NextResponse.json({ error: 'Erro ao buscar recebimentos' }, { status: 500 })
+  }
 }

@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
+  try {
   const rotas = await db.rota.findMany({
     where: { deletedAt: null },
     include: {
@@ -31,4 +32,8 @@ export async function GET(request: NextRequest) {
   }))
 
   return NextResponse.json({ data })
+  } catch (error) {
+    console.error('Erro ao buscar relatório de rotas:', error)
+    return NextResponse.json({ error: 'Erro ao buscar relatório de rotas' }, { status: 500 })
+  }
 }

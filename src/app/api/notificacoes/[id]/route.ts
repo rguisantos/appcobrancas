@@ -17,12 +17,17 @@ export async function PUT(
 
   if (!existing) return NextResponse.json({ error: 'Notificação não encontrada' }, { status: 404 })
 
+  try {
   const notificacao = await db.notificacao.update({
     where: { id },
     data: { lida: true },
   })
 
   return NextResponse.json(notificacao)
+  } catch (error) {
+    console.error('Erro ao atualizar notificação:', error)
+    return NextResponse.json({ error: 'Erro ao atualizar notificação' }, { status: 500 })
+  }
 }
 
 export async function DELETE(
@@ -39,6 +44,7 @@ export async function DELETE(
 
   if (!existing) return NextResponse.json({ error: 'Notificação não encontrada' }, { status: 404 })
 
+  try {
   await db.notificacao.delete({ where: { id } })
 
   await registrarAuditoria({
@@ -51,4 +57,8 @@ export async function DELETE(
   })
 
   return NextResponse.json({ message: 'Notificação excluída com sucesso' })
+  } catch (error) {
+    console.error('Erro ao excluir notificação:', error)
+    return NextResponse.json({ error: 'Erro ao excluir notificação' }, { status: 500 })
+  }
 }

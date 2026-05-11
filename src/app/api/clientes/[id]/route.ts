@@ -11,6 +11,7 @@ export async function GET(
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const { id } = await params
   const cliente = await db.cliente.findFirst({
     where: { id, deletedAt: null },
@@ -19,6 +20,10 @@ export async function GET(
 
   if (!cliente) return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
   return NextResponse.json(cliente)
+  } catch (error) {
+    console.error('Erro ao buscar cliente:', error)
+    return NextResponse.json({ error: 'Erro ao buscar cliente' }, { status: 500 })
+  }
 }
 
 export async function PUT(
@@ -115,6 +120,7 @@ export async function DELETE(
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const { id } = await params
   const existing = await db.cliente.findFirst({ where: { id, deletedAt: null } })
   if (!existing) return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
@@ -135,4 +141,8 @@ export async function DELETE(
   })
 
   return NextResponse.json({ message: 'Cliente excluído com sucesso' })
+  } catch (error) {
+    console.error('Erro ao excluir cliente:', error)
+    return NextResponse.json({ error: 'Erro ao excluir cliente' }, { status: 500 })
+  }
 }

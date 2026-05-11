@@ -11,6 +11,7 @@ export async function GET(
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const { id } = await params
   const manutencao = await db.manutencao.findFirst({
     where: { id },
@@ -19,6 +20,10 @@ export async function GET(
 
   if (!manutencao) return NextResponse.json({ error: 'Manutenção não encontrada' }, { status: 404 })
   return NextResponse.json(manutencao)
+  } catch (error) {
+    console.error('Erro ao buscar manutenção:', error)
+    return NextResponse.json({ error: 'Erro ao buscar manutenção' }, { status: 500 })
+  }
 }
 
 export async function PUT(
@@ -100,6 +105,7 @@ export async function DELETE(
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const { id } = await params
   const existing = await db.manutencao.findFirst({ where: { id } })
   if (!existing) return NextResponse.json({ error: 'Manutenção não encontrada' }, { status: 404 })
@@ -133,4 +139,8 @@ export async function DELETE(
   })
 
   return NextResponse.json({ message: 'Manutenção excluída com sucesso' })
+  } catch (error) {
+    console.error('Erro ao excluir manutenção:', error)
+    return NextResponse.json({ error: 'Erro ao excluir manutenção' }, { status: 500 })
+  }
 }

@@ -102,6 +102,7 @@ interface MapInnerProps {
   matchingClientIds?: Set<string> | null
   locateClientId?: string | null
   userLocation?: { lat: number; lng: number } | null
+  clientesWithDistance?: Array<ClienteMapa & { distance: number | null }>
 }
 
 type PinStatus = 'pendenteCobranca' | 'atrasado' | 'parcial' | 'pago' | 'pendente' | 'neutro'
@@ -196,6 +197,7 @@ export default function MapInner({
   matchingClientIds = null,
   locateClientId = null,
   userLocation = null,
+  clientesWithDistance = [],
 }: MapInnerProps) {
   const { navigate } = useNavigation()
 
@@ -518,6 +520,14 @@ export default function MapInner({
           const locacoesSemCobranca = locacoesComCobranca.filter(l => !l.ultimaCobranca)
           const locacoesComCobrancaInfo = locacoesComCobranca.filter(l => l.ultimaCobranca)
 
+          // Distance from user location
+          const distanceInfo = clientesWithDistance?.find(d => d.id === cliente.id)
+          const distanceLabel = distanceInfo?.distance != null
+            ? distanceInfo.distance < 1
+              ? `${Math.round(distanceInfo.distance * 1000)}m de você`
+              : `${distanceInfo.distance.toFixed(1)}km de você`
+            : null
+
           return (
             <CircleMarker
               key={cliente.id}
@@ -616,6 +626,17 @@ export default function MapInner({
                     />
                     <span className="text-xs font-medium">{rotaDesc}</span>
                   </div>
+
+                  {/* Distance from user */}
+                  {distanceLabel && (
+                    <div className="flex items-center gap-1.5 text-xs text-emerald-600">
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span className="font-medium">{distanceLabel}</span>
+                    </div>
+                  )}
 
                   {/* Phone - clickable */}
                   {cliente.telefonePrincipal && (

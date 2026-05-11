@@ -44,9 +44,18 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, ChevronLeft, ChevronRight, Download, Users, Upload, Loader2, FileDown, FileText } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, ChevronLeft, ChevronRight, Download, Users, Upload, Loader2, FileDown, FileText, UserPlus, Phone } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog'
 
 interface Cliente {
   id: string
@@ -91,6 +100,12 @@ export function ClientesView() {
   const [importLoading, setImportLoading] = useState(false)
   const [togglingStatusId, setTogglingStatusId] = useState<string | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement | null>(null)
+
+  // Quick create dialog state
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false)
+  const [quickNome, setQuickNome] = useState('')
+  const [quickTelefone, setQuickTelefone] = useState('')
+  const [quickCreating, setQuickCreating] = useState(false)
 
   // Fetch rotas once
   useEffect(() => {
@@ -234,6 +249,40 @@ export function ClientesView() {
     }
   }
 
+  // Quick create handler
+  const handleQuickCreate = async () => {
+    if (!quickNome.trim() || !quickTelefone.trim()) {
+      toast.error('Preencha nome e telefone')
+      return
+    }
+    setQuickCreating(true)
+    try {
+      const res = await fetch('/api/clientes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nomeExibicao: quickNome.trim(),
+          telefonePrincipal: quickTelefone.trim(),
+          status: 'Ativo',
+        }),
+      })
+      if (res.ok) {
+        toast.success('Cliente criado com sucesso')
+        setQuickCreateOpen(false)
+        setQuickNome('')
+        setQuickTelefone('')
+        fetchClientes()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || 'Erro ao criar cliente')
+      }
+    } catch {
+      toast.error('Erro ao criar cliente')
+    } finally {
+      setQuickCreating(false)
+    }
+  }
+
   const totalPages = Math.ceil(total / limit)
 
   return (
@@ -301,6 +350,10 @@ export function ClientesView() {
             <Plus className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Novo Cliente</span>
             <span className="sm:hidden">Novo</span>
+          </Button>
+          <Button variant="outline" onClick={() => setQuickCreateOpen(true)} size="sm" className="gap-1.5 h-8 text-xs sm:h-auto sm:text-sm sm:gap-2 border-dashed">
+            <UserPlus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Rápido</span>
           </Button>
         </div>
       </div>
@@ -578,6 +631,58 @@ export function ClientesView() {
           </div>
         </div>
       )}
+
+      {/* Quick Create Dialog */}
+      <Dialog open={quickCreateOpen} onOpenChange={setQuickCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Novo Cliente Rápido</DialogTitle>
+            <DialogDescription>
+              Crie um cliente com apenas nome e telefone. Edite depois para completar o cadastro.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="quick-nome">Nome</Label>
+              <div className="relative">
+                <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
+                <Input
+                  id="quick-nome"
+                  placeholder="Nome do cliente"
+                  value={quickNome}
+                  onChange={(e) => setQuickNome(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="quick-telefone">Telefone</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
+                <Input
+                  id="quick-telefone"
+                  placeholder="(67) 99999-9999"
+                  value={quickTelefone}
+                  onChange={(e) => setQuickTelefone(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuickCreateOpen(false)} disabled={quickCreating}>
+              Cancelar
+            </Button>
+            <Button onClick={handleQuickCreate} disabled={quickCreating} className="gap-2">
+              {quickCreating ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Criando...</>
+              ) : (
+                <><UserPlus className="h-4 w-4" /> Criar Cliente</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>

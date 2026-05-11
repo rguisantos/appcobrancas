@@ -16,11 +16,16 @@ export async function GET() {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const data = await db.dispositivo.findMany({
     orderBy: { createdAt: 'desc' },
   })
 
   return NextResponse.json(data)
+  } catch (error) {
+    console.error('Erro ao buscar dispositivos:', error)
+    return NextResponse.json({ error: 'Erro ao buscar dispositivos' }, { status: 500 })
+  }
 }
 
 export async function POST(request: NextRequest) {

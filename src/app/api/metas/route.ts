@@ -8,6 +8,7 @@ export async function GET() {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const data = await db.meta.findMany({
     where: { deletedAt: null },
     include: { rota: true },
@@ -15,6 +16,10 @@ export async function GET() {
   })
 
   return NextResponse.json(data)
+  } catch (error) {
+    console.error('Erro ao buscar metas:', error)
+    return NextResponse.json({ error: 'Erro ao buscar metas' }, { status: 500 })
+  }
 }
 
 export async function POST(request: NextRequest) {

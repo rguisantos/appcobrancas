@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
+  try {
   const locacoes = await db.locacao.findMany({
     where: { deletedAt: null },
     include: { cobrancas: { where: { deletedAt: null } } },
@@ -32,4 +33,8 @@ export async function GET(request: NextRequest) {
     totalAtivas: data.filter(l => l.status === 'Ativa').length,
     totalFinalizadas: data.filter(l => l.status === 'Finalizada').length,
   })
+  } catch (error) {
+    console.error('Erro ao buscar relatório de locações:', error)
+    return NextResponse.json({ error: 'Erro ao buscar relatório de locações' }, { status: 500 })
+  }
 }

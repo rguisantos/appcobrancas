@@ -21,27 +21,27 @@ export async function PUT(
   if (!existing) return NextResponse.json({ error: 'Estabelecimento não encontrado' }, { status: 404 })
 
   try {
-    const body = await request.json()
-    const data = estabelecimentoSchema.parse(body)
-    const antes = existing as Record<string, unknown>
+  const body = await request.json()
+  const data = estabelecimentoSchema.parse(body)
+  const antes = existing as Record<string, unknown>
 
-    const estabelecimento = await db.estabelecimento.update({
-      where: { id },
-      data,
-    })
+  const estabelecimento = await db.estabelecimento.update({
+    where: { id },
+    data,
+  })
 
-    await registrarAuditoria({
-      usuarioId: session.userId,
-      acao: 'atualizar_estabelecimento',
-      entidade: 'estabelecimento',
-      entidadeId: estabelecimento.id,
-      entidadeNome: estabelecimento.nome,
-      antes,
-      depois: data as Record<string, unknown>,
-      severidade: 'info',
-    })
+  await registrarAuditoria({
+    usuarioId: session.userId,
+    acao: 'atualizar_estabelecimento',
+    entidade: 'estabelecimento',
+    entidadeId: estabelecimento.id,
+    entidadeNome: estabelecimento.nome,
+    antes,
+    depois: data as Record<string, unknown>,
+    severidade: 'info',
+  })
 
-    return NextResponse.json(estabelecimento)
+  return NextResponse.json(estabelecimento)
   } catch (error: unknown) {
     if (error && typeof error === 'object' && 'issues' in error) {
       return NextResponse.json({ error: 'Dados inválidos', details: (error as { issues: unknown }).issues }, { status: 400 })
@@ -57,6 +57,7 @@ export async function DELETE(
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const { id } = await params
   const existing = await db.estabelecimento.findFirst({ where: { id } })
   if (!existing) return NextResponse.json({ error: 'Estabelecimento não encontrado' }, { status: 404 })
@@ -74,4 +75,8 @@ export async function DELETE(
   })
 
   return NextResponse.json({ message: 'Estabelecimento excluído com sucesso' })
+  } catch (error) {
+    console.error('Erro ao excluir estabelecimento:', error)
+    return NextResponse.json({ error: 'Erro ao excluir estabelecimento' }, { status: 500 })
+  }
 }

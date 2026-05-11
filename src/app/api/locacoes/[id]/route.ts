@@ -11,6 +11,7 @@ export async function GET(
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const { id } = await params
   const locacao = await db.locacao.findFirst({
     where: { id, deletedAt: null },
@@ -19,6 +20,10 @@ export async function GET(
 
   if (!locacao) return NextResponse.json({ error: 'Locação não encontrada' }, { status: 404 })
   return NextResponse.json(locacao)
+  } catch (error) {
+    console.error('Erro ao buscar locação:', error)
+    return NextResponse.json({ error: 'Erro ao buscar locação' }, { status: 500 })
+  }
 }
 
 export async function PUT(
@@ -97,6 +102,7 @@ export async function DELETE(
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const { id } = await params
   const existing = await db.locacao.findFirst({ where: { id, deletedAt: null } })
   if (!existing) return NextResponse.json({ error: 'Locação não encontrada' }, { status: 404 })
@@ -117,4 +123,8 @@ export async function DELETE(
   })
 
   return NextResponse.json({ message: 'Locação excluída com sucesso' })
+  } catch (error) {
+    console.error('Erro ao excluir locação:', error)
+    return NextResponse.json({ error: 'Erro ao excluir locação' }, { status: 500 })
+  }
 }

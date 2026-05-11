@@ -11,6 +11,7 @@ export async function GET(
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const { id } = await params
   const rota = await db.rota.findFirst({
     where: { id, deletedAt: null },
@@ -19,6 +20,10 @@ export async function GET(
 
   if (!rota) return NextResponse.json({ error: 'Rota não encontrada' }, { status: 404 })
   return NextResponse.json(rota)
+  } catch (error) {
+    console.error('Erro ao buscar rota:', error)
+    return NextResponse.json({ error: 'Erro ao buscar rota' }, { status: 500 })
+  }
 }
 
 export async function PUT(
@@ -69,6 +74,7 @@ export async function DELETE(
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const { id } = await params
   const existing = await db.rota.findFirst({ where: { id, deletedAt: null } })
   if (!existing) return NextResponse.json({ error: 'Rota não encontrada' }, { status: 404 })
@@ -89,4 +95,8 @@ export async function DELETE(
   })
 
   return NextResponse.json({ message: 'Rota excluída com sucesso' })
+  } catch (error) {
+    console.error('Erro ao excluir rota:', error)
+    return NextResponse.json({ error: 'Erro ao excluir rota' }, { status: 500 })
+  }
 }

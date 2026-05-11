@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
+  try {
   const produtos = await db.produto.findMany({
     where: { deletedAt: null },
     include: {
@@ -40,4 +41,8 @@ export async function GET(request: NextRequest) {
     totalDisponiveis: data.filter(p => !p.locado && p.statusProduto === 'Ativo').length,
     totalManutencao: data.filter(p => p.statusProduto === 'Manutenção').length,
   })
+  } catch (error) {
+    console.error('Erro ao buscar relatório de produtos:', error)
+    return NextResponse.json({ error: 'Erro ao buscar relatório de produtos' }, { status: 500 })
+  }
 }

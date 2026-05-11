@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const { searchParams } = new URL(request.url)
   const rotaId = searchParams.get('rotaId') || undefined
 
@@ -175,4 +176,8 @@ export async function GET(request: NextRequest) {
       totalPendente,
     },
   })
+  } catch (error) {
+    console.error('Erro ao buscar dados do mapa:', error)
+    return NextResponse.json({ error: 'Erro ao buscar dados do mapa' }, { status: 500 })
+  }
 }

@@ -12,11 +12,16 @@ export async function GET() {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const data = await db.tipoProduto.findMany({
     orderBy: { nome: 'asc' },
   })
 
   return NextResponse.json(data)
+  } catch (error) {
+    console.error('Erro ao buscar tipos de produto:', error)
+    return NextResponse.json({ error: 'Erro ao buscar tipos de produto' }, { status: 500 })
+  }
 }
 
 export async function POST(request: NextRequest) {

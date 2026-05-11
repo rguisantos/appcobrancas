@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const searchParams = request.nextUrl.searchParams
   const q = searchParams.get('q') || ''
 
@@ -20,10 +21,10 @@ export async function GET(request: NextRequest) {
       where: {
         deletedAt: null,
         OR: [
-          { nomeExibicao: { contains: searchTerm } },
-          { identificador: { contains: searchTerm } },
-          { telefonePrincipal: { contains: searchTerm } },
-          { email: { contains: searchTerm } },
+          { nomeExibicao: { contains: searchTerm, mode: 'insensitive' } },
+          { identificador: { contains: searchTerm, mode: 'insensitive' } },
+          { telefonePrincipal: { contains: searchTerm, mode: 'insensitive' } },
+          { email: { contains: searchTerm, mode: 'insensitive' } },
         ],
       },
       take: 5,
@@ -33,9 +34,9 @@ export async function GET(request: NextRequest) {
       where: {
         deletedAt: null,
         OR: [
-          { identificador: { contains: searchTerm } },
-          { tipoNome: { contains: searchTerm } },
-          { descricaoNome: { contains: searchTerm } },
+          { identificador: { contains: searchTerm, mode: 'insensitive' } },
+          { tipoNome: { contains: searchTerm, mode: 'insensitive' } },
+          { descricaoNome: { contains: searchTerm, mode: 'insensitive' } },
         ],
       },
       take: 5,
@@ -45,8 +46,8 @@ export async function GET(request: NextRequest) {
       where: {
         deletedAt: null,
         OR: [
-          { clienteNome: { contains: searchTerm } },
-          { produtoIdentificador: { contains: searchTerm } },
+          { clienteNome: { contains: searchTerm, mode: 'insensitive' } },
+          { produtoIdentificador: { contains: searchTerm, mode: 'insensitive' } },
         ],
       },
       take: 5,
@@ -56,8 +57,8 @@ export async function GET(request: NextRequest) {
       where: {
         deletedAt: null,
         OR: [
-          { clienteNome: { contains: searchTerm } },
-          { produtoIdentificador: { contains: searchTerm } },
+          { clienteNome: { contains: searchTerm, mode: 'insensitive' } },
+          { produtoIdentificador: { contains: searchTerm, mode: 'insensitive' } },
         ],
       },
       take: 5,
@@ -66,4 +67,8 @@ export async function GET(request: NextRequest) {
   ])
 
   return NextResponse.json({ clientes, produtos, locacoes, cobrancas })
+  } catch (error) {
+    console.error('Erro na busca global:', error)
+    return NextResponse.json({ error: 'Erro na busca global' }, { status: 500 })
+  }
 }

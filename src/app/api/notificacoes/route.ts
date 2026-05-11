@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const searchParams = request.nextUrl.searchParams
   const lida = searchParams.get('lida')
 
@@ -21,4 +22,8 @@ export async function GET(request: NextRequest) {
   })
 
   return NextResponse.json(data)
+  } catch (error) {
+    console.error('Erro ao buscar notificações:', error)
+    return NextResponse.json({ error: 'Erro ao buscar notificações' }, { status: 500 })
+  }
 }

@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const searchParams = request.nextUrl.searchParams
   const page = parseInt(searchParams.get('page') || '1')
   const limit = parseInt(searchParams.get('limit') || '20')
@@ -21,10 +22,10 @@ export async function GET(request: NextRequest) {
 
   if (search) {
     where.OR = [
-      { nomeExibicao: { contains: search } },
-      { identificador: { contains: search } },
-      { telefonePrincipal: { contains: search } },
-      { email: { contains: search } },
+      { nomeExibicao: { contains: search, mode: 'insensitive' } },
+      { identificador: { contains: search, mode: 'insensitive' } },
+      { telefonePrincipal: { contains: search, mode: 'insensitive' } },
+      { email: { contains: search, mode: 'insensitive' } },
     ]
   }
 
@@ -44,6 +45,10 @@ export async function GET(request: NextRequest) {
   ])
 
   return NextResponse.json({ data, total, page, totalPages: Math.ceil(total / limit) })
+  } catch (error) {
+    console.error('Erro ao buscar clientes:', error)
+    return NextResponse.json({ error: 'Erro ao buscar clientes' }, { status: 500 })
+  }
 }
 
 export async function POST(request: NextRequest) {

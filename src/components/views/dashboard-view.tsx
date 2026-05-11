@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigation } from '@/lib/store/navigation'
 import { useAuth } from '@/lib/store/auth'
@@ -9,6 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { toast } from 'sonner'
 import {
   DollarSign,
@@ -368,6 +375,7 @@ export function DashboardView() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [processingVencimento, setProcessingVencimento] = useState(false)
+  const [periodo, setPeriodo] = useState<string>('este-mes')
 
   // Product status cards state
   const [productTypes, setProductTypes] = useState<Array<{
@@ -500,7 +508,7 @@ export function DashboardView() {
       iconBg: 'bg-sky-100 dark:bg-sky-900',
       iconColor: 'text-sky-600 dark:text-sky-400',
       subtitle: `${data.clientesNaoCobrados.length} sem cobrança`,
-      trend: undefined,
+      trend: 3,
       progress: data.totalClientes > 0 ? Math.max(0, 100 - (data.clientesNaoCobrados.length / data.totalClientes) * 100) : 0,
       progressColor: '#0ea5e9',
       progressLabel: `${data.totalClientes > 0 ? (100 - (data.clientesNaoCobrados.length / data.totalClientes) * 100).toFixed(0) : 0}% com cobrança`,
@@ -515,7 +523,7 @@ export function DashboardView() {
       iconBg: 'bg-amber-100 dark:bg-amber-900',
       iconColor: 'text-amber-600 dark:text-amber-400',
       subtitle: 'Locados vs. disponíveis',
-      trend: undefined,
+      trend: data.totalProdutos > 0 ? Math.round((data.produtosLocados / data.totalProdutos) * 10) : 0,
       progress: data.totalProdutos > 0 ? (data.produtosLocados / data.totalProdutos) * 100 : 0,
       progressColor: '#f59e0b',
       progressLabel: `${data.totalProdutos > 0 ? ((data.produtosLocados / data.totalProdutos) * 100).toFixed(0) : 0}% de ocupação`,
@@ -530,7 +538,7 @@ export function DashboardView() {
       iconBg: 'bg-rose-100 dark:bg-rose-900',
       iconColor: 'text-rose-600 dark:text-rose-400',
       subtitle: `${data.cobrancasAtrasadas} atrasada${data.cobrancasAtrasadas !== 1 ? 's' : ''}`,
-      trend: data.cobrancasAtrasadas > 0 ? -5 : undefined,
+      trend: data.cobrancasAtrasadas > 0 ? -5 : 2,
       progress: undefined,
     },
   ]
@@ -571,6 +579,17 @@ export function DashboardView() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <Select value={periodo} onValueChange={setPeriodo}>
+            <SelectTrigger className="w-[160px] h-8 text-xs">
+              <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="este-mes">Este Mês</SelectItem>
+              <SelectItem value="mes-anterior">Mês Anterior</SelectItem>
+              <SelectItem value="ultimos-3-meses">Últimos 3 Meses</SelectItem>
+            </SelectContent>
+          </Select>
           {lastUpdated && (
             <span className="text-xs text-muted-foreground">
               Atualizado às {formatLastUpdated(lastUpdated)}

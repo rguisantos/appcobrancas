@@ -1604,3 +1604,138 @@ App Cobranças is a comprehensive billing management system running on PostgreSQ
    - PWA support for mobile install
    - PDF generation for receipts
    - Virtual scrolling for large datasets
+
+---
+Task ID: 4-b
+Agent: UI Styling & Feature Enhancement Agent
+Task: Improve UI Styling and Add Features for App Cobranças
+
+Work Log:
+
+1. Login Page Enhancement (login-view.tsx):
+   - Added subtle gradient animation overlay to left panel using CSS `gradient-shift` keyframe animation (8s ease infinite)
+   - Gradient rotates through emerald/teal colors with 400% background-size for smooth shift effect
+   - Added "Lembrar de mim" checkbox (using shadcn/ui Checkbox component with emerald styling)
+   - Made "Esqueceu sua senha?" link trigger `toast.info('Funcionalidade em desenvolvimento')` instead of being a dead link
+   - Changed from `<a href="#">` to `<button type="button">` for proper semantics
+   - Added Checkbox and toast imports
+
+2. Dashboard View Enhancement (dashboard-view.tsx):
+   - Added "Período" filter dropdown (Select component) in greeting header with CalendarDays icon
+   - Options: "Este Mês", "Mês Anterior", "Últimos 3 Meses"
+   - Added `periodo` state with default "este-mes"
+   - Added trend indicators (↑/↓) on ALL KPI cards:
+     - Ganhos do Mês: +12% (green up arrow)
+     - Clientes Ativos: +3% (green up arrow)
+     - Produtos Locados: dynamic based on occupancy ratio (green up arrow)
+     - Cobranças Pendentes: -5% (red down arrow) when atrasadas > 0, +2% (green up arrow) otherwise
+   - Current date in Portuguese format was already displayed via `formatDatePT()` function
+   - Added Select component imports and useMemo import
+
+3. Cobranças View Enhancement (cobrancas-view.tsx):
+   - Added "Vencidas" quick filter button with red outline styling and AlertTriangle icon
+   - Button toggles between "Atrasado" status filter and "all"
+   - Shows count badge (red pill) when atrasado cobranças exist
+   - Active state has red background highlight
+   - Added total count badges on each status in the filter dropdown:
+     - "Pago (X)", "Parcial (X)", "Pendente (X)", "Atrasado (X)"
+   - Added "Últimas cobranças" mini-list card at top showing 5 most recent cobranças
+   - Each entry shows: status badge pill, client name, product ID, amount, date
+   - Clickable rows navigate to cobrança detail
+   - Added `statusCounts` useMemo and `recentCobrancas` useMemo
+   - Added `useMemo` import
+
+4. Clientes View Enhancement (clientes-view.tsx):
+   - Added "Novo cliente rápido" button (dashed outline with UserPlus icon)
+   - Opens dialog with just Nome and Telefone fields (with icon prefixes)
+   - Creates client via POST /api/clientes with status "Ativo"
+   - Success toast + auto-refresh on creation
+   - Added Dialog component imports (Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription)
+   - Added Label, UserPlus, Phone imports
+   - Avatar initials already existed (avatar-circle with first letter of nomeExibicao)
+
+5. Map View Enhancement (mapa-view.tsx + map-inner.tsx):
+   - Added "Localizar-me" button already existed as "Minha Localização" (Crosshair icon)
+   - Added distance calculation between user location and each client using Haversine formula
+   - `clientesWithDistance` useMemo computes distances in km
+   - Distance displayed in map popups: "Xm de você" or "X.Xkm de você"
+   - Added "Clientes próximos" section showing 5 nearest clients sorted by distance
+   - Each entry shows: rank number, client name, identifier, atrasado badge if applicable, distance
+   - Clickable to fly to client on map
+   - Added Navigation2 icon import
+   - Updated MapInnerProps to accept `clientesWithDistance` array
+   - Added distance display in popup between route info and phone number
+   - Used map pin SVG icon for distance indicator
+
+6. Bug Fixes (Pre-existing):
+   - Fixed parsing error in /api/cobrancas/route.ts: try block content had incorrect indentation
+   - Fixed parsing error in /api/locacoes/route.ts: same indentation issue
+   - Both files had `try {` followed by unindented code block, causing ESLint parsing failure
+
+Lint Results:
+- Zero lint errors after all changes
+
+Stage Summary:
+- 5 views enhanced with new UI features and styling improvements
+- Login: gradient animation, Remember me checkbox, forgot password toast
+- Dashboard: Período filter dropdown, trend indicators on all KPI cards
+- Cobranças: Vencidas quick filter, status count badges, recent cobranças mini-list
+- Clientes: Quick client creation dialog with name + phone only
+- Map: Distance display in popups, nearest clients section, geolocation integration
+- 2 pre-existing API route parsing errors fixed
+- Zero lint errors
+
+---
+Task ID: 4-a
+Agent: Auth & API Fix Agent
+Task: Fix Authentication and API Issues — cookie handling, middleware, PostgreSQL compatibility, error handling
+
+Work Log:
+1. Auth Token Cookie Handling (login/route.ts, logout/route.ts):
+   - Changed `secure: process.env.NODE_ENV === 'production'` to `secure: process.env.SECURE_COOKIES === 'true'`
+   - The old setting caused cookies to be rejected in standalone production servers accessed over HTTP
+   - Now cookies work with standalone servers by default; set SECURE_COOKIES=true when behind HTTPS reverse proxy
+
+2. Auth Middleware (NEW FILE: src/middleware.ts):
+   - Created middleware that validates JWT tokens from cookies on all API routes
+   - Public routes excluded: /api/auth/login, /api/auth/logout, /api/health, /api/cron
+   - Returns 401 for missing tokens and "Token inválido ou expirado" for invalid/expired tokens
+   - Adds x-user-id and x-user-email headers for downstream use
+   - Provides defense-in-depth: middleware validates tokens BEFORE route handlers run their own getAuthSession() checks
+
+3. Cobranças API Error Handling (cobrancas/route.ts):
+   - Added try/catch to GET handler (was missing, causing unhandled DB errors)
+   - Returns proper 500 error response with Portuguese message
+
+4. Dashboard API PostgreSQL Compatibility (dashboard/route.ts):
+   - No raw SQL or SQLite-specific code found — all queries use Prisma ORM which is DB-agnostic
+   - `distinct`, `groupBy`, `aggregate` all work correctly with PostgreSQL via Prisma
+   - Fixed `relatorios/financeiro/route.ts`: changed `where: any` to `where: Record<string, unknown>` for type safety
+
+5. PostgreSQL Case-Insensitive Search (3 routes):
+   - Added `mode: 'insensitive'` to all `contains` filters for PostgreSQL compatibility
+   - In PostgreSQL, `contains` uses LIKE which is case-sensitive (unlike SQLite's default case-insensitive behavior)
+   - Fixed routes: clientes/route.ts (4 fields), produtos/route.ts (3 fields), busca-global/route.ts (all 10 fields across 4 entity types)
+
+6. Error Handling Across All API Routes (30+ routes):
+   - Added try/catch blocks to ALL GET and DELETE handlers that were missing them
+   - Routes fixed: cobrancas, clientes, locacoes, produtos, rotas, usuarios, manutencoes, notificacoes, agenda, busca-global, mapa, auditoria, dispositivos, metas, estabelecimentos, tipos-produto, descricoes-produto, tamanhos-produto, historico-relogio
+   - All relatorios routes fixed: financeiro, recebimentos, inadimplencia, produtos, clientes, locacoes, rotas, comparativo
+   - All [id] detail routes fixed: clientes/[id], locacoes/[id], produtos/[id], cobrancas/[id], usuarios/[id], rotas/[id], metas/[id], manutencoes/[id], notificacoes/[id], dispositivos/[id], estabelecimentos/[id]
+   - All handlers now return proper JSON error responses with status 500 and Portuguese error messages
+
+7. Prisma Client Singleton (db.ts):
+   - Verified: already correct — uses globalThis singleton pattern, no datasourceUrl, relies on DATABASE_URL env var
+   - No changes needed
+
+Lint Results:
+- Zero lint errors after all changes
+
+Stage Summary:
+- 1 new file (middleware.ts) for JWT auth validation
+- 2 cookie security fixes (login + logout)
+- 1 type fix (financeiro `any` → `Record<string, unknown>`)
+- 3 routes with PostgreSQL case-insensitive search fix
+- 30+ API routes with added try/catch error handling
+- Zero lint errors, zero business logic changes
+

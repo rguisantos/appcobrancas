@@ -11,6 +11,7 @@ export async function GET(
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const { id } = await params
   const produto = await db.produto.findFirst({
     where: { id, deletedAt: null },
@@ -19,6 +20,10 @@ export async function GET(
 
   if (!produto) return NextResponse.json({ error: 'Produto não encontrado' }, { status: 404 })
   return NextResponse.json(produto)
+  } catch (error) {
+    console.error('Erro ao buscar produto:', error)
+    return NextResponse.json({ error: 'Erro ao buscar produto' }, { status: 500 })
+  }
 }
 
 export async function PUT(
@@ -69,6 +74,7 @@ export async function DELETE(
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const { id } = await params
   const existing = await db.produto.findFirst({ where: { id, deletedAt: null } })
   if (!existing) return NextResponse.json({ error: 'Produto não encontrado' }, { status: 404 })
@@ -89,4 +95,8 @@ export async function DELETE(
   })
 
   return NextResponse.json({ message: 'Produto excluído com sucesso' })
+  } catch (error) {
+    console.error('Erro ao excluir produto:', error)
+    return NextResponse.json({ error: 'Erro ao excluir produto' }, { status: 500 })
+  }
 }

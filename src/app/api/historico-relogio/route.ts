@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const searchParams = request.nextUrl.searchParams
   const produtoId = searchParams.get('produtoId') || ''
 
@@ -21,6 +22,10 @@ export async function GET(request: NextRequest) {
   })
 
   return NextResponse.json(data)
+  } catch (error) {
+    console.error('Erro ao buscar histórico de relógio:', error)
+    return NextResponse.json({ error: 'Erro ao buscar histórico de relógio' }, { status: 500 })
+  }
 }
 
 export async function POST(request: NextRequest) {

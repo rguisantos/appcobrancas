@@ -13,11 +13,16 @@ export async function GET() {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const data = await db.estabelecimento.findMany({
     orderBy: { nome: 'asc' },
   })
 
   return NextResponse.json(data)
+  } catch (error) {
+    console.error('Erro ao buscar estabelecimentos:', error)
+    return NextResponse.json({ error: 'Erro ao buscar estabelecimentos' }, { status: 500 })
+  }
 }
 
 export async function POST(request: NextRequest) {

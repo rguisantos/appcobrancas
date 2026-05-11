@@ -11,6 +11,7 @@ export async function GET(
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const { id } = await params
   const meta = await db.meta.findFirst({
     where: { id, deletedAt: null },
@@ -19,6 +20,10 @@ export async function GET(
 
   if (!meta) return NextResponse.json({ error: 'Meta não encontrada' }, { status: 404 })
   return NextResponse.json(meta)
+  } catch (error) {
+    console.error('Erro ao buscar meta:', error)
+    return NextResponse.json({ error: 'Erro ao buscar meta' }, { status: 500 })
+  }
 }
 
 export async function PUT(
@@ -76,6 +81,7 @@ export async function DELETE(
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const { id } = await params
   const existing = await db.meta.findFirst({ where: { id, deletedAt: null } })
   if (!existing) return NextResponse.json({ error: 'Meta não encontrada' }, { status: 404 })
@@ -96,4 +102,8 @@ export async function DELETE(
   })
 
   return NextResponse.json({ message: 'Meta excluída com sucesso' })
+  } catch (error) {
+    console.error('Erro ao excluir meta:', error)
+    return NextResponse.json({ error: 'Erro ao excluir meta' }, { status: 500 })
+  }
 }

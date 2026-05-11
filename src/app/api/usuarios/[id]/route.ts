@@ -31,6 +31,7 @@ export async function GET(
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const { id } = await params
   const usuario = await db.usuario.findFirst({
     where: { id, deletedAt: null },
@@ -39,6 +40,10 @@ export async function GET(
 
   if (!usuario) return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
   return NextResponse.json(usuario)
+  } catch (error) {
+    console.error('Erro ao buscar usuário:', error)
+    return NextResponse.json({ error: 'Erro ao buscar usuário' }, { status: 500 })
+  }
 }
 
 export async function PUT(
@@ -117,6 +122,7 @@ export async function DELETE(
     return NextResponse.json({ error: 'Acesso restrito a administradores' }, { status: 403 })
   }
 
+  try {
   const { id } = await params
   const existing = await db.usuario.findFirst({ where: { id, deletedAt: null } })
   if (!existing) return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
@@ -138,4 +144,8 @@ export async function DELETE(
   })
 
   return NextResponse.json({ message: 'Usuário excluído com sucesso' })
+  } catch (error) {
+    console.error('Erro ao excluir usuário:', error)
+    return NextResponse.json({ error: 'Erro ao excluir usuário' }, { status: 500 })
+  }
 }

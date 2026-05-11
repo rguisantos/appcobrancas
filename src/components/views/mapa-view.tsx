@@ -1,13 +1,13 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
-import { MapPin, Users, TrendingUp, AlertTriangle, Layers, Navigation, MapPinned, Route, ChevronDown, ChevronUp, Filter, Search, Crosshair, LocateFixed } from 'lucide-react'
+import { MapPin, Users, TrendingUp, AlertTriangle, Layers, Navigation, MapPinned, Route, ChevronDown, ChevronUp, Filter, Search, Crosshair, LocateFixed, Navigation2 } from 'lucide-react'
 
 const MapInner = dynamic(() => import('./map-inner'), {
   ssr: false,
@@ -157,6 +157,36 @@ export function MapaView() {
       )
     : null // null means no search active (all visible)
 
+  // Calculate distances from user location to each client
+  const clientesWithDistance = useMemo(() => {
+    if (!userLocation) return filteredClientes.map((c) => ({ ...c, distance: null }))
+    return filteredClientes
+      .filter((c) => c.latitude != null && c.longitude != null)
+      .map((c) => {
+        const R = 6371 // Earth radius in km
+        const dLat = ((c.latitude! - userLocation.lat) * Math.PI) / 180
+        const dLon = ((c.longitude! - userLocation.lng) * Math.PI) / 180
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos((userLocation.lat * Math.PI) / 180) *
+            Math.cos((c.latitude! * Math.PI) / 180) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2)
+        const cVal = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        const distance = R * cVal
+        return { ...c, distance }
+      })
+  }, [filteredClientes, userLocation])
+
+  // 5 nearest clients
+  const nearestClients = useMemo(() => {
+    if (!userLocation) return []
+    return [...clientesWithDistance]
+      .filter((c) => c.distance !== null)
+      .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
+      .slice(0, 5)
+  }, [clientesWithDistance, userLocation])
+
   const handleLocalizar = useCallback(() => {
     if (!searchLower) return
     const firstMatch = filteredClientes.find(
@@ -260,6 +290,51 @@ export function MapaView() {
           </div>
         </div>
       </div>
+
+      {/* Clientes Próximos Section */}
+      {!loading && userLocation && nearestClients.length > 0 && (
+        <Card className="shadow-sm border-emerald-200 dark:border-emerald-800">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Navigation2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <h3 className="text-sm font-semibold">Clientes próximos</h3>
+              <span className="text-[10px] text-muted-foreground">(baseado na sua localização)</span>
+            </div>
+            <div className="space-y-1.5">
+              {nearestClients.map((cliente, idx) => (
+                <div
+                  key={cliente.id}
+                  className="flex items-center justify-between py-1.5 px-2.5 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                  onClick={() => {
+                    setLocateClientId(cliente.id)
+                    setTimeout(() => setLocateClientId(null), 2000)
+                  }}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex items-center justify-center h-6 w-6 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-xs font-bold shrink-0">
+                      {idx + 1}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate">{cliente.nomeExibicao}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{cliente.identificador}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {cliente.temAtrasado && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">
+                        Atrasado
+                      </span>
+                    )}
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                      {cliente.distance !== null ? (cliente.distance < 1 ? `${Math.round(cliente.distance * 1000)}m` : `${cliente.distance.toFixed(1)}km`) : '—'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Search Bar + Location Buttons */}
       {!loading && (
@@ -621,6 +696,7 @@ export function MapaView() {
           matchingClientIds={matchingClientIds}
           locateClientId={locateClientId}
           userLocation={userLocation}
+          clientesWithDistance={clientesWithDistance}
         />
       )}
     </div>

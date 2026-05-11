@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
+  try {
   const cobrancas = await db.cobranca.findMany({
     where: { deletedAt: null },
   })
@@ -26,4 +27,8 @@ export async function GET(request: NextRequest) {
     .sort((a, b) => a.mes.localeCompare(b.mes))
 
   return NextResponse.json({ meses })
+  } catch (error) {
+    console.error('Erro ao buscar relatório comparativo:', error)
+    return NextResponse.json({ error: 'Erro ao buscar relatório comparativo' }, { status: 500 })
+  }
 }

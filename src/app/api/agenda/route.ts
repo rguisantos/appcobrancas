@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const searchParams = request.nextUrl.searchParams
   const dataInicio = searchParams.get('dataInicio') || ''
   const dataFim = searchParams.get('dataFim') || ''
@@ -27,4 +28,8 @@ export async function GET(request: NextRequest) {
   })
 
   return NextResponse.json(cobrancas)
+  } catch (error) {
+    console.error('Erro ao buscar agenda:', error)
+    return NextResponse.json({ error: 'Erro ao buscar agenda' }, { status: 500 })
+  }
 }

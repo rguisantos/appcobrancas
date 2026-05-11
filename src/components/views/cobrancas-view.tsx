@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigation } from '@/lib/store/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -536,6 +536,22 @@ export function CobrancasView() {
     },
   ]
 
+  // Status counts for badges
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { Pago: 0, Parcial: 0, Pendente: 0, Atrasado: 0 }
+    cobrancas.forEach((c) => {
+      if (counts[c.status] !== undefined) counts[c.status]++
+    })
+    return counts
+  }, [cobrancas])
+
+  // Recent cobranças (top 5)
+  const recentCobrancas = useMemo(() => {
+    return [...cobrancas]
+      .sort((a, b) => new Date(b.createdAt || b.dataInicio).getTime() - new Date(a.createdAt || a.dataInicio).getTime())
+      .slice(0, 5)
+  }, [cobrancas])
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -561,6 +577,40 @@ export function CobrancasView() {
           </Button>
         </div>
       </div>
+
+      {/* Últimas Cobranças Mini-List */}
+      {recentCobrancas.length > 0 && (
+        <Card className="shadow-sm">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold">Últimas cobranças</h3>
+              <span className="text-[10px] text-muted-foreground">({recentCobrancas.length} mais recentes)</span>
+            </div>
+            <div className="space-y-1.5">
+              {recentCobrancas.map((c) => (
+                <div
+                  key={c.id}
+                  className="flex items-center justify-between py-1.5 px-2.5 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                  onClick={() => navigate('cobranca-detalhe', c.id)}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <StatusBadge status={c.status} size="pill" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate">{c.clienteNome || c.cliente?.nomeExibicao}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{c.produtoIdentificador || c.produto?.identificador}</p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-xs font-bold">{formatarMoeda(c.totalClientePaga)}</p>
+                    <p className="text-[10px] text-muted-foreground">{formatDate(c.dataInicio)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -591,7 +641,23 @@ export function CobrancasView() {
         </p>
       </div>
 
-      {/* Filters */}
+      {/* Quick filter + Filters */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button
+          variant="outline"
+          size="sm"
+          className={`gap-1.5 h-8 text-xs border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950 dark:hover:text-red-300 ${status === 'Atrasado' ? 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300' : ''}`}
+          onClick={() => handleStatusChange(status === 'Atrasado' ? 'all' : 'Atrasado')}
+        >
+          <AlertTriangle className="h-3.5 w-3.5" />
+          Vencidas
+          {statusCounts.Atrasado > 0 && (
+            <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 text-[10px] font-bold px-1">
+              {statusCounts.Atrasado}
+            </span>
+          )}
+        </Button>
+      </div>
       <Card className="shadow-sm bg-muted/30 border-dashed">
         <CardContent className="p-2 sm:p-4">
           <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-3">
@@ -601,10 +667,10 @@ export function CobrancasView() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="Pago">Pago</SelectItem>
-                <SelectItem value="Parcial">Parcial</SelectItem>
-                <SelectItem value="Pendente">Pendente</SelectItem>
-                <SelectItem value="Atrasado">Atrasado</SelectItem>
+                <SelectItem value="Pago">Pago <span className="ml-1 text-[10px] text-muted-foreground">({statusCounts.Pago})</span></SelectItem>
+                <SelectItem value="Parcial">Parcial <span className="ml-1 text-[10px] text-muted-foreground">({statusCounts.Parcial})</span></SelectItem>
+                <SelectItem value="Pendente">Pendente <span className="ml-1 text-[10px] text-muted-foreground">({statusCounts.Pendente})</span></SelectItem>
+                <SelectItem value="Atrasado">Atrasado <span className="ml-1 text-[10px] text-muted-foreground">({statusCounts.Atrasado})</span></SelectItem>
               </SelectContent>
             </Select>
             <div className="flex items-center gap-2 flex-1">

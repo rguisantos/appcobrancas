@@ -6,11 +6,12 @@ export async function GET(request: NextRequest) {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
+  try {
   const searchParams = request.nextUrl.searchParams
   const dataInicio = searchParams.get('dataInicio')
   const dataFim = searchParams.get('dataFim')
 
-  const where: any = { deletedAt: null }
+  const where: Record<string, unknown> = { deletedAt: null }
 
   if (dataInicio && dataFim) {
     where.dataPagamento = { gte: dataInicio, lte: dataFim }
@@ -51,4 +52,8 @@ export async function GET(request: NextRequest) {
     meses,
     cobrancas: cobrancas.slice(0, 100),
   })
+  } catch (error) {
+    console.error('Erro ao buscar relatório financeiro:', error)
+    return NextResponse.json({ error: 'Erro ao buscar relatório financeiro' }, { status: 500 })
+  }
 }

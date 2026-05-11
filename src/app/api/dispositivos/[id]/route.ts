@@ -10,6 +10,7 @@ export async function DELETE(
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  try {
   const { id } = await params
   const existing = await db.dispositivo.findFirst({ where: { id } })
   if (!existing) return NextResponse.json({ error: 'Dispositivo não encontrado' }, { status: 404 })
@@ -27,4 +28,8 @@ export async function DELETE(
   })
 
   return NextResponse.json({ message: 'Dispositivo excluído com sucesso' })
+  } catch (error) {
+    console.error('Erro ao excluir dispositivo:', error)
+    return NextResponse.json({ error: 'Erro ao excluir dispositivo' }, { status: 500 })
+  }
 }

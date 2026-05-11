@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Checkbox } from '@/components/ui/checkbox'
+import { toast } from 'sonner'
 import { Eye, EyeOff, Loader2, BarChart3, Package, DollarSign, MapPin, Mail, Lock, Shield, Zap, ArrowRight } from 'lucide-react'
 
 const features = [
@@ -38,6 +40,7 @@ export function LoginView() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,6 +63,8 @@ export function LoginView() {
     <div className="min-h-screen flex">
       {/* Left Panel - Hidden on mobile */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700">
+        {/* Gradient animation overlay */}
+        <div className="absolute inset-0 animate-gradient-shift" />
         {/* Decorative elements */}
         <div className="absolute inset-0">
           {/* Animated floating geometric shapes */}
@@ -232,13 +237,25 @@ export function LoginView() {
                       )}
                     </Button>
                   </div>
-                  <div className="flex justify-end">
-                    <a
-                      href="#"
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="remember"
+                        checked={rememberMe}
+                        onCheckedChange={(checked) => setRememberMe(checked === true)}
+                        className="data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                      />
+                      <Label htmlFor="remember" className="text-xs text-muted-foreground cursor-pointer select-none">
+                        Lembrar de mim
+                      </Label>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toast.info('Funcionalidade em desenvolvimento')}
                       className="text-xs text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
                     >
                       Esqueceu sua senha?
-                    </a>
+                    </button>
                   </div>
                 </div>
 
@@ -312,6 +329,11 @@ export function LoginView() {
           25% { transform: translateX(-6px); }
           75% { transform: translateX(6px); }
         }
+        @keyframes gradient-shift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
         .animate-login-slide-up {
           animation: login-slide-up 0.7s ease-out both;
         }
@@ -323,6 +345,11 @@ export function LoginView() {
         }
         .animate-shake {
           animation: shake 0.4s ease-in-out;
+        }
+        .animate-gradient-shift {
+          background: linear-gradient(135deg, rgba(16,185,129,0.3), rgba(20,184,166,0.15), rgba(5,150,105,0.25), rgba(13,148,136,0.2));
+          background-size: 400% 400%;
+          animation: gradient-shift 8s ease infinite;
         }
       `}</style>
     </div>
