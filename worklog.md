@@ -363,3 +363,122 @@ The App Cobranças system is a comprehensive, production-ready billing managemen
 7. Add route optimization visualization on map
 8. Add financial goals tracking with progress charts
 9. Consider adding multi-language support (i18n)
+
+---
+Task ID: 5
+Agent: Styling Enhancement Agent
+Task: Improve styling with more details across all major views
+
+Work Log:
+1. Global CSS Enhancements (globals.css):
+   - Added `.gradient-border-animated` — Animated gradient border with rotating colors (emerald→sky→amber→violet)
+   - Added `.shine-effect` — Shine/sweep animation on hover for cards
+   - Added `.table-row-hover-accent` — Enhanced table row hover with left border accent
+   - Added `.stat-card-emerald/amber/red/blue/purple` — Gradient backgrounds for stat cards (light + dark variants)
+   - Added `.skeleton-pulse` — Better skeleton loading animation with opacity pulse
+   - Added `.badge-glow-emerald/amber/red/blue` — Subtle glow effect on status badges
+   - Added `.section-divider` — Gradient horizontal divider between sections
+   - Added `.status-pulse` — Pulse animation for "in progress" statuses
+   - Added `.avatar-circle` — Avatar circle with first letter styling
+   - Added `.mini-progress` — Mini progress bar for inline use
+
+2. Dashboard View (dashboard-view.tsx):
+   - Added `gradient-border-animated` to greeting section with bg-card padding
+   - Added `shadow-md` to greeting icon
+   - Added `shine-effect` to cobranças vencidas warning banner
+   - Added `shine-effect` to all KPI summary cards
+   - Added `section-divider` between Monthly Comparison, Activity Feed, and Financial Overview sections
+
+3. Clientes View (clientes-view.tsx):
+   - Added `avatar-circle` with first letter of client name (green for Ativo, gray for Inativo)
+   - Added alternating row colors (`bg-muted/10` for odd rows)
+   - Replaced StatusBadge with inline status badge pills with `badge-glow-emerald` effect
+   - Added colored dot indicators in status badges
+
+4. Cobranças View (cobrancas-view.tsx):
+   - Added `stat-card-emerald/amber/red/blue` classes to summary cards
+   - Added `shine-effect` to all summary cards
+   - Added progress bars for cobranças with status "Parcial" using `.mini-progress`
+
+5. Locações View (locacoes-view.tsx):
+   - Added product type icons (Table2, Music, Wind, Gamepad2, CircleDot) next to each locação
+   - Improved "Ver Todas as Locações Ativas" button with emerald color when active
+   - Added `getProductTypeIcon` helper function
+
+6. Produtos View (produtos-view.tsx):
+   - Added product type icons (Table2, Music, Wind, Coffee, Cigarette, Trophy, Dices, Disc3, Box, CircleDot)
+   - Added colored icon backgrounds with `getProductTypeIconColor` helper
+   - Added `stat-card-*` classes to summary cards for gradient backgrounds
+
+7. Manutenções View (manutencoes-view.tsx):
+   - Added `stat-card-*` gradient classes to all stats cards
+   - Added `status-pulse` animation to "Em Andamento" icon
+   - Added `border-l-4` status-specific left borders to table rows
+   - Added alternating row colors
+   - Added calendar day highlighting for days with scheduled maintenance (orange border + bg)
+
+8. Relatórios View (relatorios-view.tsx):
+   - Added `stat-card-*` gradient classes to Financeiro summary cards
+   - Added `shine-effect` to all Financeiro KPI cards
+   - Added `stat-card-red` to Inadimplência card
+   - Added `stat-card-emerald/blue` + `shine-effect` to Recebimentos cards
+
+9. Admin Views:
+   - Admin Usuários: Added alternating row colors + hover effects
+   - Admin Auditoria: Added severity-based left borders (red for crítico/segurança, yellow for aviso), alternating rows
+   - Admin Cadastros: Added alternating row colors + hover effects
+   - Admin Dispositivos: Added active/inactive left borders + alternating rows
+   - Admin Rotas: Added `shine-effect` to route cards
+   - Admin Metas: Added `shine-effect` to meta cards
+
+10. Bug Fix (cliente-detalhe-view.tsx):
+   - Fixed pre-existing lint error: Removed undefined `ClientTimeline` component reference, replaced with placeholder text
+
+Lint Results:
+- Zero lint errors after all changes
+- All dev server queries running normally
+
+---
+Task ID: 6-a
+Agent: Feature Enhancement Agent
+Task: Implement Client Timeline, Agenda Weekly View, Dashboard Revenue Chart, Notification Enhancements
+
+Work Log:
+- Read worklog and all 5 target files to understand current state
+- Feature 1: Client Detail Timeline (cliente-detalhe-view.tsx)
+  - Replaced placeholder "Timeline em desenvolvimento" TabsContent with actual ClientTimeline component
+  - Rewrote ClientTimeline with vertical timeline layout: colored dot + vertical line on left, event card on right
+  - Added 5 event types with specific color coding: Green (pagamento/CheckCircle), Blue (cobrança/FileText), Purple (locação/Package), Amber (cliente/User), Red (exclusão/AlertTriangle)
+  - Added relative time labels (há 2 dias, há 1 hora, etc.)
+  - Added empty state with Activity icon and "Nenhuma atividade registrada"
+  - Added loading skeletons with proper layout
+  - Enhanced audit log filtering by both entidadeId and entidadeNome matching clienteNome
+  - Added userName display for audit events
+- Feature 2: Agenda Weekly View Enhancement (agenda-view.tsx)
+  - Added week navigation: subWeeks/addWeeks navigation when in week mode, with week date range display
+  - Added spec color coding for cobrança cards: Red (Atrasado bg-red-100), Amber (Pendente due today bg-amber-100), Emerald (Pago bg-emerald-100), Blue (Parcial bg-blue-100)
+  - Added Quick Pay button (CheckCircle icon) on unpaid cobranças that calls PUT /api/cobrancas/{id} with valorRecebido=totalClientePaga and status='Pago'
+  - Added success toast and auto-refresh on quick pay
+  - Added toast import for success/error feedback
+  - Added addWeeks/subWeeks/CheckCircle imports
+- Feature 3: Dashboard Revenue Trend 12-Month Chart (dashboard-view.tsx)
+  - Converted LineChart to AreaChart with gradient fill (emerald color)
+  - Added linearGradient SVG definition (stopColor #16a34a, 0.3 → 0.02 opacity)
+  - Added white stroke on dots for better visibility
+  - Added AreaChart/Area imports from recharts
+- Feature 4: Enhanced Notification Center (notificacoes-view.tsx + app-shell.tsx)
+  - Verified type filter already implemented (Select component with TypeFilter state)
+  - Verified mark as unread already implemented (EyeOff button on read notifications)
+  - Added unread notification count badge to sidebar in app-shell.tsx
+  - Added unreadNotificationCount state and fetch effect
+  - Added badge property to NavItem interface
+  - Added red badge indicator on Bell icon and notification count pill in sidebar nav item
+  - Badge shows count > 9 as "9+" on icon, > 99 as "99+" on text pill
+
+Stage Summary:
+- 4 features implemented across 4 files (cliente-detalhe-view.tsx, agenda-view.tsx, dashboard-view.tsx, app-shell.tsx)
+- Client Timeline now fully functional with vertical dot+line layout and 5 color-coded event types
+- Agenda weekly view has proper color coding, Quick Pay, and week navigation
+- Dashboard revenue chart upgraded to AreaChart with gradient fill
+- Sidebar shows unread notification count badge
+- Zero lint errors, dev server running normally

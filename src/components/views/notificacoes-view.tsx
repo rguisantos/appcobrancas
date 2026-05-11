@@ -7,7 +7,25 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Bell, BellOff, CheckCheck, AlertTriangle, Info, CheckCircle, Clock } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Bell,
+  BellOff,
+  CheckCheck,
+  AlertTriangle,
+  Info,
+  CheckCircle,
+  Clock,
+  Volume2,
+  VolumeX,
+  EyeOff,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -25,6 +43,7 @@ interface Notificacao {
 }
 
 type FilterTab = 'todas' | 'nao-lidas' | 'lidas'
+type TypeFilter = 'todas' | 'cobranca_vencida' | 'saldo_devedor' | 'pagamento_recebido' | 'novo_cliente' | 'meta_atingida' | 'info'
 
 function getNotificationIcon(tipo: string) {
   switch (tipo) {
@@ -53,7 +72,9 @@ export function NotificacoesView() {
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<FilterTab>('todas')
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('todas')
   const [markingAll, setMarkingAll] = useState(false)
+  const [soundEnabled, setSoundEnabled] = useState(false)
 
   const fetchNotificacoes = useCallback(async () => {
     try {
@@ -73,6 +94,13 @@ export function NotificacoesView() {
     fetchNotificacoes()
   }, [fetchNotificacoes])
 
+  // Request browser notification permission
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+  }, [])
+
   const markAsRead = async (id: string) => {
     try {
       const res = await fetch(`/api/notificacoes/${id}`, { method: 'PUT' })
@@ -83,6 +111,27 @@ export function NotificacoesView() {
       }
     } catch {
       toast.error('Erro ao marcar notificação')
+    }
+  }
+
+  const markAsUnread = async (id: string) => {
+    try {
+      const res = await fetch(`/api/notificacoes/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lida: false }),
+      })
+      if (res.ok) {
+        setNotificacoes((prev) =>
+          prev.map((n) => (n.id === id ? { ...n, lida: false } : n))
+        )
+        toast.success('Marcada como não lida')
+      }
+    } catch {
+      // If the API doesn't support marking as unread, just update locally
+      setNotificacoes((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, lida: false } : n))
+      )
     }
   }
 
@@ -100,9 +149,20 @@ export function NotificacoesView() {
     }
   }
 
+  const playNotificationSound = () => {
+    try {
+      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JkZOQi4J3aWBbX2t0goqRl5KOfnVpYV5fb3WEipGXkI6Cd2lhYF1fbnWHipGWi4N5aWFfX2xziIqQlouDe2lhYl9cb3OIipCWioR4amJiX1xvc4iJj5WKg3lpYmJfXG90iImPlIqDeWpiYl9cb3SIiY+UioN5amJiX1xvdIiJj5SKg3lqYmJfXG90iImPlIqDeWpiYl9cb3SIiY+UioN5amJiX1xvdIiJj5SKg3lqYmJfXG90iImPlIqDeWpiYl9cb3SIiY+UioN5amJiX1xvdA==')
+      audio.volume = 0.5
+      audio.play()
+    } catch {
+      // ignore audio errors
+    }
+  }
+
   const filteredNotificacoes = notificacoes.filter((n) => {
-    if (filter === 'nao-lidas') return !n.lida
-    if (filter === 'lidas') return n.lida
+    if (filter === 'nao-lidas' && n.lida) return false
+    if (filter === 'lidas' && !n.lida) return false
+    if (typeFilter !== 'todas' && n.tipo !== typeFilter) return false
     return true
   })
 
@@ -125,40 +185,75 @@ export function NotificacoesView() {
             </Badge>
           )}
         </div>
-        {unreadCount > 0 && (
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={markAllAsRead}
-            disabled={markingAll}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => {
+              setSoundEnabled(!soundEnabled)
+              if (!soundEnabled) {
+                playNotificationSound()
+                toast.success('Som de notificação ativado')
+              } else {
+                toast.info('Som de notificação desativado')
+              }
+            }}
+            title={soundEnabled ? 'Desativar som' : 'Ativar som'}
           >
-            <CheckCheck className="h-4 w-4" />
-            {markingAll ? 'Marcando...' : 'Marcar todas como lidas'}
+            {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
           </Button>
-        )}
+          {unreadCount > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={markAllAsRead}
+              disabled={markingAll}
+            >
+              <CheckCheck className="h-4 w-4" />
+              {markingAll ? 'Marcando...' : 'Marcar todas como lidas'}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Filter Tabs */}
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterTab)}>
-        <TabsList className="w-full sm:w-auto">
-          <TabsTrigger value="todas" className="gap-1.5">
-            Todas
-            <span className="text-xs text-muted-foreground">({notificacoes.length})</span>
-          </TabsTrigger>
-          <TabsTrigger value="nao-lidas" className="gap-1.5">
-            Não lidas
-            {unreadCount > 0 && (
-              <span className="text-xs bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200 px-1.5 rounded-full">
-                {unreadCount}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="lidas" className="gap-1.5">
-            Lidas
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterTab)}>
+          <TabsList className="w-full sm:w-auto">
+            <TabsTrigger value="todas" className="gap-1.5">
+              Todas
+              <span className="text-xs text-muted-foreground">({notificacoes.length})</span>
+            </TabsTrigger>
+            <TabsTrigger value="nao-lidas" className="gap-1.5">
+              Não lidas
+              {unreadCount > 0 && (
+                <span className="text-xs bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200 px-1.5 rounded-full">
+                  {unreadCount}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="lidas" className="gap-1.5">
+              Lidas
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as TypeFilter)}>
+          <SelectTrigger className="w-full sm:w-[200px]">
+            <SelectValue placeholder="Filtrar por tipo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todas">Todos os tipos</SelectItem>
+            <SelectItem value="cobranca_vencida">Cobrança Vencida</SelectItem>
+            <SelectItem value="saldo_devedor">Saldo Devedor</SelectItem>
+            <SelectItem value="pagamento_recebido">Pagamento Recebido</SelectItem>
+            <SelectItem value="novo_cliente">Novo Cliente</SelectItem>
+            <SelectItem value="meta_atingida">Meta Atingida</SelectItem>
+            <SelectItem value="info">Informação</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       {/* Notifications List */}
       <div className="space-y-2">
@@ -173,7 +268,8 @@ export function NotificacoesView() {
                   <p className="text-sm font-medium text-muted-foreground">
                     {filter === 'nao-lidas' && 'Nenhuma notificação não lida'}
                     {filter === 'lidas' && 'Nenhuma notificação lida'}
-                    {filter === 'todas' && 'Nenhuma notificação'}
+                    {filter === 'todas' && typeFilter !== 'todas' && 'Nenhuma notificação deste tipo'}
+                    {filter === 'todas' && typeFilter === 'todas' && 'Nenhuma notificação'}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {filter === 'nao-lidas'
@@ -194,6 +290,7 @@ export function NotificacoesView() {
               onClick={() => {
                 if (!notificacao.lida) {
                   markAsRead(notificacao.id)
+                  if (soundEnabled) playNotificationSound()
                 }
               }}
             >
@@ -213,6 +310,20 @@ export function NotificacoesView() {
                       <div className="flex items-center gap-2 shrink-0">
                         {!notificacao.lida && (
                           <span className="h-2 w-2 rounded-full bg-primary" />
+                        )}
+                        {notificacao.lida && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              markAsUnread(notificacao.id)
+                            }}
+                            title="Marcar como não lida"
+                          >
+                            <EyeOff className="h-3.5 w-3.5" />
+                          </Button>
                         )}
                       </div>
                     </div>

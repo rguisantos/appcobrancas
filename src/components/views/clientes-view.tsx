@@ -353,13 +353,20 @@ export function ClientesView() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {clientes.map((cliente) => (
+                {clientes.map((cliente, idx) => (
                   <TableRow
                     key={cliente.id}
-                    className={`cursor-pointer hover:bg-muted/50 hover:shadow-sm transition-all ${cliente.status === 'Ativo' ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-red-400'}`}
+                    className={`cursor-pointer hover:bg-muted/50 hover:shadow-sm transition-all ${cliente.status === 'Ativo' ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-red-400'} ${idx % 2 === 1 ? 'bg-muted/10' : ''}`}
                     onClick={() => navigate('cliente-detalhe', cliente.id)}
                   >
-                    <TableCell className="font-medium">{cliente.identificador}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <div className={`avatar-circle ${cliente.status === 'Ativo' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}>
+                          {cliente.nomeExibicao?.charAt(0) || '?'}
+                        </div>
+                        <span>{cliente.identificador}</span>
+                      </div>
+                    </TableCell>
                     <TableCell>{cliente.nomeExibicao}</TableCell>
                     <TableCell className="hidden md:table-cell">{cliente.telefonePrincipal}</TableCell>
                     <TableCell className="hidden lg:table-cell">
@@ -391,7 +398,10 @@ export function ClientesView() {
                           onClick={(e) => e.stopPropagation()}
                           className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-400"
                         />
-                        <StatusBadge status={cliente.status} size="pill" />
+                        <span className={`status-badge ${cliente.status === 'Ativo' ? 'status-badge-ativo badge-glow-emerald' : 'status-badge-inativo'}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${cliente.status === 'Ativo' ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                          {cliente.status}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell>

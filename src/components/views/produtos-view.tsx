@@ -40,7 +40,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, ChevronLeft, ChevronRight, Download, Package, CheckCircle, Wrench, XCircle, Upload, Loader2 } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, ChevronLeft, ChevronRight, Download, Package, CheckCircle, Wrench, XCircle, Upload, Loader2, Table2, Music, Gamepad2, Wind, Coffee, Cigarette, CircleDot, Disc3, Trophy, Dices, Box } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Produto {
@@ -208,6 +208,32 @@ export function ProdutosView() {
     'Péssima': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   }
 
+  const getProductTypeIcon = (tipoNome: string) => {
+    const lower = tipoNome?.toLowerCase() || ''
+    if (lower.includes('bilhar')) return <Table2 className="h-4 w-4" />
+    if (lower.includes('jukebox') || lower.includes('música') || lower.includes('musica')) return <Music className="h-4 w-4" />
+    if (lower.includes('air hockey') || lower.includes('hockey')) return <Wind className="h-4 w-4" />
+    if (lower.includes('pebolim')) return <Gamepad2 className="h-4 w-4" />
+    if (lower.includes('fumaça') || lower.includes('fumaca') || lower.includes('cigarro')) return <Cigarette className="h-4 w-4" />
+    if (lower.includes('café') || lower.includes('cafe')) return <Coffee className="h-4 w-4" />
+    if (lower.includes('dart') || lower.includes('dardo')) return <Trophy className="h-4 w-4" />
+    if (lower.includes('pinball') || lower.includes('fliperama')) return <Dices className="h-4 w-4" />
+    if (lower.includes('disco') || lower.includes('totem')) return <Disc3 className="h-4 w-4" />
+    if (lower.includes('box') || lower.includes('caixa')) return <Box className="h-4 w-4" />
+    return <CircleDot className="h-4 w-4" />
+  }
+
+  const getProductTypeIconColor = (tipoNome: string) => {
+    const lower = tipoNome?.toLowerCase() || ''
+    if (lower.includes('bilhar')) return 'text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900'
+    if (lower.includes('jukebox') || lower.includes('música') || lower.includes('musica')) return 'text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-900'
+    if (lower.includes('air hockey') || lower.includes('hockey')) return 'text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900'
+    if (lower.includes('pebolim')) return 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900'
+    if (lower.includes('fumaça') || lower.includes('fumaca') || lower.includes('cigarro')) return 'text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-900'
+    if (lower.includes('café') || lower.includes('cafe')) return 'text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900'
+    return 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800'
+  }
+
   // Status counts for summary cards
   const statusCounts = {
     total: produtos.length > 0 ? total : 0,
@@ -234,6 +260,7 @@ export function ProdutosView() {
       iconBg: 'bg-gray-100 dark:bg-gray-800',
       iconColor: 'text-gray-600 dark:text-gray-400',
       gradient: 'from-gray-50 to-gray-100/50 dark:from-gray-950 dark:to-gray-900/30',
+      cardClass: 'stat-card-blue',
     },
     {
       title: 'Ativos',
@@ -243,6 +270,7 @@ export function ProdutosView() {
       iconBg: 'bg-green-100 dark:bg-green-900',
       iconColor: 'text-green-600 dark:text-green-400',
       gradient: 'from-green-50 to-green-100/50 dark:from-green-950 dark:to-green-900/30',
+      cardClass: 'stat-card-emerald',
     },
     {
       title: 'Em Manutenção',
@@ -252,6 +280,7 @@ export function ProdutosView() {
       iconBg: 'bg-purple-100 dark:bg-purple-900',
       iconColor: 'text-purple-600 dark:text-purple-400',
       gradient: 'from-purple-50 to-purple-100/50 dark:from-purple-950 dark:to-purple-900/30',
+      cardClass: 'stat-card-purple',
     },
     {
       title: 'Inativos',
@@ -261,6 +290,7 @@ export function ProdutosView() {
       iconBg: 'bg-red-100 dark:bg-red-900',
       iconColor: 'text-red-600 dark:text-red-400',
       gradient: 'from-red-50 to-red-100/50 dark:from-red-950 dark:to-red-900/30',
+      cardClass: 'stat-card-red',
     },
   ]
 
@@ -308,7 +338,7 @@ export function ProdutosView() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {summaryCards.map((card) => (
-          <Card key={card.title} className={`shadow-sm ${card.accent} bg-gradient-to-br ${card.gradient}`}>
+          <Card key={card.title} className={`shadow-sm ${card.accent} bg-gradient-to-br ${card.gradient} ${card.cardClass}`}>
             <CardContent className="p-5">
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
@@ -419,7 +449,14 @@ export function ProdutosView() {
                     onClick={() => navigate('produto-detalhe', produto.id)}
                   >
                     <TableCell className="font-medium">{produto.identificador}</TableCell>
-                    <TableCell>{produto.tipoNome || produto.tipo?.nome}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div className={`rounded-md p-1 ${getProductTypeIconColor(produto.tipoNome || produto.tipo?.nome || '')}`}>
+                          {getProductTypeIcon(produto.tipoNome || produto.tipo?.nome || '')}
+                        </div>
+                        <span>{produto.tipoNome || produto.tipo?.nome}</span>
+                      </div>
+                    </TableCell>
                     <TableCell className="hidden md:table-cell text-muted-foreground">
                       {produto.descricaoNome || produto.descricao?.nome}
                     </TableCell>

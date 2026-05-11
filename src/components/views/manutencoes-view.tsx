@@ -346,6 +346,8 @@ export function ManutencoesView() {
       icon: <Wrench className="h-5 w-5" />,
       iconBg: 'bg-slate-100 dark:bg-slate-800',
       iconColor: 'text-slate-600 dark:text-slate-400',
+      accent: 'border-l-4 border-l-slate-500',
+      cardClass: 'stat-card-blue',
     },
     {
       title: 'Em Andamento',
@@ -354,6 +356,8 @@ export function ManutencoesView() {
       iconBg: 'bg-orange-100 dark:bg-orange-900',
       iconColor: 'text-orange-600 dark:text-orange-400',
       accent: 'border-l-4 border-l-orange-500',
+      cardClass: 'stat-card-amber',
+      pulse: true,
     },
     {
       title: 'Concluídas',
@@ -362,6 +366,7 @@ export function ManutencoesView() {
       iconBg: 'bg-green-100 dark:bg-green-900',
       iconColor: 'text-green-600 dark:text-green-400',
       accent: 'border-l-4 border-l-green-500',
+      cardClass: 'stat-card-emerald',
     },
     {
       title: 'Canceladas',
@@ -370,6 +375,7 @@ export function ManutencoesView() {
       iconBg: 'bg-gray-100 dark:bg-gray-800',
       iconColor: 'text-gray-600 dark:text-gray-400',
       accent: 'border-l-4 border-l-gray-400',
+      cardClass: 'stat-card-red',
     },
   ]
 
@@ -380,7 +386,7 @@ export function ManutencoesView() {
         <div>
           <h1 className="text-2xl font-bold">Manutenções</h1>
           <p className="text-muted-foreground text-sm">
-            {total} manutenção{total !== 1 ? 'ões' : ''} encontrada{total !== 1 ? 's' : ''}
+            {total} manutenç{total !== 1 ? 'ões' : 'ão'} encontrada{total !== 1 ? 's' : ''}
           </p>
         </div>
         <Button onClick={() => { resetForm(); setDialogOpen(true) }} className="gap-2">
@@ -392,14 +398,14 @@ export function ManutencoesView() {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {statsCards.map((card) => (
-          <Card key={card.title} className={`shadow-sm ${card.accent || ''}`}>
+          <Card key={card.title} className={`shadow-sm ${card.accent || ''} ${card.cardClass || ''}`}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground font-medium">{card.title}</p>
                   <p className="text-2xl font-bold">{card.value}</p>
                 </div>
-                <div className={`rounded-lg p-2.5 ${card.iconBg}`}>
+                <div className={`rounded-lg p-2.5 ${card.iconBg} ${card.pulse ? 'status-pulse' : ''}`}>
                   <span className={card.iconColor}>{card.icon}</span>
                 </div>
               </div>
@@ -493,8 +499,8 @@ export function ManutencoesView() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {manutencoes.map((m) => (
-                      <TableRow key={m.id} className="hover:bg-muted/50 transition-colors">
+                    {manutencoes.map((m, idx) => (
+                      <TableRow key={m.id} className={`hover:bg-muted/50 transition-colors ${idx % 2 === 1 ? 'bg-muted/10' : ''} ${m.status === 'EmAndamento' ? 'border-l-4 border-l-orange-400' : m.status === 'Concluida' ? 'border-l-4 border-l-green-400' : m.status === 'Cancelada' ? 'border-l-4 border-l-gray-400' : ''}`}>
                         <TableCell className="font-medium">
                           {m.produtoIdentificador || m.produto?.identificador || '—'}
                         </TableCell>
@@ -633,6 +639,8 @@ export function ManutencoesView() {
                           ? 'border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30'
                           : isSelected
                           ? 'border-primary bg-primary/5'
+                          : dayManutencoes.length > 0
+                          ? 'border-orange-200 dark:border-orange-800 bg-orange-50/30 dark:bg-orange-950/20'
                           : 'border-border/50'
                       }`}
                       onClick={() => handleDateClick(date)}

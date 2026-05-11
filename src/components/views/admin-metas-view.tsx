@@ -358,7 +358,7 @@ export function AdminMetasView() {
           {metas.map((meta) => {
             const progress = getProgressValue(meta)
             return (
-              <Card key={meta.id} className="shadow-sm hover:shadow-md transition-shadow">
+              <Card key={meta.id} className="shadow-sm hover:shadow-md transition-shadow shine-effect">
                 <CardContent className="p-4">
                   {/* Header */}
                   <div className="flex items-start justify-between mb-3">

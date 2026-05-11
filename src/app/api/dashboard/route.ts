@@ -88,9 +88,9 @@ export async function GET() {
       take: 20,
     })
 
-    // Chart: Monthly revenue (last 6 months)
+    // Chart: Monthly revenue (last 12 months)
     const receitaMensal = []
-    for (let i = 5; i >= 0; i--) {
+    for (let i = 11; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
       const mesInicio = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0]
       const mesFim = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0]
@@ -121,6 +121,41 @@ export async function GET() {
       quantidade: s._count.status,
     }))
 
+    // Chart: Cobranças by forma de pagamento
+    const cobrancasByFormaPagamentoRaw = await db.cobranca.groupBy({
+      by: ['formaPagamento'],
+      where: { deletedAt: null, status: { in: ['Pago', 'Parcial'] } },
+      _count: { formaPagamento: true },
+    })
+
+    const cobrancasByFormaPagamento = cobrancasByFormaPagamentoRaw.map(f => ({
+      formaPagamento: f.formaPagamento,
+      quantidade: f._count.formaPagamento,
+    }))
+
+    // Chart: Top 5 clients with highest pending debts
+    const clientesDividaRaw = await db.cliente.findMany({
+      where: { deletedAt: null, status: 'Ativo' },
+      select: {
+        id: true,
+        nomeExibicao: true,
+        cobrancas: {
+          where: { deletedAt: null, status: { in: ['Pendente', 'Atrasado', 'Parcial'] } },
+          select: { totalClientePaga: true, valorRecebido: true },
+        },
+      },
+    })
+
+    const clientesDivida = clientesDividaRaw
+      .map(c => ({
+        id: c.id,
+        nomeExibicao: c.nomeExibicao,
+        divida: c.cobrancas.reduce((acc, cob) => acc + (cob.totalClientePaga - cob.valorRecebido), 0),
+      }))
+      .filter(c => c.divida > 0)
+      .sort((a, b) => b.divida - a.divida)
+      .slice(0, 5)
+
     // Recent cobranças (last 10)
     const cobrancasRecentes = await db.cobranca.findMany({
       where: { deletedAt: null },
@@ -150,6 +185,8 @@ export async function GET() {
       clientesNaoCobrados: clientesNaoCobradosResult,
       receitaMensal,
       cobrancasByStatus,
+      cobrancasByFormaPagamento,
+      clientesDivida,
       cobrancasRecentes,
     })
   } catch (error) {

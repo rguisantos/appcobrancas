@@ -39,10 +39,15 @@ import {
   XCircle,
   Clock,
   Settings2,
+  DollarSign,
+  TrendingUp,
+  CreditCard,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 import { Breadcrumb } from '@/components/layout/breadcrumb'
+import { formatarMoeda } from '@/lib/cobranca-calculos'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 interface ProdutoDetalhe {
   id: string
@@ -105,6 +110,16 @@ export function ProdutoDetalheView() {
   const [loading, setLoading] = useState(true)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [receitaData, setReceitaData] = useState<{
+    totalReceita: number
+    totalPendente: number
+    totalCobrancas: number
+    cobrancasPagas: number
+    taxaPagamento: number
+    valorMedio: number
+    receitaPorMes: Array<{ mes: string; receita: number; cobrancas: number }>
+  } | null>(null)
+  const [receitaLoading, setReceitaLoading] = useState(true)
 
   useEffect(() => {
     if (!selectedId) {
@@ -148,6 +163,25 @@ export function ProdutoDetalheView() {
       }
     }
     fetchHistorico()
+  }, [selectedId])
+
+  // Fetch receita data
+  useEffect(() => {
+    if (!selectedId) return
+    async function fetchReceita() {
+      try {
+        const res = await fetch(`/api/produtos/${selectedId}/receita`)
+        if (res.ok) {
+          const data = await res.json()
+          setReceitaData(data)
+        }
+      } catch {
+        // silently ignore
+      } finally {
+        setReceitaLoading(false)
+      }
+    }
+    fetchReceita()
   }, [selectedId])
 
   const handleDelete = async () => {
@@ -378,6 +412,93 @@ export function ProdutoDetalheView() {
                 ))}
               </TableBody>
             </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Receita Section */}
+      <Card className="shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+            <DollarSign className="h-4 w-4" />
+            Receita do Produto
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {receitaLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />
+              ))}
+            </div>
+          ) : receitaData ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="p-3 rounded-lg border border-l-4 border-l-emerald-500 bg-card">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="rounded-md p-1.5 bg-emerald-100 dark:bg-emerald-900">
+                      <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Receita Total</p>
+                  </div>
+                  <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                    {formatarMoeda(receitaData.totalReceita)}
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg border border-l-4 border-l-amber-500 bg-card">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="rounded-md p-1.5 bg-amber-100 dark:bg-amber-900">
+                      <DollarSign className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Pendente</p>
+                  </div>
+                  <p className="text-xl font-bold text-amber-600 dark:text-amber-400">
+                    {formatarMoeda(receitaData.totalPendente)}
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg border border-l-4 border-l-sky-500 bg-card">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="rounded-md p-1.5 bg-sky-100 dark:bg-sky-900">
+                      <CreditCard className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Valor Médio</p>
+                  </div>
+                  <p className="text-xl font-bold">
+                    {formatarMoeda(receitaData.valorMedio)}
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg border border-l-4 border-l-violet-500 bg-card">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="rounded-md p-1.5 bg-violet-100 dark:bg-violet-900">
+                      <CheckCircle className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Taxa Pgto</p>
+                  </div>
+                  <p className="text-xl font-bold text-violet-600 dark:text-violet-400">
+                    {receitaData.taxaPagamento.toFixed(0)}%
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {receitaData.cobrancasPagas}/{receitaData.totalCobrancas} cobranças
+                  </p>
+                </div>
+              </div>
+              {/* Revenue by month chart */}
+              {receitaData.receitaPorMes.length > 0 && (
+                <div className="h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={receitaData.receitaPorMes}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}k`} />
+                      <Tooltip formatter={(value: number) => [formatarMoeda(value), 'Receita']} />
+                      <Bar dataKey="receita" fill="#16a34a" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado de receita disponível</p>
           )}
         </CardContent>
       </Card>

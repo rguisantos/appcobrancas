@@ -437,25 +437,25 @@ export function RelatoriosView() {
         <TabsContent value="financeiro" className="space-y-6">
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="shadow-sm border-l-4 border-l-green-500">
+            <Card className="shadow-sm border-l-4 border-l-green-500 stat-card-blue shine-effect">
               <CardContent className="p-5">
                 <p className="text-sm text-muted-foreground">Total Geral</p>
                 <p className="text-2xl font-bold">{formatarMoeda(financeiroSummary.totalGeral)}</p>
               </CardContent>
             </Card>
-            <Card className="shadow-sm border-l-4 border-l-emerald-500">
+            <Card className="shadow-sm border-l-4 border-l-emerald-500 stat-card-emerald shine-effect">
               <CardContent className="p-5">
                 <p className="text-sm text-muted-foreground">Total Recebido</p>
                 <p className="text-2xl font-bold text-green-600">{formatarMoeda(financeiroSummary.totalRecebido)}</p>
               </CardContent>
             </Card>
-            <Card className="shadow-sm border-l-4 border-l-yellow-500">
+            <Card className="shadow-sm border-l-4 border-l-yellow-500 stat-card-amber shine-effect">
               <CardContent className="p-5">
                 <p className="text-sm text-muted-foreground">Total Pendente</p>
                 <p className="text-2xl font-bold text-yellow-600">{formatarMoeda(financeiroSummary.totalPendente)}</p>
               </CardContent>
             </Card>
-            <Card className="shadow-sm border-l-4 border-l-red-500">
+            <Card className="shadow-sm border-l-4 border-l-red-500 stat-card-red shine-effect">
               <CardContent className="p-5">
                 <p className="text-sm text-muted-foreground">Total Atrasado</p>
                 <p className="text-2xl font-bold text-red-600">{formatarMoeda(financeiroSummary.totalAtrasado)}</p>
@@ -751,7 +751,7 @@ export function RelatoriosView() {
 
         {/* INADIMPLÊNCIA */}
         <TabsContent value="inadimplencia" className="space-y-6">
-          <Card className="shadow-sm border-l-4 border-l-red-500">
+          <Card className="shadow-sm border-l-4 border-l-red-500 stat-card-red">
             <CardContent className="p-5">
               <div className="flex items-center gap-3">
                 <AlertTriangle className="h-8 w-8 text-red-500" />
@@ -802,7 +802,7 @@ export function RelatoriosView() {
         {/* RECEBIMENTOS */}
         <TabsContent value="recebimentos" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="shadow-sm border-l-4 border-l-green-500">
+            <Card className="shadow-sm border-l-4 border-l-green-500 stat-card-emerald shine-effect">
               <CardContent className="p-5">
                 <p className="text-sm text-muted-foreground">Total Recebido no Período</p>
                 <p className="text-2xl font-bold text-green-600">
@@ -811,7 +811,7 @@ export function RelatoriosView() {
                 <p className="text-sm text-muted-foreground">{recebimentosData.length} pagamento{recebimentosData.length !== 1 ? 's' : ''}</p>
               </CardContent>
             </Card>
-            <Card className="shadow-sm border-l-4 border-l-blue-500">
+            <Card className="shadow-sm border-l-4 border-l-blue-500 stat-card-blue shine-effect">
               <CardContent className="p-5">
                 <p className="text-sm text-muted-foreground">Média por Pagamento</p>
                 <p className="text-2xl font-bold">

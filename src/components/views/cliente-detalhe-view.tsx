@@ -45,6 +45,10 @@ import {
   CircleDollarSign,
   MessageCircle,
   Plus,
+  Calendar,
+  CreditCard,
+  Package,
+  Activity,
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { toast } from 'sonner'
@@ -526,7 +530,7 @@ export function ClienteDetalheView() {
         </Card>
       )}
 
-      {/* Tabs: Locações & Cobranças */}
+      {/* Tabs: Locações, Cobranças & Linha do Tempo */}
       <Tabs defaultValue="locacoes" className="space-y-4">
         <TabsList>
           <TabsTrigger value="locacoes">
@@ -534,6 +538,9 @@ export function ClienteDetalheView() {
           </TabsTrigger>
           <TabsTrigger value="cobrancas">
             Cobranças ({cliente.cobrancas?.length || 0})
+          </TabsTrigger>
+          <TabsTrigger value="timeline">
+            Linha do Tempo
           </TabsTrigger>
         </TabsList>
 
@@ -683,6 +690,11 @@ export function ClienteDetalheView() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Linha do Tempo Tab */}
+        <TabsContent value="timeline">
+          <ClientTimeline clienteId={cliente.id} clienteNome={cliente.nomeExibicao} locacoes={cliente.locacoes} cobrancas={cliente.cobrancas} navigate={navigate} />
+        </TabsContent>
       </Tabs>
 
       {/* Delete Confirmation Dialog */}
@@ -790,5 +802,271 @@ function DetailSkeleton() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+function ClientTimeline({ clienteId, clienteNome, locacoes, cobrancas, navigate }: {
+  clienteId: string
+  clienteNome: string
+  locacoes: LocacaoItem[]
+  cobrancas: CobrancaItem[]
+  navigate: (view: string, id?: string | null) => void
+}) {
+  const [auditLogs, setAuditLogs] = useState<Array<{
+    id: string
+    acao: string
+    entidade: string
+    entidadeId: string | null
+    entidadeNome: string | null
+    createdAt: string
+    detalhes: string | null
+    usuarioNome?: string
+  }> | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchTimeline() {
+      try {
+        const res = await fetch(`/api/auditoria?entidade=Cliente&limit=50`)
+        if (res.ok) {
+          const data = await res.json()
+          const logs = (data.data || data || []).filter(
+            (log: { entidadeId?: string; entidadeNome?: string; detalhes?: string }) => {
+              if (log.entidadeId === clienteId) return true
+              if (log.entidadeNome === clienteNome) return true
+              try {
+                const detalhes = typeof log.detalhes === 'string' ? JSON.parse(log.detalhes) : log.detalhes
+                if (detalhes?.clienteId === clienteId) return true
+              } catch { /* ignore */ }
+              return false
+            }
+          )
+          setAuditLogs(logs)
+        }
+      } catch {
+        // silently ignore
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchTimeline()
+  }, [clienteId, clienteNome])
+
+  function getRelativeTime(date: Date): string {
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+    if (diffMins < 1) return 'agora mesmo'
+    if (diffMins < 60) return `há ${diffMins} min`
+    if (diffHours < 24) return `há ${diffHours}h`
+    if (diffDays === 1) return 'há 1 dia'
+    if (diffDays < 30) return `há ${diffDays} dias`
+    return `há ${Math.floor(diffDays / 30)} mês${Math.floor(diffDays / 30) > 1 ? 'es' : ''}`
+  }
+
+  // Build timeline events from locações, cobranças, and audit logs
+  const timelineEvents = useMemo(() => {
+    const events: Array<{
+      id: string
+      type: 'pagamento' | 'cobranca' | 'locacao' | 'cliente' | 'exclusao'
+      date: Date
+      title: string
+      description: string
+      entityId?: string
+      userName?: string
+    }> = []
+
+    // Add locação events
+    locacoes?.forEach((loc) => {
+      try {
+        events.push({
+          id: `loc-${loc.id}`,
+          type: 'locacao',
+          date: new Date(loc.dataLocacao),
+          title: `Locação iniciada`,
+          description: `${loc.produtoIdentificador} (${loc.produtoTipo}) — ${loc.formaPagamento}`,
+          entityId: loc.id,
+        })
+        if (loc.dataFim) {
+          events.push({
+            id: `loc-end-${loc.id}`,
+            type: 'locacao',
+            date: new Date(loc.dataFim),
+            title: `Locação finalizada`,
+            description: `${loc.produtoIdentificador} — Status: ${loc.status}`,
+            entityId: loc.id,
+          })
+        }
+      } catch { /* skip invalid dates */ }
+    })
+
+    // Add cobrança events
+    cobrancas?.forEach((cob) => {
+      try {
+        events.push({
+          id: `cob-${cob.id}`,
+          type: 'cobranca',
+          date: new Date(cob.dataInicio),
+          title: `Cobrança criada`,
+          description: `${cob.produtoIdentificador} — ${formatarMoeda(cob.totalClientePaga)} (${cob.status})`,
+          entityId: cob.id,
+        })
+        if (cob.status === 'Pago') {
+          events.push({
+            id: `pgto-${cob.id}`,
+            type: 'pagamento',
+            date: cob.dataInicio ? new Date(cob.dataInicio) : new Date(),
+            title: `Pagamento registrado`,
+            description: `${cob.produtoIdentificador} — ${formatarMoeda(cob.valorRecebido)}`,
+            entityId: cob.id,
+          })
+        }
+        if (cob.status === 'Parcial') {
+          events.push({
+            id: `pgto-parc-${cob.id}`,
+            type: 'pagamento',
+            date: cob.dataInicio ? new Date(cob.dataInicio) : new Date(),
+            title: `Pagamento parcial`,
+            description: `${cob.produtoIdentificador} — ${formatarMoeda(cob.valorRecebido)} de ${formatarMoeda(cob.totalClientePaga)}`,
+            entityId: cob.id,
+          })
+        }
+      } catch { /* skip invalid dates */ }
+    })
+
+    // Add audit log events
+    auditLogs?.forEach((log) => {
+      try {
+        const isDeletion = log.acao.toLowerCase().includes('delete') || log.acao.toLowerCase().includes('excluir') || log.acao.toLowerCase().includes('remover')
+        const isPayment = log.acao.toLowerCase().includes('pagamento') || log.acao.toLowerCase().includes('pago')
+        const isCobranca = log.acao.toLowerCase().includes('cobranca')
+
+        let eventType: 'pagamento' | 'cobranca' | 'cliente' | 'exclusao' = 'cliente'
+        if (isDeletion) eventType = 'exclusao'
+        else if (isPayment) eventType = 'pagamento'
+        else if (isCobranca) eventType = 'cobranca'
+
+        events.push({
+          id: `audit-${log.id}`,
+          type: eventType,
+          date: new Date(log.createdAt),
+          title: log.acao.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+          description: log.entidadeNome || '',
+          userName: log.usuarioNome,
+        })
+      } catch { /* skip */ }
+    })
+
+    // Sort by date descending
+    events.sort((a, b) => b.date.getTime() - a.date.getTime())
+    return events
+  }, [locacoes, cobrancas, auditLogs])
+
+  const getEventIcon = (type: string) => {
+    switch (type) {
+      case 'pagamento': return <CheckCircle className="h-4 w-4 text-emerald-500" />
+      case 'locacao': return <Package className="h-4 w-4 text-purple-500" />
+      case 'cobranca': return <FileText className="h-4 w-4 text-blue-500" />
+      case 'cliente': return <User className="h-4 w-4 text-amber-500" />
+      case 'exclusao': return <AlertTriangle className="h-4 w-4 text-red-500" />
+      default: return <Activity className="h-4 w-4 text-muted-foreground" />
+    }
+  }
+
+  const getDotColor = (type: string) => {
+    switch (type) {
+      case 'pagamento': return 'bg-emerald-500'
+      case 'locacao': return 'bg-purple-500'
+      case 'cobranca': return 'bg-blue-500'
+      case 'cliente': return 'bg-amber-500'
+      case 'exclusao': return 'bg-red-500'
+      default: return 'bg-gray-400'
+    }
+  }
+
+  return (
+    <Card className="shadow-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <Activity className="h-4 w-4" />
+          Linha do Tempo
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex gap-4">
+                <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : timelineEvents.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Activity className="h-10 w-10 text-muted-foreground mb-3" />
+            <p className="text-sm font-medium">Nenhuma atividade registrada</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              As atividades deste cliente aparecerão aqui
+            </p>
+          </div>
+        ) : (
+          <div className="relative max-h-[500px] overflow-y-auto">
+            {timelineEvents.map((event, index) => (
+              <div
+                key={event.id}
+                className="flex gap-4 pb-6 last:pb-0 cursor-pointer group"
+                onClick={() => {
+                  if (event.entityId) {
+                    if (event.type === 'locacao') navigate('locacao-detalhe', event.entityId)
+                    else if (event.type === 'cobranca' || event.type === 'pagamento') navigate('cobranca-detalhe', event.entityId)
+                  }
+                }}
+              >
+                {/* Left: Colored dot + vertical line */}
+                <div className="flex flex-col items-center shrink-0">
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${getDotColor(event.type)} text-white shadow-sm`}>
+                    {getEventIcon(event.type)}
+                  </div>
+                  {index < timelineEvents.length - 1 && (
+                    <div className="w-0.5 flex-1 bg-border mt-1" />
+                  )}
+                </div>
+
+                {/* Right: Event card */}
+                <div className={`flex-1 min-w-0 rounded-lg border p-3 transition-colors group-hover:bg-muted/30 ${
+                  event.type === 'pagamento' ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-800/30' :
+                  event.type === 'cobranca' ? 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/50 dark:border-blue-800/30' :
+                  event.type === 'locacao' ? 'bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/50 dark:border-purple-800/30' :
+                  event.type === 'cliente' ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/50 dark:border-amber-800/30' :
+                  event.type === 'exclusao' ? 'bg-red-50/50 dark:bg-red-950/20 border-red-200/50 dark:border-red-800/30' :
+                  'bg-card border-border'
+                }`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{event.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{event.description}</p>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">
+                      {getRelativeTime(event.date)}
+                    </span>
+                  </div>
+                  {event.userName && (
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Por: {event.userName}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

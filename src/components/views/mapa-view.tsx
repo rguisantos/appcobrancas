@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
-import { MapPin, Users, TrendingUp, AlertTriangle, Layers } from 'lucide-react'
+import { MapPin, Users, TrendingUp, AlertTriangle, Layers, Navigation } from 'lucide-react'
 
 const MapInner = dynamic(() => import('./map-inner'), {
   ssr: false,
@@ -210,6 +210,86 @@ export function MapaView() {
                 </button>
               ))}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Route Stats Cards */}
+      {!loading && rotas.length > 0 && (
+        <Card className="shadow-sm">
+          <CardContent className="p-4">
+            <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+              <Layers className="h-4 w-4" />
+              Estatísticas por Rota
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {rotas.map((rota) => {
+                const rotaClientes = clientes.filter(c => c.rotaId === rota.id)
+                const rotaPendente = rotaClientes.reduce((acc, c) => acc + c.totalPendente, 0)
+                const rotaRecebido = rotaClientes.reduce((acc, c) => acc + c.totalRecebido, 0)
+                return (
+                  <div
+                    key={rota.id}
+                    className={`rounded-lg border p-3 transition-all cursor-pointer hover:shadow-md ${
+                      hiddenRotas.has(rota.id) ? 'opacity-40' : ''
+                    }`}
+                    style={{ borderLeftColor: rota.cor, borderLeftWidth: '4px' }}
+                    onClick={() => toggleRota(rota.id)}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <span
+                        className="h-3 w-3 rounded-full shrink-0"
+                        style={{ backgroundColor: rota.cor }}
+                      />
+                      <span className="text-sm font-medium">{rota.descricao}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div>
+                        <p className="text-lg font-bold">{rotaClientes.length}</p>
+                        <p className="text-[10px] text-muted-foreground">Clientes</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-emerald-600">{formatarMoeda(rotaRecebido)}</p>
+                        <p className="text-[10px] text-muted-foreground">Recebido</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-red-600">{formatarMoeda(rotaPendente)}</p>
+                        <p className="text-[10px] text-muted-foreground">Pendente</p>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            {/* Closest route suggestion */}
+            {(() => {
+              const rotasComPendente = rotas
+                .map(r => ({
+                  ...r,
+                  pendente: clientes.filter(c => c.rotaId === r.id).reduce((acc, c) => acc + c.totalPendente, 0)
+                }))
+                .filter(r => r.pendente > 0)
+                .sort((a, b) => b.pendente - a.pendente)
+              if (rotasComPendente.length > 0) {
+                const sugestao = rotasComPendente[0]
+                return (
+                  <div className="mt-3 p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-center gap-2">
+                    <Navigation className="h-4 w-4 text-primary shrink-0" />
+                    <p className="text-xs">
+                      <span className="font-semibold">Rota sugerida: </span>
+                      <span
+                        className="font-bold"
+                        style={{ color: sugestao.cor }}
+                      >
+                        {sugestao.descricao}
+                      </span>
+                      {' — '}maior volume pendente ({formatarMoeda(sugestao.pendente)})
+                    </p>
+                  </div>
+                )
+              }
+              return null
+            })()}
           </CardContent>
         </Card>
       )}

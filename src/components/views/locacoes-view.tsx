@@ -29,7 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Repeat, Warehouse, ChevronLeft, ChevronRight, Download, DollarSign, CheckCircle, XCircle, PauseCircle } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Repeat, Warehouse, ChevronLeft, ChevronRight, Download, DollarSign, CheckCircle, XCircle, PauseCircle, Table2, Music, Gamepad2, Wind, CircleDot } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
 import { format } from 'date-fns'
@@ -196,6 +196,15 @@ export function LocacoesView() {
     return map[fp] || fp
   }
 
+  const getProductTypeIcon = (tipoNome: string) => {
+    const lower = tipoNome?.toLowerCase() || ''
+    if (lower.includes('bilhar')) return <Table2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+    if (lower.includes('jukebox') || lower.includes('música') || lower.includes('musica')) return <Music className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+    if (lower.includes('air hockey') || lower.includes('hockey')) return <Wind className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+    if (lower.includes('pebolim')) return <Gamepad2 className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+    return <CircleDot className="h-3.5 w-3.5 text-muted-foreground" />
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -203,7 +212,7 @@ export function LocacoesView() {
         <div>
           <h1 className="text-2xl font-bold">Locações</h1>
           <p className="text-muted-foreground text-sm">
-            {total} locação{total !== 1 ? 'ões' : ''} encontrada{total !== 1 ? 's' : ''}
+            {total} locaç{total !== 1 ? 'ões' : 'ão'} encontrada{total !== 1 ? 's' : ''}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -245,7 +254,7 @@ export function LocacoesView() {
         <Button
           variant={status === 'Ativa' ? 'default' : 'outline'}
           size="sm"
-          className="gap-1.5 text-xs"
+          className={`gap-1.5 text-xs ${status === 'Ativa' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
           onClick={() => handleStatusChange(status === 'Ativa' ? 'all' : 'Ativa')}
         >
           <CheckCircle className="h-3.5 w-3.5" />
@@ -336,7 +345,10 @@ export function LocacoesView() {
                     <TableCell className="font-medium">{locacao.clienteNome || locacao.cliente?.nomeExibicao}</TableCell>
                     <TableCell>{locacao.produtoIdentificador || locacao.produto?.identificador}</TableCell>
                     <TableCell className="hidden md:table-cell text-muted-foreground">
-                      {locacao.produtoTipo || locacao.produto?.tipoNome}
+                      <div className="flex items-center gap-1.5">
+                        {getProductTypeIcon(locacao.produtoTipo || locacao.produto?.tipoNome)}
+                        <span>{locacao.produtoTipo || locacao.produto?.tipoNome}</span>
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {locacao.dataLocacao}

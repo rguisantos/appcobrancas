@@ -41,6 +41,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { Progress } from '@/components/ui/progress'
 import {
   Plus,
   Search,
@@ -143,6 +144,15 @@ export function CobrancasView() {
   // Batch selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [batchLoading, setBatchLoading] = useState(false)
+
+  // Batch payment state
+  const [batchPaymentOpen, setBatchPaymentOpen] = useState(false)
+  const [batchPaymentMethod, setBatchPaymentMethod] = useState('Pix')
+  const [batchPaymentDate, setBatchPaymentDate] = useState(new Date().toISOString().split('T')[0])
+  const [batchPaymentProgress, setBatchPaymentProgress] = useState(0)
+  const [batchPaymentTotal, setBatchPaymentTotal] = useState(0)
+  const [batchPaymentDone, setBatchPaymentDone] = useState(0)
+  const [batchPaymentSubmitting, setBatchPaymentSubmitting] = useState(false)
 
   // Fetch cobrancas
   const fetchCobrancas = useCallback(async () => {
@@ -297,6 +307,73 @@ export function CobrancasView() {
     setSelectedIds(new Set())
   }
 
+  const handleBatchPayment = async () => {
+    const selectedCobrancas = cobrancas.filter(c => selectedIds.has(c.id))
+    const unpaidCobrancas = selectedCobrancas.filter(c => c.status !== 'Pago' && c.status !== 'Cancelada')
+    if (unpaidCobrancas.length === 0) {
+      toast.error('Nenhuma cobrança pendente selecionada')
+      return
+    }
+
+    setBatchPaymentSubmitting(true)
+    setBatchPaymentDone(0)
+    setBatchPaymentProgress(0)
+    setBatchPaymentTotal(unpaidCobrancas.length)
+
+    let successCount = 0
+    let errorCount = 0
+
+    for (let i = 0; i < unpaidCobrancas.length; i++) {
+      const cobranca = unpaidCobrancas[i]
+      const valorRecebido = cobranca.totalClientePaga
+      const newStatus = 'Pago'
+
+      try {
+        const res = await fetch(`/api/cobrancas/${cobranca.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            locacaoId: cobranca.locacaoId,
+            dataInicio: cobranca.dataInicio,
+            dataFim: cobranca.dataFim,
+            relogioAnterior: cobranca.relogioAnterior,
+            relogioAtual: cobranca.relogioAtual,
+            descontoPartidasQtd: cobranca.descontoPartidasQtd,
+            descontoPartidasValor: cobranca.descontoPartidasValor,
+            descontoDinheiro: cobranca.descontoDinheiro,
+            valorRecebido,
+            status: newStatus,
+            observacao: cobranca.observacao,
+          }),
+        })
+        if (res.ok) {
+          successCount++
+        } else {
+          errorCount++
+        }
+      } catch {
+        errorCount++
+      }
+
+      setBatchPaymentDone(i + 1)
+      setBatchPaymentProgress(Math.round(((i + 1) / unpaidCobrancas.length) * 100))
+    }
+
+    setBatchPaymentSubmitting(false)
+    if (successCount > 0) {
+      toast.success(`${successCount} cobrança(s) paga(s) com sucesso${errorCount > 0 ? ` (${errorCount} com erro)` : ''}`)
+      setSelectedIds(new Set())
+      fetchCobrancas()
+    }
+    if (errorCount > 0 && successCount === 0) {
+      toast.error('Erro ao registrar pagamentos em lote')
+    }
+  }
+
+  const batchTotal = cobrancas
+    .filter(c => selectedIds.has(c.id) && c.status !== 'Pago' && c.status !== 'Cancelada')
+    .reduce((acc, c) => acc + c.totalClientePaga, 0)
+
   const handleBatchAction = async (action: 'marcar-atrasado' | 'enviar-lembrete') => {
     if (selectedIds.size === 0) return
 
@@ -340,6 +417,7 @@ export function CobrancasView() {
       iconBg: 'bg-green-100 dark:bg-green-900',
       iconColor: 'text-green-600 dark:text-green-400',
       gradient: 'from-green-50 to-green-100/50 dark:from-green-950 dark:to-green-900/30',
+      cardClass: 'stat-card-emerald',
     },
     {
       title: 'Total Pendente',
@@ -349,6 +427,7 @@ export function CobrancasView() {
       iconBg: 'bg-yellow-100 dark:bg-yellow-900',
       iconColor: 'text-yellow-600 dark:text-yellow-400',
       gradient: 'from-yellow-50 to-yellow-100/50 dark:from-yellow-950 dark:to-yellow-900/30',
+      cardClass: 'stat-card-amber',
     },
     {
       title: 'Total Atrasado',
@@ -358,6 +437,7 @@ export function CobrancasView() {
       iconBg: 'bg-red-100 dark:bg-red-900',
       iconColor: 'text-red-600 dark:text-red-400',
       gradient: 'from-red-50 to-red-100/50 dark:from-red-950 dark:to-red-900/30',
+      cardClass: 'stat-card-red',
     },
     {
       title: 'Total Geral',
@@ -367,6 +447,7 @@ export function CobrancasView() {
       iconBg: 'bg-gray-100 dark:bg-gray-800',
       iconColor: 'text-gray-600 dark:text-gray-400',
       gradient: 'from-gray-50 to-gray-100/50 dark:from-gray-950 dark:to-gray-900/30',
+      cardClass: 'stat-card-blue',
     },
   ]
 
@@ -398,7 +479,7 @@ export function CobrancasView() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {summaryCards.map((card) => (
-          <Card key={card.title} className={`shadow-sm hover:shadow-md transition-shadow ${card.accent} bg-gradient-to-br ${card.gradient}`}>
+          <Card key={card.title} className={`shadow-sm hover:shadow-md transition-shadow shine-effect ${card.accent} bg-gradient-to-br ${card.gradient} ${card.cardClass}`}>
             <CardContent className="p-5">
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
@@ -574,7 +655,17 @@ export function CobrancasView() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={cobranca.status} size="pill" />
+                      <div className="flex flex-col gap-1">
+                        <StatusBadge status={cobranca.status} size="pill" />
+                        {cobranca.status === 'Parcial' && cobranca.totalClientePaga > 0 && (
+                          <div className="mini-progress w-16">
+                            <div
+                              className="h-full rounded-full bg-blue-500 progress-animated"
+                              style={{ width: `${Math.min(100, (cobranca.valorRecebido / cobranca.totalClientePaga) * 100)}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">
                       {cobranca.dataPagamento ? formatDate(cobranca.dataPagamento) : '—'}
@@ -687,6 +778,15 @@ export function CobrancasView() {
               <Bell className="h-3.5 w-3.5" />
               Enviar Lembrete
             </Button>
+            <Button
+              size="sm"
+              className="gap-1.5 h-8 text-xs bg-green-600 hover:bg-green-700 text-white"
+              disabled={batchLoading}
+              onClick={() => setBatchPaymentOpen(true)}
+            >
+              <CreditCard className="h-3.5 w-3.5" />
+              Registrar Pagamento em Lote
+            </Button>
             <div className="h-6 w-px bg-background/20" />
             <Button
               variant="ghost"
@@ -766,6 +866,85 @@ export function CobrancasView() {
                 <>
                   <CreditCard className="h-4 w-4" />
                   Registrar Pagamento
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Batch Payment Dialog */}
+      <Dialog open={batchPaymentOpen} onOpenChange={setBatchPaymentOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar Pagamento em Lote</DialogTitle>
+            <DialogDescription>
+              Registre o pagamento para todas as cobranças selecionadas
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-lg border p-4 space-y-2 bg-muted/30">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Cobranças selecionadas</span>
+                <span className="font-semibold">{cobrancas.filter(c => selectedIds.has(c.id) && c.status !== 'Pago' && c.status !== 'Cancelada').length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Valor total a pagar</span>
+                <span className="font-bold text-lg text-green-600">{formatarMoeda(batchTotal)}</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Forma de Pagamento</Label>
+                <Select value={batchPaymentMethod} onValueChange={setBatchPaymentMethod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Pix">Pix</SelectItem>
+                    <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                    <SelectItem value="Cartão">Cartão</SelectItem>
+                    <SelectItem value="Transferência">Transferência</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Data do Pagamento</Label>
+                <Input
+                  type="date"
+                  value={batchPaymentDate}
+                  onChange={(e) => setBatchPaymentDate(e.target.value)}
+                />
+              </div>
+            </div>
+            {batchPaymentSubmitting && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Progresso</span>
+                  <span className="font-medium">{batchPaymentDone}/{batchPaymentTotal}</span>
+                </div>
+                <Progress value={batchPaymentProgress} className="h-2" />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => !batchPaymentSubmitting && setBatchPaymentOpen(false)}
+              disabled={batchPaymentSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleBatchPayment} disabled={batchPaymentSubmitting || batchTotal === 0} className="gap-2">
+              {batchPaymentSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processando {batchPaymentDone}/{batchPaymentTotal}...
+                </>
+              ) : (
+                <>
+                  <CreditCard className="h-4 w-4" />
+                  Registrar Pagamentos ({formatarMoeda(batchTotal)})
                 </>
               )}
             </Button>

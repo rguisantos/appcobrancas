@@ -81,6 +81,7 @@ interface NavItem {
   icon: React.ReactNode
   permission?: string
   group?: string
+  badge?: number
 }
 
 const navItems: NavItem[] = [
@@ -115,6 +116,7 @@ export function AppShell() {
   const [overdueCount, setOverdueCount] = useState<number | null>(null)
   const [prevPendingCount, setPrevPendingCount] = useState<number | null>(null)
   const [prevOverdueCount, setPrevOverdueCount] = useState<number | null>(null)
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState<number>(0)
 
   const permissoesWeb = user?.permissoesWeb || {}
   const isAdmin = user?.tipoPermissao === 'Administrador'
@@ -125,7 +127,12 @@ export function AppShell() {
     return !!permissoesWeb[permission]
   }
 
-  const filteredNavItems = navItems.filter((item) => hasPermission(item.permission))
+  const filteredNavItems = navItems.filter((item) => hasPermission(item.permission)).map((item) => {
+    if (item.view === 'notificacoes') {
+      return { ...item, badge: unreadNotificationCount }
+    }
+    return item
+  })
   const filteredAdminItems = adminItems.filter((item) => hasPermission(item.permission))
 
   const isActive = (view: ViewType) => {
@@ -191,6 +198,24 @@ export function AppShell() {
       }
     }
     fetchCounts()
+  }, [currentView])
+
+  // Fetch unread notification count
+  useEffect(() => {
+    async function fetchUnreadCount() {
+      try {
+        const res = await fetch('/api/notificacoes')
+        if (res.ok) {
+          const data = await res.json()
+          const notificacoes = Array.isArray(data) ? data : []
+          const unread = notificacoes.filter((n: { lida: boolean }) => !n.lida).length
+          setUnreadNotificationCount(unread)
+        }
+      } catch {
+        // silently ignore
+      }
+    }
+    fetchUnreadCount()
   }, [currentView])
 
   return (
@@ -331,8 +356,20 @@ export function AppShell() {
                           {isActive(item.view) && (
                             <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 rounded-full bg-primary" />
                           )}
+                          {item.badge !== undefined && item.badge > 0 && (
+                            <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-[9px] font-bold text-white">
+                              {item.badge > 9 ? '9+' : item.badge}
+                            </span>
+                          )}
                         </span>
-                        {(!collapsed || mobileOpen) && <span className="truncate">{item.label}</span>}
+                        {(!collapsed || mobileOpen) && (
+                          <span className="truncate flex-1">{item.label}</span>
+                        )}
+                        {(!collapsed || mobileOpen) && item.badge !== undefined && item.badge > 0 && (
+                          <span className="flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full bg-red-100 dark:bg-red-900 text-[10px] font-bold text-red-700 dark:text-red-200 shrink-0">
+                            {item.badge > 99 ? '99+' : item.badge}
+                          </span>
+                        )}
                       </Button>
                     </motion.div>
                   </TooltipTrigger>

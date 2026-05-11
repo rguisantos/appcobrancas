@@ -361,3 +361,165 @@
 .stagger-row:nth-child(9) { animation-delay: 240ms; }
 .stagger-row:nth-child(10) { animation-delay: 270ms; }
 .stagger-row:nth-child(n+11) { animation-delay: 300ms; }
+
+/* Animated gradient border */
+@keyframes gradientBorderRotate {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.gradient-border-animated {
+  position: relative;
+  overflow: hidden;
+}
+.gradient-border-animated::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #059669, #0ea5e9, #f59e0b, #8b5cf6, #059669);
+  background-size: 300% 100%;
+  animation: gradientBorderRotate 4s ease infinite;
+  border-radius: 999px 999px 0 0;
+}
+
+/* Shine sweep effect on hover for cards */
+@keyframes shineSweep {
+  0% { left: -100%; }
+  100% { left: 200%; }
+}
+.shine-effect {
+  position: relative;
+  overflow: hidden;
+}
+.shine-effect::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 15%), transparent);
+  transition: none;
+  pointer-events: none;
+}
+.shine-effect:hover::after {
+  animation: shineSweep 0.6s ease-out;
+}
+
+/* Enhanced table row hover with left border accent */
+.table-row-hover-accent {
+  transition: all 0.15s ease;
+}
+.table-row-hover-accent:hover {
+  background-color: oklch(0.97 0 0 / 80%);
+  box-shadow: inset 3px 0 0 oklch(0.55 0.15 160);
+}
+.dark .table-row-hover-accent:hover {
+  background-color: oklch(0.25 0 0 / 50%);
+  box-shadow: inset 3px 0 0 oklch(0.55 0.18 160);
+}
+
+/* Stat card gradient backgrounds */
+.stat-card-emerald {
+  background: linear-gradient(135deg, oklch(0.95 0.05 155) 0%, oklch(1 0 0) 100%);
+}
+.dark .stat-card-emerald {
+  background: linear-gradient(135deg, oklch(0.22 0.04 155 / 40%) 0%, oklch(0.2 0 0) 100%);
+}
+.stat-card-amber {
+  background: linear-gradient(135deg, oklch(0.95 0.05 85) 0%, oklch(1 0 0) 100%);
+}
+.dark .stat-card-amber {
+  background: linear-gradient(135deg, oklch(0.22 0.04 85 / 40%) 0%, oklch(0.2 0 0) 100%);
+}
+.stat-card-red {
+  background: linear-gradient(135deg, oklch(0.95 0.05 25) 0%, oklch(1 0 0) 100%);
+}
+.dark .stat-card-red {
+  background: linear-gradient(135deg, oklch(0.22 0.04 25 / 40%) 0%, oklch(0.2 0 0) 100%);
+}
+.stat-card-blue {
+  background: linear-gradient(135deg, oklch(0.95 0.05 240) 0%, oklch(1 0 0) 100%);
+}
+.dark .stat-card-blue {
+  background: linear-gradient(135deg, oklch(0.22 0.04 240 / 40%) 0%, oklch(0.2 0 0) 100%);
+}
+.stat-card-purple {
+  background: linear-gradient(135deg, oklch(0.95 0.05 290) 0%, oklch(1 0 0) 100%);
+}
+.dark .stat-card-purple {
+  background: linear-gradient(135deg, oklch(0.22 0.04 290 / 40%) 0%, oklch(0.2 0 0) 100%);
+}
+
+/* Better skeleton pulse animation */
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.skeleton-pulse {
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+}
+
+/* Badge glow effect on status badges */
+.badge-glow {
+  box-shadow: 0 0 8px oklch(0.55 0.15 160 / 20%);
+}
+.badge-glow-emerald {
+  box-shadow: 0 0 8px oklch(0.6 0.15 155 / 25%);
+}
+.badge-glow-amber {
+  box-shadow: 0 0 8px oklch(0.75 0.15 85 / 25%);
+}
+.badge-glow-red {
+  box-shadow: 0 0 8px oklch(0.6 0.2 25 / 25%);
+}
+.badge-glow-blue {
+  box-shadow: 0 0 8px oklch(0.6 0.15 240 / 25%);
+}
+
+/* Section divider */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, oklch(0.8 0 0 / 40%), transparent);
+  margin: 1.5rem 0;
+}
+.dark .section-divider {
+  background: linear-gradient(90deg, transparent, oklch(0.4 0 0 / 30%), transparent);
+}
+
+/* Pulse animation for "in progress" status */
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+.status-pulse {
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
+/* Avatar circle with first letter */
+.avatar-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+/* Mini progress bar for inline use */
+.mini-progress {
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: oklch(0.9 0 0 / 50%);
+}
+.dark .mini-progress {
+  background: oklch(0.3 0 0 / 50%);
+}

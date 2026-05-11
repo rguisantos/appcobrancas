@@ -62,6 +62,10 @@ import {
   Pie,
   Cell,
   Legend,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
 } from 'recharts'
 import { ChartContainer, type ChartConfig } from '@/components/ui/chart'
 
@@ -83,6 +87,8 @@ interface DashboardData {
   }>
   receitaMensal: Array<{ mes: string; valor: number }>
   cobrancasByStatus: Array<{ status: string; quantidade: number }>
+  cobrancasByFormaPagamento: Array<{ formaPagamento: string; quantidade: number }>
+  clientesDivida: Array<{ id: string; nomeExibicao: string; divida: number }>
   cobrancasRecentes: Array<{
     id: string
     clienteNome: string
@@ -280,6 +286,14 @@ const pieChartConfig: ChartConfig = {
   Pendente: { label: 'Pendente', color: '#eab308' },
   Parcial: { label: 'Parcial', color: '#f97316' },
   Atrasado: { label: 'Atrasado', color: '#ef4444' },
+}
+
+const FORMA_PGTO_COLORS = ['#7c3aed', '#0ea5e9', '#f59e0b', '#16a34a', '#ef4444']
+
+const formaPagamentoChartConfig: ChartConfig = {
+  Periodo: { label: 'Período', color: '#7c3aed' },
+  PercentualPagar: { label: '% a Pagar', color: '#0ea5e9' },
+  PercentualReceber: { label: '% a Receber', color: '#f59e0b' },
 }
 
 function useCountUp(end: number, duration: number = 1000) {
@@ -540,10 +554,10 @@ export function DashboardView() {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 gradient-border-animated rounded-xl bg-card p-4"
       >
         <div className="flex items-center gap-4">
-          <div className="rounded-2xl bg-gradient-to-br from-emerald-100 to-emerald-200 dark:from-emerald-900 dark:to-emerald-800 p-3">
+          <div className="rounded-2xl bg-gradient-to-br from-emerald-100 to-emerald-200 dark:from-emerald-900 dark:to-emerald-800 p-3 shadow-md">
             <GreetingIcon className="h-7 w-7 text-emerald-600 dark:text-emerald-300" />
           </div>
           <div>
@@ -582,7 +596,7 @@ export function DashboardView() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <Card className="shadow-sm border-2 border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/50">
+          <Card className="shadow-sm border-2 border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/50 shine-effect">
             <CardContent className="p-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -626,7 +640,7 @@ export function DashboardView() {
             whileHover={{ scale: 1.02, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
             transition={{ type: 'spring', stiffness: 400, damping: 25 }}
           >
-            <Card className={`shadow-sm hover:shadow-md transition-shadow ${kpi.accent} ${kpi.gradient}`}>
+            <Card className={`shadow-sm hover:shadow-md transition-shadow ${kpi.accent} ${kpi.gradient} shine-effect`}>
               <CardContent className="p-5">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1 flex-1">
@@ -734,12 +748,14 @@ export function DashboardView() {
       </motion.div>
 
       {/* Monthly Comparison Widget */}
+      <div className="section-divider" />
       <MonthlyComparisonWidget />
 
       {/* Atividade Recente */}
       <RecentActivityFeed navigate={navigate} />
 
       {/* Resumo Financeiro */}
+      <div className="section-divider" />
       <FinancialOverviewWidget data={data} />
 
       {/* Charts Section */}
@@ -749,28 +765,42 @@ export function DashboardView() {
         initial="hidden"
         animate="visible"
       >
-        {/* Monthly Revenue Bar Chart */}
+        {/* Revenue Trend Area Chart - 12 months */}
         <Card className="shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-green-600" />
-              Receita Mensal
+              Tendência de Receita
             </CardTitle>
-            <CardDescription>Últimos 6 meses</CardDescription>
+            <CardDescription>Últimos 12 meses</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={barChartConfig} className="h-[220px] sm:h-[280px] w-full">
               {data.receitaMensal.length > 0 && data.receitaMensal.some(d => d.valor > 0) ? (
-              <BarChart data={data.receitaMensal} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+              <AreaChart data={data.receitaMensal} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#16a34a" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#16a34a" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                <XAxis dataKey="mes" className="text-xs" tick={{ fontSize: 12 }} />
-                <YAxis className="text-xs" tick={{ fontSize: 12 }} tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}k`} />
+                <XAxis dataKey="mes" className="text-xs" tick={{ fontSize: 11 }} />
+                <YAxis className="text-xs" tick={{ fontSize: 11 }} tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}k`} />
                 <Tooltip
                   formatter={(value: number) => [formatarMoeda(value), 'Receita']}
                   contentStyle={{ borderRadius: '8px', fontSize: '12px' }}
                 />
-                <Bar dataKey="valor" fill="var(--color-valor)" radius={[4, 4, 0, 0]} />
-              </BarChart>
+                <Area
+                  type="monotone"
+                  dataKey="valor"
+                  stroke="#16a34a"
+                  strokeWidth={2.5}
+                  fill="url(#revenueGradient)"
+                  dot={{ fill: '#16a34a', r: 4, strokeWidth: 2, stroke: '#fff' }}
+                  activeDot={{ r: 6, strokeWidth: 0, fill: '#16a34a' }}
+                />
+              </AreaChart>
               ) : (
                 <div className="flex flex-col items-center justify-center h-[220px] sm:h-[280px] text-muted-foreground">
                   <BarChart2 className="h-10 w-10 mb-2 opacity-30" />
@@ -779,6 +809,124 @@ export function DashboardView() {
                 </div>
               )}
             </ChartContainer>
+          </CardContent>
+        </Card>
+
+        {/* Payment Method Distribution Pie Chart */}
+        <Card className="shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-violet-600" />
+              Cobranças por Forma de Pagamento
+            </CardTitle>
+            <CardDescription>Distribuição por método de pagamento</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {data.cobrancasByFormaPagamento && data.cobrancasByFormaPagamento.length > 0 ? (
+              <ChartContainer config={formaPagamentoChartConfig} className="h-[220px] sm:h-[280px] w-full">
+                <PieChart>
+                  <Pie
+                    data={data.cobrancasByFormaPagamento}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={95}
+                    paddingAngle={3}
+                    dataKey="quantidade"
+                    nameKey="formaPagamento"
+                    label={({ formaPagamento, percent }: { formaPagamento: string; percent: number }) =>
+                      `${formaPagamento} ${(percent * 100).toFixed(0)}%`
+                    }
+                    labelLine={false}
+                  >
+                    {data.cobrancasByFormaPagamento.map((entry, index) => (
+                      <Cell
+                        key={entry.formaPagamento}
+                        fill={FORMA_PGTO_COLORS[index % FORMA_PGTO_COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: number, name: string) => [value, name]}
+                    contentStyle={{ borderRadius: '8px', fontSize: '12px' }}
+                  />
+                  <Legend />
+                </PieChart>
+              </ChartContainer>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-[220px] sm:h-[280px] text-muted-foreground">
+                <CreditCard className="h-10 w-10 mb-2 opacity-30" />
+                <p className="text-sm font-medium">Nenhum dado disponível</p>
+                <p className="text-xs mt-1">Os dados de pagamento aparecerão aqui</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Client Debt Ranking + Cobranças by Status */}
+      <motion.div
+        className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5, duration: 0.5 }}
+      >
+        {/* Client Debt Ranking - Horizontal Bar Chart */}
+        <Card className="shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+              Top 5 Clientes Inadimplentes
+            </CardTitle>
+            <CardDescription>Maiores dívidas pendentes</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {data.clientesDivida && data.clientesDivida.length > 0 ? (
+              <div className="space-y-3">
+                {data.clientesDivida.map((cliente, idx) => {
+                  const maxDivida = data.clientesDivida[0]?.divida || 1
+                  const pct = (cliente.divida / maxDivida) * 100
+                  const colors = [
+                    'bg-red-500',
+                    'bg-orange-500',
+                    'bg-amber-500',
+                    'bg-yellow-500',
+                    'bg-emerald-500',
+                  ]
+                  return (
+                    <div
+                      key={cliente.id}
+                      className="cursor-pointer rounded-lg p-3 hover:bg-muted/50 transition-colors"
+                      onClick={() => navigate('cliente-detalhe', cliente.id)}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full text-xs font-bold text-white ${colors[idx] || colors[4]}`}>
+                            {idx + 1}
+                          </span>
+                          <span className="text-sm font-medium truncate max-w-[150px]">{cliente.nomeExibicao}</span>
+                        </div>
+                        <span className="text-sm font-bold text-red-600 dark:text-red-400">
+                          {formatarMoeda(cliente.divida)}
+                        </span>
+                      </div>
+                      <div className="h-2 w-full bg-muted/60 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${colors[idx] || colors[4]}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
+                <Users className="h-10 w-10 mb-2 opacity-30" />
+                <p className="text-sm font-medium">Nenhuma inadimplência</p>
+                <p className="text-xs mt-1">Todos os clientes estão em dia</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

@@ -268,8 +268,8 @@ function CadastroTabContent({ tab }: { tab: TabConfig }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((item) => (
-                <TableRow key={item.id}>
+              {items.map((item, idx) => (
+                <TableRow key={item.id} className={`hover:bg-muted/50 transition-colors ${idx % 2 === 1 ? 'bg-muted/10' : ''}`}>
                   <TableCell className="font-medium">{item.nome}</TableCell>
                   {isEstabelecimento && (
                     <TableCell className="text-muted-foreground text-sm">

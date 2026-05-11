@@ -347,13 +347,13 @@ export function AdminAuditoriaView() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {logs.map((log) => {
+                {logs.map((log, idx) => {
                   const isExpanded = expandedId === log.id
                   const changes = getDiffFields(log.antes, log.depois)
                   return (
                     <TableRow
                       key={log.id}
-                      className="cursor-pointer"
+                      className={`cursor-pointer hover:bg-muted/50 transition-colors ${idx % 2 === 1 ? 'bg-muted/10' : ''} ${log.severidade === 'critico' || log.severidade === 'seguranca' ? 'border-l-4 border-l-red-400' : log.severidade === 'aviso' ? 'border-l-4 border-l-yellow-400' : ''}`}
                       onClick={() => setExpandedId(isExpanded ? null : log.id)}
                     >
                       <TableCell>

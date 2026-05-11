@@ -4,10 +4,11 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigation } from '@/lib/store/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isSameDay, isToday, isValid } from 'date-fns'
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isSameDay, isToday, isValid, startOfWeek, addDays, addWeeks, subWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   ChevronLeft,
@@ -16,6 +17,9 @@ import {
   X,
   List,
   Grid3X3,
+  Rows3,
+  CreditCard,
+  CheckCircle,
 } from 'lucide-react'
 
 interface CobrancaAgenda {
@@ -32,7 +36,7 @@ interface CobrancaAgenda {
   locacao: { id: string; formaPagamento: string; produtoTipo: string } | null
 }
 
-type ViewMode = 'calendar' | 'list'
+type ViewMode = 'calendar' | 'list' | 'week'
 
 export function AgendaView() {
   const { navigate } = useNavigation()
@@ -179,6 +183,15 @@ export function AgendaView() {
             Calendário
           </Button>
           <Button
+            variant={viewMode === 'week' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('week')}
+            className="gap-1.5"
+          >
+            <Rows3 className="h-4 w-4" />
+            Semana
+          </Button>
+          <Button
             variant={viewMode === 'list' ? 'secondary' : 'ghost'}
             size="sm"
             onClick={() => setViewMode('list')}
@@ -190,20 +203,29 @@ export function AgendaView() {
         </div>
       </div>
 
-      {/* Month Navigation */}
+      {/* Navigation */}
       <Card className="shadow-sm">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setCurrentDate(subMonths(currentDate, 1))}
+              onClick={() => setCurrentDate(viewMode === 'week' ? subWeeks(currentDate, 1) : subMonths(currentDate, 1))}
             >
               <ChevronLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-2">
               <CalendarIcon className="h-5 w-5 text-muted-foreground" />
-              <h2 className="text-lg font-semibold capitalize">{monthLabel}</h2>
+              <h2 className="text-lg font-semibold capitalize">
+                {viewMode === 'week'
+                  ? (() => {
+                      const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 })
+                      const weekEnd = addDays(weekStart, 6)
+                      return `${format(weekStart, "d 'de' MMM", { locale: ptBR })} — ${format(weekEnd, "d 'de' MMM 'de' yyyy", { locale: ptBR })}`
+                    })()
+                  : monthLabel
+                }
+              </h2>
             </div>
             <div className="flex items-center gap-1">
               <Button
@@ -217,7 +239,7 @@ export function AgendaView() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setCurrentDate(addMonths(currentDate, 1))}
+                onClick={() => setCurrentDate(viewMode === 'week' ? addWeeks(currentDate, 1) : addMonths(currentDate, 1))}
               >
                 <ChevronRight className="h-5 w-5" />
               </Button>
@@ -240,6 +262,10 @@ export function AgendaView() {
         <div className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
           <span>Atrasado</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+          <span>Vence hoje</span>
         </div>
       </div>
 
@@ -401,6 +427,150 @@ export function AgendaView() {
             </Card>
           </div>
         </div>
+      ) : viewMode === 'week' ? (
+        /* Weekly View */
+        <Card className="shadow-sm">
+          <CardContent className="p-0">
+            {(() => {
+              const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 })
+              const weekDaysList = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+
+              const handleQuickPay = async (c: CobrancaAgenda) => {
+                try {
+                  const res = await fetch(`/api/cobrancas/${c.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      valorRecebido: c.totalClientePaga,
+                      status: 'Pago',
+                    }),
+                  })
+                  if (res.ok) {
+                    toast.success(`Pagamento de ${formatarMoeda(c.totalClientePaga)} registrado!`)
+                    fetchCobrancas()
+                  } else {
+                    toast.error('Erro ao registrar pagamento')
+                  }
+                } catch {
+                  toast.error('Erro ao registrar pagamento')
+                }
+              }
+
+              return (
+                <div className="divide-y">
+                  {weekDaysList.map((day) => {
+                    const dateKey = format(day, 'yyyy-MM-dd')
+                    const dayCobrancas = cobrancasByDate[dateKey] || []
+                    const isCurrentDay = isToday(day)
+                    return (
+                      <div key={dateKey} className={`p-4 ${isCurrentDay ? 'bg-primary/5' : ''}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className={`text-sm font-semibold capitalize ${isCurrentDay ? 'text-primary' : ''}`}>
+                            {format(day, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+                            {isCurrentDay && (
+                              <span className="ml-2 text-xs text-primary font-medium">(Hoje)</span>
+                            )}
+                          </h3>
+                          {dayCobrancas.length > 0 && (
+                            <div className="flex items-center gap-1.5">
+                              {dayCobrancas.filter(c => c.status === 'Pago').length > 0 && (
+                                <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                                  {dayCobrancas.filter(c => c.status === 'Pago').length} P
+                                </span>
+                              )}
+                              {dayCobrancas.filter(c => c.status === 'Pendente' || c.status === 'Parcial').length > 0 && (
+                                <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full bg-amber-100 dark:bg-amber-900 text-[10px] font-bold text-amber-700 dark:text-amber-300">
+                                  {dayCobrancas.filter(c => c.status === 'Pendente' || c.status === 'Parcial').length} Pe
+                                </span>
+                              )}
+                              {dayCobrancas.filter(c => c.status === 'Atrasado').length > 0 && (
+                                <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full bg-red-100 dark:bg-red-900 text-[10px] font-bold text-red-700 dark:text-red-300">
+                                  {dayCobrancas.filter(c => c.status === 'Atrasado').length} A
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {dayCobrancas.length === 0 ? (
+                          <p className="text-xs text-muted-foreground py-2">Nenhuma cobrança</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {dayCobrancas.map((c) => {
+                              const isDueToday = c.dataVencimento && isSameDay(parseISO(c.dataVencimento), new Date())
+                              const isOverdue = c.status === 'Atrasado'
+                              const isPaid = c.status === 'Pago'
+                              const isParcial = c.status === 'Parcial'
+                              const isPendingDueToday = !isPaid && !isOverdue && isDueToday
+                              // Color coding per spec
+                              const colorClasses = isOverdue
+                                ? 'bg-red-100 dark:bg-red-900/30 border-l-4 border-l-red-500'
+                                : isPendingDueToday
+                                  ? 'bg-amber-100 dark:bg-amber-900/30 border-l-4 border-l-amber-500'
+                                  : isPaid
+                                    ? 'bg-emerald-100 dark:bg-emerald-900/30 border-l-4 border-l-emerald-500'
+                                    : isParcial
+                                      ? 'bg-blue-100 dark:bg-blue-900/30 border-l-4 border-l-blue-500'
+                                      : 'bg-card border-l-4 border-l-yellow-500'
+                              return (
+                                <div
+                                  key={c.id}
+                                  className={`rounded-lg border p-3 hover:opacity-90 cursor-pointer transition-opacity ${colorClasses}`}
+                                  onClick={() => navigate('cobranca-detalhe', c.id)}
+                                >
+                                  <div className="flex items-start justify-between mb-1">
+                                    <p className="text-sm font-medium leading-tight">
+                                      {c.clienteNome || c.cliente?.nomeExibicao}
+                                    </p>
+                                    <div className="flex items-center gap-1.5">
+                                      <StatusBadge status={c.status} />
+                                      {!isPaid && (
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-200/50 dark:text-emerald-400 dark:hover:bg-emerald-800/50 shrink-0"
+                                          title="Pagamento rápido"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            handleQuickPay(c)
+                                          }}
+                                        >
+                                          <CheckCircle className="h-3.5 w-3.5" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    {c.produtoIdentificador} • {c.locacao?.produtoTipo || c.formaPagamento}
+                                  </p>
+                                  <div className="flex items-center justify-between mt-2">
+                                    <span className="text-sm font-semibold">
+                                      {formatarMoeda(c.totalClientePaga)}
+                                    </span>
+                                    {c.valorRecebido > 0 && (
+                                      <span className="text-xs text-emerald-700 dark:text-emerald-300">
+                                        Pago: {formatarMoeda(c.valorRecebido)}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {isPendingDueToday && (
+                                    <p className="text-[10px] text-amber-600 font-medium mt-1">Vence hoje</p>
+                                  )}
+                                  {isOverdue && (
+                                    <p className="text-[10px] text-red-600 font-medium mt-1">Atrasado</p>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+          </CardContent>
+        </Card>
       ) : (
         /* List View (mobile-friendly) */
         <Card className="shadow-sm">

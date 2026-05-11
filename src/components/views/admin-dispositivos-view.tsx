@@ -241,8 +241,8 @@ export function AdminDispositivosView() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dispositivos.map((d) => (
-                  <TableRow key={d.id}>
+                {dispositivos.map((d, idx) => (
+                  <TableRow key={d.id} className={`hover:bg-muted/50 transition-colors ${idx % 2 === 1 ? 'bg-muted/10' : ''} ${d.ativo ? 'border-l-4 border-l-green-400' : 'border-l-4 border-l-gray-300'}`}>
                     <TableCell className="font-medium">{d.nome}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">

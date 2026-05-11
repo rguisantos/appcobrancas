@@ -459,8 +459,8 @@ export function AdminUsuariosView() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {usuarios.map((u) => (
-                  <TableRow key={u.id}>
+                {usuarios.map((u, idx) => (
+                  <TableRow key={u.id} className={`hover:bg-muted/50 transition-colors ${idx % 2 === 1 ? 'bg-muted/10' : ''}`}>
                     <TableCell className="font-medium">{u.nome}</TableCell>
                     <TableCell className="text-muted-foreground text-sm">{u.email}</TableCell>
                     <TableCell>
