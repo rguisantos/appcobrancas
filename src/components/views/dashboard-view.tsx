@@ -952,6 +952,9 @@ export function DashboardView() {
         </Card>
       </motion.div>
 
+      {/* Top Clientes Ranking */}
+      <TopClientsWidget navigate={navigate} />
+
       {/* Produtos por Tipo Section */}
       {productTypes && productTypes.length > 0 && (
         <motion.div
@@ -1019,6 +1022,138 @@ export function DashboardView() {
         </motion.div>
       )}
     </div>
+  )
+}
+
+function TopClientsWidget({ navigate }: { navigate: (view: string, id?: string | null) => void }) {
+  const [topClients, setTopClients] = useState<Array<{
+    id: string
+    nomeExibicao: string
+    identificador: string
+    totalReceita: number
+  }> | null>(null)
+
+  useEffect(() => {
+    async function fetchTopClients() {
+      try {
+        const [clientesRes, cobrancasRes] = await Promise.all([
+          fetch('/api/clientes?limit=100'),
+          fetch('/api/cobrancas?limit=1000'),
+        ])
+        if (!clientesRes.ok || !cobrancasRes.ok) return
+
+        const clientesJson = await clientesRes.json()
+        const cobrancasJson = await cobrancasRes.json()
+
+        const clientes: Array<{ id: string; nomeExibicao: string; identificador: string }> = clientesJson.data || []
+        const cobrancas: Array<{ clienteId: string; status: string; totalClientePaga: number; valorRecebido: number }> = cobrancasJson.data || []
+
+        // Build revenue map per client
+        const revenueMap = new Map<string, number>()
+        for (const c of cobrancas) {
+          if (c.status === 'Pago' || c.status === 'Parcial') {
+            const current = revenueMap.get(c.clienteId) || 0
+            revenueMap.set(c.clienteId, current + (c.valorRecebido || 0))
+          }
+        }
+
+        // Combine with client info and sort
+        const ranked = clientes
+          .map((cl) => ({
+            id: cl.id,
+            nomeExibicao: cl.nomeExibicao,
+            identificador: cl.identificador,
+            totalReceita: revenueMap.get(cl.id) || 0,
+          }))
+          .filter((cl) => cl.totalReceita > 0)
+          .sort((a, b) => b.totalReceita - a.totalReceita)
+          .slice(0, 5)
+
+        setTopClients(ranked)
+      } catch {
+        // silently ignore
+      }
+    }
+    fetchTopClients()
+  }, [])
+
+  const maxRevenue = topClients && topClients.length > 0 ? topClients[0].totalReceita : 0
+
+  const rankColors = ['#FFD700', '#C0C0C0', '#CD7F32', '#6b7280', '#6b7280']
+  const rankBg = ['bg-yellow-100 dark:bg-yellow-900/50', 'bg-gray-100 dark:bg-gray-800/50', 'bg-orange-100 dark:bg-orange-900/50', 'bg-slate-100 dark:bg-slate-800/50', 'bg-slate-100 dark:bg-slate-800/50']
+  const rankText = ['text-yellow-700 dark:text-yellow-300', 'text-gray-600 dark:text-gray-300', 'text-orange-700 dark:text-orange-300', 'text-slate-600 dark:text-slate-300', 'text-slate-600 dark:text-slate-300']
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.7, duration: 0.5 }}
+    >
+      <Card className="shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-yellow-500" />
+            Top Clientes
+          </CardTitle>
+          <CardDescription>Maiores receitas por cliente</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!topClients ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-14 w-full" />
+              ))}
+            </div>
+          ) : topClients.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <Users className="h-10 w-10 mb-2 opacity-30" />
+              <p className="text-sm font-medium">Nenhum dado disponível</p>
+              <p className="text-xs mt-1">Os top clientes aparecerão aqui quando houver receitas</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {topClients.map((client, idx) => (
+                <motion.div
+                  key={client.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 80, duration: 0.3 }}
+                  className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => navigate('cliente-detalhe', client.id)}
+                >
+                  {/* Rank number */}
+                  <div
+                    className={`h-9 w-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${rankBg[idx]} ${rankText[idx]}`}
+                    style={idx < 3 ? { boxShadow: `0 0 0 2px ${rankColors[idx]}40` } : undefined}
+                  >
+                    {idx + 1}
+                  </div>
+                  {/* Client info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium truncate">{client.nomeExibicao}</p>
+                      <span className="text-sm font-bold shrink-0 ml-2">{formatarMoeda(client.totalReceita)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-muted-foreground">{client.identificador}</span>
+                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full progress-animated"
+                          style={{
+                            width: `${maxRevenue > 0 ? (client.totalReceita / maxRevenue) * 100 : 0}%`,
+                            backgroundColor: rankColors[idx],
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
   )
 }
 

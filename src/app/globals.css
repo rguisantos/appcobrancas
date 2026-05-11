@@ -273,3 +273,91 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
+
+/* Fade-in animation */
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Slide-up + fade in animation */
+.slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Count-up subtle scale animation for numbers */
+.count-up {
+  animation: countUp 0.2s ease-out;
+}
+@keyframes countUp {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Pulsing dot for live indicators */
+.pulse-dot {
+  animation: pulseDot 2s ease-in-out infinite;
+}
+@keyframes pulseDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.5; }
+}
+
+/* Emerald-to-teal gradient text */
+.gradient-text-emerald {
+  background: linear-gradient(135deg, #059669, #0d9488);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Improved skeleton shimmer with gradient animation */
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    oklch(0.94 0 0) 0%,
+    oklch(0.88 0 0 / 60%) 20%,
+    oklch(0.94 0 0) 40%,
+    oklch(0.94 0 0) 100%
+  );
+  background-size: 300% 100%;
+  animation: skeletonShimmer 1.8s ease-in-out infinite;
+}
+.dark .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    oklch(0.22 0 0) 0%,
+    oklch(0.30 0 0 / 60%) 20%,
+    oklch(0.22 0 0) 40%,
+    oklch(0.22 0 0) 100%
+  );
+  background-size: 300% 100%;
+  animation: skeletonShimmer 1.8s ease-in-out infinite;
+}
+@keyframes skeletonShimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* Staggered row fade-in helper */
+.stagger-row {
+  animation: slideUp 0.3s ease-out both;
+}
+.stagger-row:nth-child(1) { animation-delay: 0ms; }
+.stagger-row:nth-child(2) { animation-delay: 30ms; }
+.stagger-row:nth-child(3) { animation-delay: 60ms; }
+.stagger-row:nth-child(4) { animation-delay: 90ms; }
+.stagger-row:nth-child(5) { animation-delay: 120ms; }
+.stagger-row:nth-child(6) { animation-delay: 150ms; }
+.stagger-row:nth-child(7) { animation-delay: 180ms; }
+.stagger-row:nth-child(8) { animation-delay: 210ms; }
+.stagger-row:nth-child(9) { animation-delay: 240ms; }
+.stagger-row:nth-child(10) { animation-delay: 270ms; }
+.stagger-row:nth-child(n+11) { animation-delay: 300ms; }

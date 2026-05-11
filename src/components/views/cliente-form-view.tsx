@@ -160,7 +160,7 @@ export function ClienteFormView() {
     }
   }
 
-  // ViaCEP lookup
+  // ViaCEP lookup - only fills empty fields
   const handleCepLookup = async () => {
     const cep = formData.cep.replace(/\D/g, '')
     if (cep.length !== 8) {
@@ -177,13 +177,14 @@ export function ClienteFormView() {
           toast.error('CEP não encontrado')
           return
         }
+        // Only auto-fill fields that are currently empty (don't overwrite user input)
         setFormData((prev) => ({
           ...prev,
-          logradouro: data.logradouro || prev.logradouro,
-          bairro: data.bairro || prev.bairro,
-          cidade: data.localidade || prev.cidade,
-          estado: data.uf || prev.estado,
-          complemento: data.complemento || prev.complemento,
+          logradouro: (!prev.logradouro.trim() && data.logradouro) ? data.logradouro : prev.logradouro,
+          bairro: (!prev.bairro.trim() && data.bairro) ? data.bairro : prev.bairro,
+          cidade: (!prev.cidade.trim() && data.localidade) ? data.localidade : prev.cidade,
+          estado: (!prev.estado.trim() && data.uf) ? data.uf : prev.estado,
+          complemento: (!prev.complemento.trim() && data.complemento) ? data.complemento : prev.complemento,
         }))
         toast.success('Endereço preenchido automaticamente')
       } else {
@@ -195,6 +196,17 @@ export function ClienteFormView() {
       setCepLoading(false)
     }
   }
+
+  // Debounced CEP auto-lookup (300ms after typing stops)
+  useEffect(() => {
+    const cep = formData.cep.replace(/\D/g, '')
+    if (cep.length !== 8) return
+
+    const timer = setTimeout(() => {
+      handleCepLookup()
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [formData.cep])
 
   // Submit form
   const handleSubmit = async (e: React.FormEvent) => {
@@ -458,28 +470,45 @@ export function ClienteFormView() {
                   <div className="space-y-2">
                     <Label htmlFor="cep">CEP</Label>
                     <div className="flex gap-2">
-                      <Input
-                        id="cep"
-                        value={formData.cep}
-                        onChange={(e) => handleChange('cep', e.target.value)}
-                        placeholder="00000-000"
-                        className="flex-1"
-                      />
+                      <div className="relative flex-1">
+                        <Input
+                          id="cep"
+                          value={formData.cep}
+                          onChange={(e) => handleChange('cep', e.target.value)}
+                          onBlur={() => {
+                            const cep = formData.cep.replace(/\D/g, '')
+                            if (cep.length === 8 && !cepLoading) {
+                              handleCepLookup()
+                            }
+                          }}
+                          placeholder="00000-000"
+                          className="flex-1"
+                        />
+                        {cepLoading && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
                       <Button
                         type="button"
                         variant="outline"
-                        size="icon"
+                        size="sm"
                         onClick={handleCepLookup}
                         disabled={cepLoading}
-                        className="shrink-0"
+                        className="shrink-0 gap-1.5"
                       >
                         {cepLoading ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
-                          <Search className="h-4 w-4" />
+                          <Search className="h-3.5 w-3.5" />
                         )}
+                        <span className="hidden sm:inline">Buscar CEP</span>
                       </Button>
                     </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Digite o CEP e o endereço será preenchido automaticamente
+                    </p>
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="logradouro">Logradouro</Label>

@@ -152,13 +152,23 @@ export function CobrancaFormView() {
               handleSelectLocacao(matching)
             }
           }
+
+          // Auto-select locação if locacaoId is provided via navigation params
+          if (!isEditing && navParams?.locacaoId) {
+            const matching = locacoesData.find(
+              (l: Locacao) => l.id === navParams.locacaoId
+            )
+            if (matching) {
+              handleSelectLocacao(matching)
+            }
+          }
         }
       } catch (error) {
         console.error('Erro ao buscar locações:', error)
       }
     }
     fetchLocacoes()
-  }, [isEditing, navParams?.clienteId])
+  }, [isEditing, navParams?.clienteId, navParams?.locacaoId])
 
   // Click outside to close dropdown
   useEffect(() => {

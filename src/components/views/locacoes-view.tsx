@@ -240,6 +240,19 @@ export function LocacoesView() {
         ))}
       </div>
 
+      {/* Quick filter for active locações */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant={status === 'Ativa' ? 'default' : 'outline'}
+          size="sm"
+          className="gap-1.5 text-xs"
+          onClick={() => handleStatusChange(status === 'Ativa' ? 'all' : 'Ativa')}
+        >
+          <CheckCircle className="h-3.5 w-3.5" />
+          {status === 'Ativa' ? 'Ver Todas as Locações' : 'Ver Todas as Locações Ativas'}
+        </Button>
+      </div>
+
       {/* Filters */}
       <Card className="shadow-sm bg-muted/30">
         <CardContent className="p-4">
@@ -284,7 +297,7 @@ export function LocacoesView() {
             <TableSkeleton />
           ) : locacoes.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="h-20 w-20 rounded-2xl bg-muted/50 flex items-center justify-center mb-6">
+              <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center mb-6 shadow-sm">
                 <DollarSign className="h-10 w-10 text-muted-foreground/50" />
               </div>
               <p className="text-lg font-semibold">Nenhuma locação encontrada</p>
@@ -314,10 +327,10 @@ export function LocacoesView() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {locacoes.map((locacao) => (
+                {locacoes.map((locacao, idx) => (
                   <TableRow
                     key={locacao.id}
-                    className={`cursor-pointer hover:bg-muted/50 transition-colors ${statusBorderColor(locacao.status)}`}
+                    className={`stagger-row cursor-pointer hover:bg-muted/50 transition-colors ${statusBorderColor(locacao.status)} ${idx % 2 === 1 ? 'bg-muted/10' : ''}`}
                     onClick={() => navigate('locacao-detalhe', locacao.id)}
                   >
                     <TableCell className="font-medium">{locacao.clienteNome || locacao.cliente?.nomeExibicao}</TableCell>

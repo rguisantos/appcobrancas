@@ -414,6 +414,16 @@ export function CobrancasView() {
         ))}
       </div>
 
+      {/* Total em cobranças summary */}
+      <div className="flex items-center justify-between px-1">
+        <p className="text-sm text-muted-foreground">
+          Total em cobranças: <span className="font-bold text-foreground count-up">{formatarMoeda(summary.totalGeral)}</span>
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {total} cobrança{total !== 1 ? 's' : ''} nesta página
+        </p>
+      </div>
+
       {/* Filters */}
       <Card className="shadow-sm bg-muted/30 border-dashed">
         <CardContent className="p-4">
@@ -484,14 +494,21 @@ export function CobrancasView() {
           {loading ? (
             <TableSkeleton />
           ) : cobrancas.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
-                <Search className="h-6 w-6 text-muted-foreground" />
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center mb-6 shadow-sm">
+                <CreditCard className="h-10 w-10 text-muted-foreground/50" />
               </div>
-              <p className="text-lg font-medium">Nenhuma cobrança encontrada</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Tente ajustar os filtros ou crie uma nova cobrança
+              <p className="text-lg font-semibold">Nenhuma cobrança encontrada</p>
+              <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+                Tente ajustar os filtros ou crie uma nova cobrança para começar
               </p>
+              <Button
+                className="mt-4 gap-2"
+                onClick={() => navigate('cobranca-nova')}
+              >
+                <Plus className="h-4 w-4" />
+                Criar Primeira Cobrança
+              </Button>
             </div>
           ) : (
             <Table>
@@ -516,13 +533,13 @@ export function CobrancasView() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {cobrancas.map((cobranca) => {
+                {cobrancas.map((cobranca, idx) => {
                   const statusBorder = cobranca.status === 'Pago' ? 'border-l-4 border-l-green-500' : cobranca.status === 'Pendente' ? 'border-l-4 border-l-yellow-500' : cobranca.status === 'Atrasado' ? 'border-l-4 border-l-red-500' : cobranca.status === 'Parcial' ? 'border-l-4 border-l-orange-500' : 'border-l-4 border-l-gray-400'
                   const isSelected = selectedIds.has(cobranca.id)
                   return (
                   <TableRow
                     key={cobranca.id}
-                    className={`cursor-pointer hover:bg-muted/50 transition-colors ${statusBorder} ${isSelected ? 'bg-primary/5' : ''}`}
+                    className={`stagger-row cursor-pointer hover:bg-muted/50 transition-colors ${statusBorder} ${isSelected ? 'bg-primary/5' : ''} ${idx % 2 === 1 ? 'bg-muted/10' : ''}`}
                     onClick={() => navigate('cobranca-detalhe', cobranca.id)}
                   >
                     <TableCell onClick={(e) => e.stopPropagation()}>

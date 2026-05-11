@@ -435,6 +435,14 @@ export function LocacaoDetalheView() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Button
+            size="sm"
+            className="gap-2"
+            onClick={() => navigate('cobranca-nova', null, { locacaoId: locacao.id })}
+          >
+            <CreditCard className="h-4 w-4" />
+            Gerar Cobrança
+          </Button>
+          <Button
             variant="outline"
             size="sm"
             className="gap-2"
