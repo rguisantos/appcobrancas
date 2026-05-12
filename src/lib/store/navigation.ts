@@ -81,7 +81,7 @@ export function getViewParent(view: ViewType): ViewType {
   if (view.startsWith('cliente-')) return 'clientes'
   if (view.startsWith('produto-')) return 'produtos'
   if (view.startsWith('locacao-')) return 'locacoes'
-  if (view.startsWith('cobranca-')) return 'cobranças'
+  if (view.startsWith('cobranca-')) return 'cobrancas'
   if (view.startsWith('manutencao-')) return 'manutencoes'
   if (view.startsWith('relogio-')) return 'relogios'
   if (view.startsWith('admin-usuario')) return 'admin-usuarios'

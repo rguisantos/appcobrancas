@@ -8,7 +8,9 @@ export async function POST(request: NextRequest) {
 
   // Allow either authenticated admin or cron secret
   const cronSecret = request.headers.get('x-cron-secret')
-  const isCronAuthorized = cronSecret === (process.env.CRON_SECRET || 'cron-secret-default')
+  const isCronAuthorized = process.env.CRON_SECRET
+    ? cronSecret === process.env.CRON_SECRET
+    : false
 
   if (!session && !isCronAuthorized) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })

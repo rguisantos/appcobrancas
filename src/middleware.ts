@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { jwtVerify } from 'jose'
-
-// JWT secret - must match auth-jwt.ts
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'app-cobrancas-secret-key-min-32-chars!!'
-)
+import { JWT_SECRET } from './lib/jwt-config'
 
 // Routes that don't require authentication
 const PUBLIC_ROUTES = [
   '/api/auth/login',
+  '/api/auth/device-login',
   '/api/auth/logout',
   '/api/health',
   '/api/cron',
@@ -27,8 +24,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Check for auth token in cookies
-  const token = request.cookies.get('auth-token')?.value
+  // Check for auth token: Cookie (web) or Bearer header (mobile)
+  const cookieToken = request.cookies.get('auth-token')?.value
+  const authHeader = request.headers.get('authorization')
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+  const token = cookieToken || bearerToken
 
   if (!token) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })

@@ -1,9 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'app-cobrancas-secret-key-min-32-chars!!'
-)
+import { JWT_SECRET, JWT_EXPIRATION } from './jwt-config'
 
 export interface AuthPayload {
   userId: string
@@ -18,7 +15,7 @@ export async function signToken(payload: AuthPayload): Promise<string> {
   return new SignJWT(payload as unknown as Record<string, unknown>)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('7d')
+    .setExpirationTime(JWT_EXPIRATION)
     .sign(JWT_SECRET)
 }
 
