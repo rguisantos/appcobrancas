@@ -56,7 +56,7 @@ export async function GET(
 
   // Payment history - last 6 months, month-by-month totals
   const now = new Date()
-  const paymentHistory = []
+  const paymentHistory: { mes: string; label: string; total: number; pago: number; quantidade: number }[] = []
 
   for (let i = 5; i >= 0; i--) {
     const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1)
