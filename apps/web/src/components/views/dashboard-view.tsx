@@ -1934,8 +1934,8 @@ function getAuditDotColor(acao: string): string {
   return 'bg-slate-400'
 }
 
-function getAuditNavView(entidade: string): string | null {
-  const map: Record<string, string> = {
+function getAuditNavView(entidade: string): ViewType | null {
+  const map: Record<string, ViewType> = {
     cliente: 'cliente-detalhe',
     produto: 'produto-detalhe',
     locacao: 'locacao-detalhe',
