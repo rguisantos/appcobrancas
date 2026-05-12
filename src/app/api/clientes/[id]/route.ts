@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { clienteSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { generateUniqueIdentifier } from '@/lib/auto-identifier'
 
 export async function GET(
   _request: NextRequest,
@@ -40,6 +41,16 @@ export async function PUT(
   try {
     const body = await request.json()
     const data = clienteSchema.parse(body)
+
+    // Preserve existing identifier - don't allow changing it
+    // If identifier was somehow cleared, keep the original
+    if (!data.identificador || data.identificador.trim() === '') {
+      data.identificador = existing.identificador
+    } else if (data.identificador !== existing.identificador) {
+      // If they're trying to change it, keep the original
+      data.identificador = existing.identificador
+    }
+
     const antes = existing as Record<string, unknown>
 
     const cliente = await db.cliente.update({

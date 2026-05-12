@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { clienteSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { generateUniqueIdentifier } from '@/lib/auto-identifier'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -58,6 +59,12 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const data = clienteSchema.parse(body)
+
+    // Auto-generate identificador if not provided
+    if (!data.identificador || data.identificador.trim() === '') {
+      data.identificador = await generateUniqueIdentifier('C', 'cliente')
+    }
+
     const cliente = await db.cliente.create({ data })
 
     await registrarAuditoria({

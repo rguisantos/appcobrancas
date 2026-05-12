@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { generateUniqueIdentifier } from '@/lib/auto-identifier'
 
 interface CsvRow {
   identificador: string
@@ -129,10 +130,6 @@ export async function POST(request: NextRequest) {
         const rowIndex = i + batchIndex + 2 // +2 for header and 1-based index
 
         // Validate required fields
-        if (!row.identificador) {
-          errors.push({ row: rowIndex, error: 'Identificador é obrigatório' })
-          return
-        }
         if (!row.nomeExibicao) {
           errors.push({ row: rowIndex, error: 'Nome de exibição é obrigatório' })
           return
@@ -146,13 +143,19 @@ export async function POST(request: NextRequest) {
           return
         }
 
-        // Check for duplicate identificador
-        const existing = await db.cliente.findFirst({
-          where: { identificador: row.identificador, deletedAt: null },
-        })
-        if (existing) {
-          errors.push({ row: rowIndex, error: `Identificador "${row.identificador}" já existe` })
-          return
+        // Auto-generate identificador if not provided
+        let identificador = row.identificador
+        if (!identificador || identificador.trim() === '') {
+          identificador = await generateUniqueIdentifier('C', 'cliente')
+        } else {
+          // Check for duplicate identificador only if manually provided
+          const existing = await db.cliente.findFirst({
+            where: { identificador: row.identificador, deletedAt: null },
+          })
+          if (existing) {
+            errors.push({ row: rowIndex, error: `Identificador "${row.identificador}" já existe` })
+            return
+          }
         }
 
         // Auto-fill address from ViaCEP if only CEP is provided
@@ -174,7 +177,7 @@ export async function POST(request: NextRequest) {
         try {
           const cliente = await db.cliente.create({
             data: {
-              identificador: row.identificador,
+              identificador: identificador,
               nomeExibicao: row.nomeExibicao,
               nomeCompleto: row.nomeCompleto || null,
               tipoPessoa: row.tipoPessoa,
@@ -197,7 +200,7 @@ export async function POST(request: NextRequest) {
             entidade: 'cliente',
             entidadeId: cliente.id,
             entidadeNome: cliente.nomeExibicao,
-            depois: { identificador: row.identificador, importado: true } as Record<string, unknown>,
+            depois: { identificador: identificador, importado: true } as Record<string, unknown>,
             severidade: 'info',
           })
 

@@ -3,7 +3,7 @@ import { z } from 'zod/v4'
 // Cliente
 export const clienteSchema = z.object({
   tipoPessoa: z.enum(['Fisica', 'Juridica']).default('Fisica'),
-  identificador: z.string().min(1, 'Identificador é obrigatório'),
+  identificador: z.string().optional(), // Auto-generated when not provided
   nomeExibicao: z.string().min(1, 'Nome de exibição é obrigatório'),
   nomeCompleto: z.string().optional(),
   razaoSocial: z.string().optional(),
