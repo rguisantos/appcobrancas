@@ -1,6 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
+# ============================================
+# DEPENDENCIES
+# ============================================
 node_modules
 /.pnp
 .pnp.*
@@ -10,52 +12,94 @@ node_modules
 !.yarn/releases
 !.yarn/versions
 
-# testing
+# ============================================
+# TESTING
+# ============================================
 /coverage
 
-# next.js
+# ============================================
+# NEXT.JS
+# ============================================
 /.next/
 /out/
 
-# production
+# ============================================
+# PRODUCTION / BUILD
+# ============================================
 /build
 
-# misc
+# ============================================
+# ENVIRONMENT VARIABLES (NEVER commit)
+# ============================================
+.env
+.env.*
+!.env.example
+
+# ============================================
+# DATABASE
+# ============================================
+*.db
+*.db-journal
+db/*.db
+
+# ============================================
+# VERCEL
+# ============================================
+.vercel
+
+# ============================================
+# TYPESCRIPT
+# ============================================
+*.tsbuildinfo
+next-env.d.ts
+
+# ============================================
+# MISC / OS
+# ============================================
 .DS_Store
 *.pem
+Thumbs.db
 
-# debug
+# ============================================
+# LOGS
+# ============================================
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-local-*
-.claude
-.z-ai-config
 *.log
 dev.log
 dev.out.log
-test
-prompt
-
 server.log
-# Skills directory
-.zscripts/dev.pid
-.zscripts/dev.log
-*.db
-*.db-journal
+
+# ============================================
+# AI / AGENT INTERNALS
+# ============================================
+.claude
+.z-ai-config
+agent-ctx/
 skills/
 .seed-done
-db/*.db
-agent-ctx/
+
+# ============================================
+# LOCAL SCRIPTS / RUNTIME
+# ============================================
+.zscripts/dev.pid
+.zscripts/dev.log
+local-*
+test
+prompt
+mini-services/
+
+# ============================================
+# PRISMA
+# ============================================
+prisma/migrations/
+
+# ============================================
+# IDE
+# ============================================
+.idea/
+.vscode/
+*.swp
+*.swo
