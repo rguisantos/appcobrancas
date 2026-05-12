@@ -1796,3 +1796,37 @@ App Cobranças is a comprehensive billing management system running on PostgreSQ
 1. **Server crashes in sandbox**: After 3-5 API requests, the server dies due to memory constraints. This is a sandbox-only issue - in production with adequate RAM, this would not happen.
 2. **GitHub push requires authentication**: No credentials configured. User needs to set up GitHub token.
 3. **Pending features from previous sessions**: PWA support, PDF generation, virtual scrolling
+
+---
+Task ID: vercel-deploy-config
+Agent: Main Agent
+Task: Configure .env and project for Vercel deployment
+
+Work Log:
+1. Updated .env with PostgreSQL Neon connection string:
+   - DATABASE_URL=postgresql://neondb_owner:npg_pi6qTMJUg5yk@ep-misty-dew-acdbyy9l-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+   - JWT_SECRET=app-cobrancas-prod-secret-key-2024-mudar
+   - SECURE_COOKIES=true (required for HTTPS on Vercel)
+   - CRON_SECRET=cron-secret-prod-mudar
+2. Removed `output: "standalone"` from next.config.ts — Vercel uses its own build system
+3. Added `postinstall: "prisma generate"` script to package.json — ensures Prisma Client is generated on Vercel
+4. Simplified `build` script from `next build && cp -r ...` to just `next build` — no standalone copy needed
+5. Verified Prisma Client generates successfully with `npx prisma@6 generate`
+6. Verified dev server starts and responds with HTTP 200
+7. Verified zero lint errors
+8. Created cron job (webDevReview) for periodic monitoring
+
+Stage Summary:
+- Project configured for Vercel deployment
+- All 4 environment variables identified and configured
+- Build scripts updated for Vercel compatibility
+- Zero lint errors, dev server running
+
+## Vercel Environment Variables Required
+
+| Variable | Value | Required |
+|----------|-------|----------|
+| DATABASE_URL | postgresql://neondb_owner:npg_pi6qTMJUg5yk@ep-misty-dew-acdbyy9l-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require | Yes |
+| JWT_SECRET | app-cobrancas-prod-secret-key-2024-mudar | Yes - CHANGE THIS! |
+| SECURE_COOKIES | true | Yes - required for HTTPS |
+| CRON_SECRET | cron-secret-prod-mudar | Yes - CHANGE THIS! |
