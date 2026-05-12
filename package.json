@@ -16,6 +16,9 @@
     "db:seed": "cd apps/web && bun run db:seed",
     "mobile:start": "cd apps/mobile && npx expo start",
     "mobile:android": "cd apps/mobile && npx expo start --android",
-    "mobile:ios": "cd apps/mobile && npx expo start --ios"
+    "mobile:ios": "cd apps/mobile && npx expo start --ios",
+    "test": "cd packages/shared && npx vitest run && cd ../../apps/web && npx vitest run",
+    "test:shared": "cd packages/shared && npx vitest run",
+    "test:web": "cd apps/web && npx vitest run"
   }
 }
