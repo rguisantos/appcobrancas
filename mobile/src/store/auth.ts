@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persistAuth, clearPersistedAuth } from '@/lib/auth-persistence'
 
 interface User {
   id: string
@@ -46,6 +47,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isAuthenticated: true,
       isLoading: false,
     })
+    // Persist to SecureStore (fire-and-forget)
+    if (user && token) {
+      persistAuth({ user, device, token }).catch(() => {})
+    }
   },
 
   logout: () => {
@@ -56,6 +61,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isAuthenticated: false,
       isLoading: false,
     })
+    // Clear persisted auth (fire-and-forget)
+    clearPersistedAuth().catch(() => {})
   },
 
   setLoading: (loading) => set({ isLoading: loading }),
