@@ -14,7 +14,7 @@ const pushChangeSchema = z.object({
   entidade: z.string(),
   entidadeId: z.string(),
   operacao: z.enum(['create', 'update', 'delete']),
-  dados: z.record(z.unknown()).optional(),
+  dados: z.record(z.string(), z.unknown()).optional(),
   updatedAt: z.string(), // ISO 8601
 })
 

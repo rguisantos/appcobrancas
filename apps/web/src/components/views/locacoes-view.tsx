@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigation } from '@/lib/store/navigation'
+import { useNavigation, type ViewType } from '@/lib/store/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -584,7 +584,7 @@ function GroupedLocacoesView({
 }: {
   data: GroupedData[]
   loading: boolean
-  navigate: (view: string, id?: string) => void
+  navigate: (view: ViewType, id?: string | null, params?: Record<string, string>) => void
   getProductTypeIcon: (tipoNome: string) => React.ReactNode
   formatFormaPagamento: (fp: string) => string
   formatarMoeda: (valor: number) => string

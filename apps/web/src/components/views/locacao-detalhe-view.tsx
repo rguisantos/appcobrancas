@@ -398,7 +398,7 @@ export function LocacaoDetalheView() {
   }
 
   // Timeline events
-  const timelineEvents = []
+  const timelineEvents: { date: string; label: string; icon: JSX.Element; color: string }[] = []
   if (locacao.dataLocacao) {
     timelineEvents.push({ date: locacao.dataLocacao, label: 'Locação criada', icon: <CalendarDays className="h-4 w-4" />, color: 'bg-green-500' })
   }

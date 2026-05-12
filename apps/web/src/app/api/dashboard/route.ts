@@ -89,7 +89,7 @@ export async function GET() {
     })
 
     // Chart: Monthly revenue (last 12 months)
-    const receitaMensal = []
+    const receitaMensal: { mes: string; valor: number }[] = []
     for (let i = 11; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
       const mesInicio = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0]

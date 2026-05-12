@@ -453,8 +453,9 @@ export default function MapInner({
         )}
       </div>
 
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <MapContainer
-        center={center}
+        center={center as any}
         zoom={zoom}
         style={{ height: 'calc(100vh - 400px)', minHeight: '480px', width: '100%' }}
         scrollWheelZoom={true}
@@ -469,7 +470,7 @@ export default function MapInner({
 
         {/* User location marker */}
         {userLocation && (
-          <Marker position={[userLocation.lat, userLocation.lng]} icon={userLocationIcon}>
+          <Marker position={[userLocation.lat, userLocation.lng]} icon={userLocationIcon as any}>
             <Popup>
               <div className="text-sm font-semibold">Sua Localização</div>
             </Popup>
@@ -532,7 +533,7 @@ export default function MapInner({
             <CircleMarker
               key={cliente.id}
               center={[cliente.latitude, cliente.longitude]}
-              radius={radius}
+              radius={radius as any}
               pathOptions={{
                 fillColor: color,
                 color: borderColor,
@@ -540,60 +541,60 @@ export default function MapInner({
                 opacity: searchOpacity,
                 fillOpacity: searchOpacity * (pinStatus === 'pendenteCobranca' || pinStatus === 'atrasado' ? 1 : 0.85),
                 className: pinClassName,
-              }}
+              } as any}
             >
               {/* Pulsing ring for atrasado clients */}
               {pinStatus === 'atrasado' && (
                 <CircleMarker
                   center={[cliente.latitude, cliente.longitude]}
-                  radius={radius + 4}
+                  radius={(radius + 4) as any}
                   pathOptions={{
                     fillColor: 'transparent',
                     color: '#dc2626',
                     weight: 2,
                     opacity: 0.6 * searchOpacity,
                     className: 'pulse-ring-marker',
-                  }}
+                  } as any}
                 />
               )}
               {/* Pulsing ring for pendenteCobranca clients */}
               {pinStatus === 'pendenteCobranca' && (
                 <CircleMarker
                   center={[cliente.latitude, cliente.longitude]}
-                  radius={radius + 5}
+                  radius={(radius + 5) as any}
                   pathOptions={{
                     fillColor: 'transparent',
                     color: '#eab308',
                     weight: 2,
                     opacity: 0.5 * searchOpacity,
                     className: 'pulse-ring-marker',
-                  }}
+                  } as any}
                 />
               )}
               {/* Glow ring for ativo (pago) clients */}
               {pinStatus === 'pago' && (
                 <CircleMarker
                   center={[cliente.latitude, cliente.longitude]}
-                  radius={radius + 3}
+                  radius={(radius + 3) as any}
                   pathOptions={{
                     fillColor: 'transparent',
                     color: '#22c55e',
                     weight: 1.5,
                     opacity: 0.3 * searchOpacity,
-                  }}
+                  } as any}
                 />
               )}
               {/* Glow ring for parcial clients */}
               {pinStatus === 'parcial' && (
                 <CircleMarker
                   center={[cliente.latitude, cliente.longitude]}
-                  radius={radius + 3}
+                  radius={(radius + 3) as any}
                   pathOptions={{
                     fillColor: 'transparent',
                     color: '#f97316',
                     weight: 1.5,
                     opacity: 0.3 * searchOpacity,
-                  }}
+                  } as any}
                 />
               )}
               <Popup>

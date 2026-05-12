@@ -229,13 +229,13 @@ export async function PATCH(
       entidade: 'cobranca',
       entidadeId: id,
       entidadeNome: `${existing.clienteNome} - ${existing.dataInicio}/${existing.dataFim}`,
-      detalhes: JSON.stringify({
+      detalhes: {
         valor,
         formaPagamento,
         dataPagamento,
         novoStatus: newStatus,
         novoValorRecebido: newValorRecebido,
-      }),
+      },
       severidade: 'info',
     })
 

@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     // Log audit
     await registrarAuditoria({
-      usuarioId: session?.userId || null,
+      usuarioId: session?.userId || undefined,
       acao: 'cron_vencimento',
       entidade: 'cobranca',
       detalhes: {

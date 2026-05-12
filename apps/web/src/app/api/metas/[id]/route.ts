@@ -14,7 +14,7 @@ export async function GET(
   try {
   const { id } = await params
   const meta = await db.meta.findFirst({
-    where: { id, deletedAt: null },
+    where: { id },
     include: { rota: true },
   })
 
@@ -34,7 +34,7 @@ export async function PUT(
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
   const { id } = await params
-  const existing = await db.meta.findFirst({ where: { id, deletedAt: null } })
+  const existing = await db.meta.findFirst({ where: { id } })
   if (!existing) return NextResponse.json({ error: 'Meta não encontrada' }, { status: 404 })
 
   try {
@@ -83,12 +83,11 @@ export async function DELETE(
 
   try {
   const { id } = await params
-  const existing = await db.meta.findFirst({ where: { id, deletedAt: null } })
+  const existing = await db.meta.findFirst({ where: { id } })
   if (!existing) return NextResponse.json({ error: 'Meta não encontrada' }, { status: 404 })
 
-  const meta = await db.meta.update({
+  const meta = await db.meta.delete({
     where: { id },
-    data: { deletedAt: new Date() },
   })
 
   await registrarAuditoria({

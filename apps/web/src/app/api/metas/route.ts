@@ -10,7 +10,7 @@ export async function GET() {
 
   try {
   const data = await db.meta.findMany({
-    where: { deletedAt: null },
+    where: {},
     include: { rota: true },
     orderBy: { createdAt: 'desc' },
   })

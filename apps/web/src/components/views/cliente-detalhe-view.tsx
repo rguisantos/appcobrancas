@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigation } from '@/lib/store/navigation'
+import { useNavigation, type ViewType } from '@/lib/store/navigation'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -842,7 +842,7 @@ function ClientTimeline({ clienteId, clienteNome, locacoes, cobrancas, navigate 
   clienteNome: string
   locacoes: LocacaoItem[]
   cobrancas: CobrancaItem[]
-  navigate: (view: string, id?: string | null) => void
+  navigate: (view: ViewType, id?: string | null, params?: Record<string, string>) => void
 }) {
   const [auditLogs, setAuditLogs] = useState<Array<{
     id: string

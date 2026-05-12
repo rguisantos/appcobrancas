@@ -71,6 +71,7 @@ interface ClienteSemCoordenada {
   rotaId: string | null
   rota: { id: string; descricao: string; cor: string } | null
   cobrancasResumo: CobrancasResumo
+  totalRecebido: number
   totalPendente: number
   temAtrasado: boolean
   pendenteCobranca: boolean

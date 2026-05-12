@@ -36,6 +36,7 @@ export type ViewType =
   | 'admin-auditoria'
   | 'admin-metas'
   | 'admin-meta-nova'
+  | 'admin-meta-editar'
   | 'perfil'
   | 'notificacoes'
 
