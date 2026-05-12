@@ -3,6 +3,8 @@ import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { locacaoSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { writeSyncLog } from '@/lib/sync-log'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -156,11 +158,10 @@ export async function POST(request: NextRequest) {
       severidade: 'info',
     })
 
+    await writeSyncLog('locacao', locacao.id, 'create', locacao as unknown as Record<string, unknown>, new Date())
+
     return NextResponse.json(locacao, { status: 201 })
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'issues' in error) {
-      return NextResponse.json({ error: 'Dados inválidos', details: (error as { issues: unknown }).issues }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Erro ao criar locação' }, { status: 500 })
+    return handleApiError(error, 'Erro ao criar locacao')
   }
 }

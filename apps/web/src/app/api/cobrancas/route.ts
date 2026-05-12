@@ -4,6 +4,8 @@ import { getAuthSession } from '@/lib/auth-jwt'
 import { cobrancaSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { calcularCobranca, calcularSaldoDevedor } from '@/lib/cobranca-calculos'
+import { writeSyncLog } from '@/lib/sync-log'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -231,11 +233,10 @@ export async function POST(request: NextRequest) {
       severidade: 'info',
     })
 
+    await writeSyncLog('cobranca', cobranca.id, 'create', cobranca as unknown as Record<string, unknown>, new Date())
+
     return NextResponse.json(cobranca, { status: 201 })
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'issues' in error) {
-      return NextResponse.json({ error: 'Dados inválidos', details: (error as { issues: unknown }).issues }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Erro ao criar cobrança' }, { status: 500 })
+    return handleApiError(error, 'Erro ao criar cobranca')
   }
 }

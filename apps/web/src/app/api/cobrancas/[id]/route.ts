@@ -4,6 +4,8 @@ import { getAuthSession } from '@/lib/auth-jwt'
 import { cobrancaSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { calcularCobranca, calcularSaldoDevedor } from '@/lib/cobranca-calculos'
+import { writeSyncLog } from '@/lib/sync-log'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function GET(
   request: NextRequest,
