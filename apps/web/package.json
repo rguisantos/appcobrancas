@@ -5,6 +5,7 @@
   "packageManager": "bun@1.3.13",
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
+    "prebuild": "node scripts/fix-types-dedup.js",
     "build": "next build",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
@@ -106,9 +107,5 @@
     "tw-animate-css": "^1.3.5",
     "typescript": "^5",
     "vitest": "^3.2.1"
-  },
-  "resolutions": {
-    "@types/react": "19.2.14",
-    "@types/react-dom": "19.2.3"
   }
 }
