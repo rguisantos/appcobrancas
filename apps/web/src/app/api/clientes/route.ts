@@ -63,11 +63,12 @@ export async function POST(request: NextRequest) {
     const data = clienteSchema.parse(body)
 
     // Auto-generate identificador if not provided
-    if (!data.identificador || data.identificador.trim() === '') {
-      data.identificador = await generateUniqueIdentifier('C', 'cliente')
-    }
+    const identificador = data.identificador?.trim()
+      || await generateUniqueIdentifier('C', 'cliente')
 
-    const cliente = await db.cliente.create({ data })
+    const cliente = await db.cliente.create({
+      data: { ...data, identificador }
+    })
 
     await registrarAuditoria({
       usuarioId: session.userId,
