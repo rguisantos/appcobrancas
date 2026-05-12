@@ -20,6 +20,7 @@ model Rota {
   observacao  String?
   status      String   @default("Ativo")
   version     Int      @default(1)
+  syncOrigin  String?
   deletedAt   DateTime?
 
   clientes    Cliente[]
@@ -27,6 +28,10 @@ model Rota {
   metas       Meta[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+  @@index([status])
 }
 
 model Cliente {
@@ -55,6 +60,7 @@ model Cliente {
   rotaId            String?
   status            String   @default("Ativo")
   version           Int      @default(1)
+  syncOrigin        String?
   deletedAt         DateTime?
 
   rota              Rota?    @relation(fields: [rotaId], references: [id])
@@ -62,6 +68,11 @@ model Cliente {
   cobrancas         Cobranca[]
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+  @@index([rotaId])
+  @@index([status])
 }
 
 model TipoProduto {
@@ -70,6 +81,8 @@ model TipoProduto {
   produtos  Produto[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@index([updatedAt])
 }
 
 model DescricaoProduto {
@@ -78,6 +91,8 @@ model DescricaoProduto {
   produtos  Produto[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@index([updatedAt])
 }
 
 model TamanhoProduto {
@@ -86,6 +101,8 @@ model TamanhoProduto {
   produtos  Produto[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@index([updatedAt])
 }
 
 model Produto {
@@ -105,6 +122,7 @@ model Produto {
   estabelecimento   String?
   observacao        String?
   version           Int       @default(1)
+  syncOrigin        String?
   deletedAt         DateTime?
 
   tipo              TipoProduto     @relation(fields: [tipoId], references: [id])
@@ -116,6 +134,10 @@ model Produto {
   manutencoes       Manutencao[]
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+  @@index([statusProduto])
 }
 
 model Estabelecimento {
@@ -124,6 +146,8 @@ model Estabelecimento {
   endereco  String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@index([updatedAt])
 }
 
 model Locacao {
@@ -148,6 +172,7 @@ model Locacao {
   ultimaLeituraRelogio Float?
   trocaPano           Boolean   @default(false)
   version             Int       @default(1)
+  syncOrigin          String?
   deletedAt           DateTime?
 
   cliente             Cliente   @relation(fields: [clienteId], references: [id])
@@ -155,6 +180,12 @@ model Locacao {
   cobrancas           Cobranca[]
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+  @@index([clienteId])
+  @@index([produtoId])
+  @@index([status])
 }
 
 model Cobranca {
@@ -186,6 +217,7 @@ model Cobranca {
   formaPagamento        String    @default("Periodo")
   observacao            String?
   version               Int       @default(1)
+  syncOrigin            String?
   deletedAt             DateTime?
 
   locacao               Locacao             @relation(fields: [locacaoId], references: [id])
@@ -194,25 +226,36 @@ model Cobranca {
   pagamentos            PagamentoCobranca[]
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+  @@index([clienteId])
+  @@index([locacaoId])
+  @@index([status])
+  @@index([dataVencimento])
 }
 
 model PagamentoCobranca {
   id              String    @id @default(cuid())
   cobrancaId      String
   valor           Float
-  formaPagamento  String    @default("Pix")  // Dinheiro, Pix, Cartão, Transferência
+  formaPagamento  String    @default("Pix")  // Dinheiro, Pix, Cartao, Transferencia
   dataPagamento   String
   observacao      String?
   usuarioId       String?
   usuarioNome     String?
+  syncOrigin      String?
 
   cobranca        Cobranca  @relation(fields: [cobrancaId], references: [id])
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+
+  @@index([updatedAt])
+  @@index([cobrancaId])
 }
 
 // ============================================
-// USUÁRIOS E PERMISSÕES
+// USUARIOS E PERMISSOES
 // ============================================
 
 model Usuario {
@@ -238,8 +281,13 @@ model Usuario {
   logsAuditoria         LogAuditoria[]
   sessoes               Sessao[]
   metas                 Meta[]
+  dispositivos          Dispositivo[]
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+  @@index([status])
 }
 
 model UsuarioRota {
@@ -266,10 +314,14 @@ model HistoricoRelogio {
   observacao  String?
   usuarioId   String?
   usuarioNome String?
+  syncOrigin  String?
 
   produto     Produto   @relation(fields: [produtoId], references: [id])
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([updatedAt])
+  @@index([produtoId])
 }
 
 model Manutencao {
@@ -285,10 +337,15 @@ model Manutencao {
   observacao  String?
   usuarioId   String?
   usuarioNome String?
+  syncOrigin  String?
 
   produto     Produto   @relation(fields: [produtoId], references: [id])
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([updatedAt])
+  @@index([produtoId])
+  @@index([status])
 }
 
 model Notificacao {
@@ -303,6 +360,9 @@ model Notificacao {
   usuario   Usuario   @relation(fields: [usuarioId], references: [id])
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@index([usuarioId])
+  @@index([lida])
 }
 
 model Meta {
@@ -321,6 +381,8 @@ model Meta {
   usuario     Usuario?  @relation(fields: [criadoPor], references: [id])
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([updatedAt])
 }
 
 model LogAuditoria {
@@ -339,6 +401,9 @@ model LogAuditoria {
 
   usuario       Usuario?  @relation(fields: [usuarioId], references: [id])
   createdAt     DateTime  @default(now())
+
+  @@index([entidade])
+  @@index([createdAt])
 }
 
 model Sessao {
@@ -351,17 +416,61 @@ model Sessao {
 
   usuario     Usuario   @relation(fields: [usuarioId], references: [id])
   createdAt   DateTime  @default(now())
+
+  @@index([usuarioId])
+  @@index([expiraEm])
 }
 
 model Dispositivo {
-  id          String    @id @default(cuid())
-  nome        String
-  deviceKey   String    @unique
-  senha       String
-  ativo       Boolean   @default(false)
-  ultimoSync  String?
-  usuarioId   String?
+  id              String    @id @default(cuid())
+  nome            String
+  deviceKey       String    @unique
+  senha           String
+  ativo           Boolean   @default(false)
+  ultimoSync      DateTime?
+  usuarioId       String?
+  rotasPermitidas String    @default("[]") // JSON array of rota IDs for sync scoping
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  usuario         Usuario?  @relation(fields: [usuarioId], references: [id])
+  syncCursors     DeviceSyncCursor[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([usuarioId])
+}
+
+// ============================================
+// SINCRONIZACAO
+// ============================================
+
+/// Tracks every mutation for sync consumers.
+/// Pull endpoints query this table for changes since a device's last sync cursor.
+model SyncLog {
+  id          String   @id @default(cuid())
+  entidade    String   // cliente, produto, locacao, cobranca, etc.
+  entidadeId  String
+  operacao    String   // create, update, delete
+  dados       String?  // JSON: full record snapshot after mutation
+  updatedAt   DateTime // the entity updatedAt at time of change
+
+  createdAt   DateTime @default(now())
+
+  @@index([entidade, updatedAt])
+  @@index([updatedAt])
+  @@index([entidadeId])
+}
+
+/// Tracks sync progress per device per entity.
+/// Each device maintains a cursor (lastSyncAt) per entity type.
+model DeviceSyncCursor {
+  id            String   @id @default(cuid())
+  dispositivoId String
+  entidade      String
+  lastSyncAt    DateTime
+
+  dispositivo   Dispositivo @relation(fields: [dispositivoId], references: [id])
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([dispositivoId, entidade])
+  @@index([dispositivoId])
 }
