@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
 
+/** Escape HTML special characters to prevent XSS in receipt HTML. */
+function escapeHtml(str: string | null | undefined): string {
+  if (!str) return ''
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+}
+
 function formatCurrency(val: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
 }
@@ -58,20 +69,20 @@ export async function GET(
     Atrasado: 'Atrasado',
   }
 
-  const clienteNome = cobranca.cliente?.nomeExibicao || cobranca.clienteNome || '—'
-  const clienteId = cobranca.cliente?.identificador || cobranca.clienteId.substring(0, 8)
-  const clienteTelefone = cobranca.cliente?.telefonePrincipal || '—'
-  const clienteEmail = cobranca.cliente?.email || '—'
-  const clienteEndereco = [
+  const clienteNome = escapeHtml(cobranca.cliente?.nomeExibicao || cobranca.clienteNome) || '—'
+  const clienteId = escapeHtml(cobranca.cliente?.identificador || cobranca.clienteId.substring(0, 8))
+  const clienteTelefone = escapeHtml(cobranca.cliente?.telefonePrincipal) || '—'
+  const clienteEmail = escapeHtml(cobranca.cliente?.email) || '—'
+  const clienteEndereco = escapeHtml([
     cobranca.cliente?.logradouro,
     cobranca.cliente?.numero,
     cobranca.cliente?.bairro,
     cobranca.cliente?.cidade,
     cobranca.cliente?.estado,
-  ].filter(Boolean).join(', ') || '—'
+  ].filter(Boolean).join(', ')) || '—'
 
-  const produtoIdent = cobranca.produto?.identificador || cobranca.produtoIdentificador || '—'
-  const produtoTipo = cobranca.produto?.tipoNome || '—'
+  const produtoIdent = escapeHtml(cobranca.produto?.identificador || cobranca.produtoIdentificador) || '—'
+  const produtoTipo = escapeHtml(cobranca.produto?.tipoNome) || '—'
 
   const pagamentosHtml = (cobranca.pagamentos || []).length > 0
     ? `
@@ -88,7 +99,7 @@ export async function GET(
     : ''
 
   const observacaoHtml = cobranca.observacao
-    ? `<div class="observation"><strong>Observação:</strong> ${cobranca.observacao}</div>`
+    ? `<div class="observation"><strong>Observação:</strong> ${escapeHtml(cobranca.observacao)}</div>`
     : ''
 
   const html = `<!DOCTYPE html>

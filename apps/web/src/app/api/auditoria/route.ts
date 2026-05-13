@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { safeLimit, safePage } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -8,8 +9,8 @@ export async function GET(request: NextRequest) {
 
   try {
   const searchParams = request.nextUrl.searchParams
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '50')
+  const page = safePage(searchParams.get('page'))
+  const limit = safeLimit(searchParams.get('limit'))
   const skip = (page - 1) * limit
   const entidade = searchParams.get('entidade') || ''
   const acao = searchParams.get('acao') || ''

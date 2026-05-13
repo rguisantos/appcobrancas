@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { z } from 'zod/v4'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { hashPassword } from '@/lib/hash'
 
 const dispositivoSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório'),
@@ -35,7 +36,16 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const data = dispositivoSchema.parse(body)
-    const dispositivo = await db.dispositivo.create({ data })
+    const hashedSenha = await hashPassword(data.senha)
+    const dispositivo = await db.dispositivo.create({
+      data: {
+        nome: data.nome,
+        deviceKey: data.deviceKey,
+        senha: hashedSenha,
+        ativo: data.ativo,
+        usuarioId: data.usuarioId,
+      },
+    })
 
     await registrarAuditoria({
       usuarioId: session.userId,

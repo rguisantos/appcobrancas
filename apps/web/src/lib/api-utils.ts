@@ -1,14 +1,43 @@
 import { NextResponse } from 'next/server'
 
+/** Default max page size to prevent DoS via unbounded queries. */
+const MAX_PAGE_SIZE = 100
+const DEFAULT_PAGE_SIZE = 20
+
+/**
+ * Safely parse and bound a pagination limit from query params.
+ * Ensures the value is between 1 and MAX_PAGE_SIZE.
+ */
+export function safeLimit(raw: string | null): number {
+  const parsed = parseInt(raw || String(DEFAULT_PAGE_SIZE), 10)
+  if (Number.isNaN(parsed) || parsed < 1) return DEFAULT_PAGE_SIZE
+  return Math.min(parsed, MAX_PAGE_SIZE)
+}
+
+/**
+ * Safely parse a page number from query params (1-based).
+ */
+export function safePage(raw: string | null): number {
+  const parsed = parseInt(raw || '1', 10)
+  if (Number.isNaN(parsed) || parsed < 1) return 1
+  return parsed
+}
+
 /**
  * Handles API errors consistently across all routes.
  * Detects Zod validation errors, Prisma errors, and generic errors.
+ * Sanitizes error details to avoid leaking internal schema info.
  */
 export function handleApiError(error: unknown, context: string): NextResponse {
-  // Zod v4 validation error
+  // Zod v4 validation error — return simplified field errors, not raw issues
   if (error && typeof error === 'object' && 'issues' in error) {
+    const zodError = error as { issues: Array<{ path: (string | number)[]; message: string }> }
+    const fieldErrors = zodError.issues.map((issue) => ({
+      field: issue.path.join('.'),
+      message: issue.message,
+    }))
     return NextResponse.json(
-      { error: 'Dados invalidos', details: (error as { issues: unknown }).issues },
+      { error: 'Dados inválidos', details: fieldErrors },
       { status: 400 }
     )
   }
@@ -19,13 +48,13 @@ export function handleApiError(error: unknown, context: string): NextResponse {
     if (prismaError.code === 'P2002') {
       const fields = prismaError.meta?.target?.join(', ') || 'campo'
       return NextResponse.json(
-        { error: `Registro duplicado: ${fields} ja existe` },
+        { error: `Registro duplicado: ${fields} já existe` },
         { status: 409 }
       )
     }
     if (prismaError.code === 'P2025') {
       return NextResponse.json(
-        { error: 'Registro nao encontrado' },
+        { error: 'Registro não encontrado' },
         { status: 404 }
       )
     }

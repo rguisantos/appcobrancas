@@ -2,14 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { timingSafeEqual } from 'crypto'
+
+/** Timing-safe string comparison to prevent timing attacks. */
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b))
+}
 
 export async function POST(request: NextRequest) {
   const session = await getAuthSession()
 
   // Allow either authenticated admin or cron secret
   const cronSecret = request.headers.get('x-cron-secret')
-  const isCronAuthorized = process.env.CRON_SECRET
-    ? cronSecret === process.env.CRON_SECRET
+  const isCronAuthorized = process.env.CRON_SECRET && cronSecret
+    ? safeEqual(cronSecret, process.env.CRON_SECRET)
     : false
 
   if (!session && !isCronAuthorized) {

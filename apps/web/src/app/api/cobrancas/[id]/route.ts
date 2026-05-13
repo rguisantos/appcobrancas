@@ -49,8 +49,23 @@ export async function PUT(
     // Support partial updates (e.g., for FIFO payment)
     if (body._partial && (body.valorRecebido !== undefined || body.status !== undefined)) {
       const updateData: Record<string, unknown> = {}
-      if (body.valorRecebido !== undefined) updateData.valorRecebido = body.valorRecebido
-      if (body.status !== undefined) updateData.status = body.status
+
+      // Validate valorRecebido: must be a non-negative number
+      if (body.valorRecebido !== undefined) {
+        if (typeof body.valorRecebido !== 'number' || body.valorRecebido < 0) {
+          return NextResponse.json({ error: 'valorRecebido deve ser um número não negativo' }, { status: 400 })
+        }
+        updateData.valorRecebido = body.valorRecebido
+      }
+
+      // Validate status: must be one of the allowed values
+      const validStatuses = ['Pendente', 'Pago', 'Parcial', 'Atrasado']
+      if (body.status !== undefined) {
+        if (!validStatuses.includes(body.status)) {
+          return NextResponse.json({ error: `status deve ser um de: ${validStatuses.join(', ')}` }, { status: 400 })
+        }
+        updateData.status = body.status
+      }
 
       // Recalculate saldo devedor if valorRecebido changed
       if (body.valorRecebido !== undefined) {

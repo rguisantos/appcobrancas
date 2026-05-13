@@ -4,6 +4,7 @@ import { getAuthSession } from '@/lib/auth-jwt'
 import { usuarioSchema } from '@/lib/validations'
 import { hashPassword } from '@/lib/hash'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { safeLimit, safePage } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -15,8 +16,8 @@ export async function GET(request: NextRequest) {
 
   try {
   const searchParams = request.nextUrl.searchParams
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '20')
+  const page = safePage(searchParams.get('page'))
+  const limit = safeLimit(searchParams.get('limit'))
   const skip = (page - 1) * limit
 
   const where = { deletedAt: null }
