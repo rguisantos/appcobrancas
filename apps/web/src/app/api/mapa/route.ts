@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { toNumber } from '@/lib/decimal'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -87,11 +88,11 @@ export async function GET(request: NextRequest) {
   ).length
 
   const totalRecebido = clientes.reduce((acc, c) => {
-    return acc + c.cobrancas.filter((cb) => cb.status === 'Pago' || cb.status === 'Parcial').reduce((s, cb) => s + cb.valorRecebido, 0)
+    return acc + c.cobrancas.filter((cb) => cb.status === 'Pago' || cb.status === 'Parcial').reduce((s, cb) => s + toNumber(cb.valorRecebido), 0)
   }, 0)
 
   const totalPendente = clientes.reduce((acc, c) => {
-    return acc + c.cobrancas.filter((cb) => cb.status === 'Pendente' || cb.status === 'Atrasado' || cb.status === 'Parcial').reduce((s, cb) => s + (cb.totalClientePaga - cb.valorRecebido), 0)
+    return acc + c.cobrancas.filter((cb) => cb.status === 'Pendente' || cb.status === 'Atrasado' || cb.status === 'Parcial').reduce((s, cb) => s + (toNumber(cb.totalClientePaga) - toNumber(cb.valorRecebido)), 0)
   }, 0)
 
   const clientesFormatados = clientes.map((c) => {
@@ -101,7 +102,7 @@ export async function GET(request: NextRequest) {
     const cobrancasParciais = c.cobrancas.filter((cb) => cb.status === 'Parcial').length
     const totalPendenteCliente = c.cobrancas
       .filter((cb) => cb.status === 'Pendente' || cb.status === 'Atrasado' || cb.status === 'Parcial')
-      .reduce((s, cb) => s + (cb.totalClientePaga - cb.valorRecebido), 0)
+      .reduce((s, cb) => s + (toNumber(cb.totalClientePaga) - toNumber(cb.valorRecebido)), 0)
 
     // Determine pendenteCobranca: client has active locações but no cobrança for the current month
     const pendenteCobranca = c.locacoes.length > 0 && !c.cobrancas.some(cb => {
@@ -120,9 +121,9 @@ export async function GET(request: NextRequest) {
           ? {
               id: lastCobranca.id,
               status: lastCobranca.status,
-              totalClientePaga: lastCobranca.totalClientePaga,
-              valorRecebido: lastCobranca.valorRecebido,
-              saldoDevedor: lastCobranca.totalClientePaga - lastCobranca.valorRecebido,
+              totalClientePaga: toNumber(lastCobranca.totalClientePaga),
+              valorRecebido: toNumber(lastCobranca.valorRecebido),
+              saldoDevedor: toNumber(lastCobranca.totalClientePaga) - toNumber(lastCobranca.valorRecebido),
               dataVencimento: lastCobranca.dataVencimento,
               dataFim: lastCobranca.dataFim,
             }
@@ -147,7 +148,7 @@ export async function GET(request: NextRequest) {
         pago: cobrancasPagas,
         parcial: cobrancasParciais,
       },
-      totalRecebido: c.cobrancas.filter((cb) => cb.status === 'Pago' || cb.status === 'Parcial').reduce((s, cb) => s + cb.valorRecebido, 0),
+      totalRecebido: c.cobrancas.filter((cb) => cb.status === 'Pago' || cb.status === 'Parcial').reduce((s, cb) => s + toNumber(cb.valorRecebido), 0),
       totalPendente: totalPendenteCliente,
       temAtrasado: cobrancasAtrasadas > 0,
       pendenteCobranca,

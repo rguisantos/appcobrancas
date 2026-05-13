@@ -6,12 +6,13 @@ const DEFAULT_PAGE_SIZE = 20
 
 /**
  * Safely parse and bound a pagination limit from query params.
- * Ensures the value is between 1 and MAX_PAGE_SIZE.
+ * Ensures the value is between 1 and max (default: MAX_PAGE_SIZE).
  */
-export function safeLimit(raw: string | null): number {
+export function safeLimit(raw: string | null, max?: number): number {
+  const upperBound = max ?? MAX_PAGE_SIZE
   const parsed = parseInt(raw || String(DEFAULT_PAGE_SIZE), 10)
   if (Number.isNaN(parsed) || parsed < 1) return DEFAULT_PAGE_SIZE
-  return Math.min(parsed, MAX_PAGE_SIZE)
+  return Math.min(parsed, upperBound)
 }
 
 /**
@@ -62,7 +63,7 @@ export function handleApiError(error: unknown, context: string): NextResponse {
 
   console.error(`${context}:`, error)
   return NextResponse.json(
-    { error: `Erro: ${context}` },
+    { error: 'Erro interno do servidor' },
     { status: 500 }
   )
 }

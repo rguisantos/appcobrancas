@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { toNumber } from '@/lib/decimal'
 
 export async function GET(
   request: NextRequest,
@@ -43,16 +44,16 @@ export async function GET(
   const totalCobrancas = cobrancas.length
   const totalPago = cobrancas
     .filter((c) => c.status === 'Pago' || c.status === 'Parcial')
-    .reduce((acc, c) => acc + c.valorRecebido, 0)
+    .reduce((acc, c) => acc + toNumber(c.valorRecebido), 0)
   const totalPendente = cobrancas
     .filter((c) => c.status === 'Pendente')
-    .reduce((acc, c) => acc + (c.totalClientePaga - c.valorRecebido), 0)
+    .reduce((acc, c) => acc + (toNumber(c.totalClientePaga) - toNumber(c.valorRecebido)), 0)
   const totalAtrasado = cobrancas
     .filter((c) => c.status === 'Atrasado')
-    .reduce((acc, c) => acc + (c.totalClientePaga - c.valorRecebido), 0)
+    .reduce((acc, c) => acc + (toNumber(c.totalClientePaga) - toNumber(c.valorRecebido)), 0)
   const totalParcial = cobrancas
     .filter((c) => c.status === 'Parcial')
-    .reduce((acc, c) => acc + (c.totalClientePaga - c.valorRecebido), 0)
+    .reduce((acc, c) => acc + (toNumber(c.totalClientePaga) - toNumber(c.valorRecebido)), 0)
 
   // Payment history - last 6 months, month-by-month totals
   const now = new Date()
@@ -71,9 +72,9 @@ export async function GET(
 
     const monthPago = monthCobrancas
       .filter((c) => c.status === 'Pago' || c.status === 'Parcial')
-      .reduce((acc, c) => acc + c.valorRecebido, 0)
+      .reduce((acc, c) => acc + toNumber(c.valorRecebido), 0)
 
-    const monthTotal = monthCobrancas.reduce((acc, c) => acc + c.totalClientePaga, 0)
+    const monthTotal = monthCobrancas.reduce((acc, c) => acc + toNumber(c.totalClientePaga), 0)
 
     paymentHistory.push({
       mes: monthKey,
@@ -93,7 +94,7 @@ export async function GET(
   // Accumulated debt balance
   const saldoDevedorAcumulado = cobrancas.reduce((acc, c) => {
     if (c.status === 'Atrasado' || c.status === 'Pendente' || c.status === 'Parcial') {
-      return acc + (c.totalClientePaga - c.valorRecebido)
+      return acc + (toNumber(c.totalClientePaga) - toNumber(c.valorRecebido))
     }
     return acc
   }, 0)

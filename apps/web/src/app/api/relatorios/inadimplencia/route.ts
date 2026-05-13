@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { db } from '@/lib/db'
+import { toNumber } from '@/lib/decimal'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -13,14 +14,14 @@ export async function GET(request: NextRequest) {
   })
 
   const totalInadimplente = cobrancas.filter(c => c.status === 'Atrasado')
-    .reduce((s, c) => s + c.totalClientePaga - c.valorRecebido, 0)
+    .reduce((s, c) => s + toNumber(c.totalClientePaga) - toNumber(c.valorRecebido), 0)
 
   const porCliente: Record<string, { nome: string; total: number; count: number }> = {}
   cobrancas.forEach(c => {
     if (!porCliente[c.clienteId]) {
       porCliente[c.clienteId] = { nome: c.clienteNome, total: 0, count: 0 }
     }
-    porCliente[c.clienteId].total += c.totalClientePaga - c.valorRecebido
+    porCliente[c.clienteId].total += toNumber(c.totalClientePaga) - toNumber(c.valorRecebido)
     porCliente[c.clienteId].count++
   })
 

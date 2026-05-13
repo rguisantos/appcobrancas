@@ -7,6 +7,7 @@ import { registrarAuditoria } from '@/lib/auditoria'
 import { calcularCobranca, calcularSaldoDevedor } from '@/lib/cobranca-calculos'
 import { writeSyncLog } from '@/lib/sync-log'
 import { handleApiError, safeLimit, safePage } from '@/lib/api-utils'
+import { toNumber } from '@/lib/decimal'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -52,12 +53,15 @@ export async function GET(request: NextRequest) {
     // Grouped by route > client > locação
     if (groupBy === 'route') {
       const where = buildWhere()
+      // Apply a reasonable limit to grouped views to prevent OOM
+      const groupLimit = safeLimit(searchParams.get('limit'), 500)
 
       const [cobrancas, total] = await Promise.all([
         db.cobranca.findMany({
           where,
           include: { locacao: true, cliente: { include: { rota: true } }, produto: true },
           orderBy: { createdAt: 'desc' },
+          take: groupLimit,
         }),
         db.cobranca.count({ where }),
       ])
@@ -147,7 +151,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const { authorized, response, session } = await requireMutationRole()
-  if (!authorized) return response
+  if (!authorized || !session) return response
 
   try {
     const body = await request.json()
@@ -174,9 +178,9 @@ export async function POST(request: NextRequest) {
       formaPagamento: locacao.formaPagamento as 'Periodo' | 'PercentualPagar' | 'PercentualReceber',
       relogioAnterior: data.relogioAnterior,
       relogioAtual: data.relogioAtual,
-      precoFicha: locacao.precoFicha,
-      percentualEmpresa: locacao.percentualEmpresa,
-      valorFixo: locacao.valorFixo ?? undefined,
+      precoFicha: toNumber(locacao.precoFicha),
+      percentualEmpresa: toNumber(locacao.percentualEmpresa),
+      valorFixo: locacao.valorFixo != null ? toNumber(locacao.valorFixo) : undefined,
       descontoPartidasQtd: data.descontoPartidasQtd,
       descontoPartidasValor: data.descontoPartidasValor,
       descontoDinheiro: data.descontoDinheiro,

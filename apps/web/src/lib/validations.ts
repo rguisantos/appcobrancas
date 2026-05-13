@@ -13,7 +13,11 @@ export const clienteSchema = z.object({
   inscricaoEstadual: z.string().optional(),
   telefonePrincipal: z.string().min(1, 'Telefone é obrigatório'),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
-  contatos: z.any().optional(),
+  contatos: z.array(z.object({
+    nome: z.string().min(1, 'Nome do contato é obrigatório'),
+    telefone: z.string().min(1, 'Telefone do contato é obrigatório'),
+    relacao: z.string().optional(),
+  })).nullable().optional(),
   cep: z.string().default(''),
   logradouro: z.string().default(''),
   numero: z.string().default(''),
@@ -96,8 +100,8 @@ export const usuarioSchema = z.object({
   cpf: z.string().optional(),
   telefone: z.string().optional(),
   tipoPermissao: z.enum(['Administrador', 'Secretario', 'AcessoControlado']).default('AcessoControlado'),
-  permissoesWeb: z.record(z.boolean()).default({}),
-  permissoesMobile: z.record(z.boolean()).default({}),
+  permissoesWeb: z.record(z.string(), z.boolean()).default({}),
+  permissoesMobile: z.record(z.string(), z.boolean()).default({}),
   rotasPermitidas: z.array(z.string()).default([]),
   status: z.enum(['Ativo', 'Inativo']).default('Ativo'),
 })

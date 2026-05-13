@@ -49,7 +49,7 @@ export async function PUT(
         tipo: data.tipo,
         descricao: data.descricao,
         dataInicio: new Date(data.dataInicio),
-        dataFim: new Date(data.dataFim),
+        dataFim: data.dataFim ? new Date(data.dataFim) : undefined,
         custo: data.custo,
         status: data.status,
         observacao: data.observacao,

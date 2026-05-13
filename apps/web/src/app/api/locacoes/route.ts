@@ -29,11 +29,15 @@ export async function GET(request: NextRequest) {
       if (clienteId) where.clienteId = clienteId
       if (produtoId) where.produtoId = produtoId
 
+      // Apply reasonable limit for grouped views
+      const groupLimit = safeLimit(searchParams.get('limit'), 500)
+
       const [locacoes, total] = await Promise.all([
         db.locacao.findMany({
           where,
           include: { cliente: { include: { rota: true } }, produto: true },
           orderBy: { createdAt: 'desc' },
+          take: groupLimit,
         }),
         db.locacao.count({ where }),
       ])
@@ -112,7 +116,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const { authorized, response, session } = await requireMutationRole()
-  if (!authorized) return response
+  if (!authorized || !session) return response
 
   try {
     const body = await request.json()
@@ -135,7 +139,7 @@ export async function POST(request: NextRequest) {
         produtoIdentificador: produto.identificador,
         produtoTipo: produto.tipoNome,
         dataLocacao: new Date(data.dataLocacao),
-        dataFim: new Date(data.dataFim),
+        dataFim: data.dataFim ? new Date(data.dataFim) : undefined,
         formaPagamento: data.formaPagamento,
         numeroRelogio: data.numeroRelogio,
         precoFicha: data.precoFicha,
@@ -143,7 +147,7 @@ export async function POST(request: NextRequest) {
         percentualCliente: data.percentualCliente,
         valorFixo: data.valorFixo,
         periodicidade: data.periodicidade,
-        dataPrimeiraCobranca: new Date(data.dataPrimeiraCobranca),
+        dataPrimeiraCobranca: data.dataPrimeiraCobranca ? new Date(data.dataPrimeiraCobranca) : undefined,
         observacoes: data.observacoes,
         trocaPano: data.trocaPano,
       },

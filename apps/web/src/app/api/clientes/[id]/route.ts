@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { clienteSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
@@ -57,7 +58,11 @@ export async function PUT(
 
     const cliente = await db.cliente.update({
       where: { id },
-      data: { ...data, version: { increment: 1 } },
+      data: {
+        ...data,
+        contatos: data.contatos ? (data.contatos as unknown as Prisma.InputJsonValue) : undefined,
+        version: { increment: 1 },
+      },
     })
 
     await registrarAuditoria({

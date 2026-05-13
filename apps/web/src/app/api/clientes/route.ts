@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { requireMutationRole } from '@/lib/rbac'
 import { clienteSchema } from '@/lib/validations'
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const { authorized, response, session } = await requireMutationRole()
-  if (!authorized) return response
+  if (!authorized || !session) return response
 
   try {
     const body = await request.json()
@@ -68,7 +69,11 @@ export async function POST(request: NextRequest) {
       || await generateUniqueIdentifier('C', 'cliente')
 
     const cliente = await db.cliente.create({
-      data: { ...data, identificador }
+      data: {
+        ...data,
+        identificador,
+        contatos: data.contatos ? (data.contatos as unknown as Prisma.InputJsonValue) : undefined,
+      }
     })
 
     await registrarAuditoria({

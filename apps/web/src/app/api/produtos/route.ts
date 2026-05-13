@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const { authorized, response, session } = await requireMutationRole()
-  if (!authorized) return response
+  if (!authorized || !session) return response
 
   try {
     const body = await request.json()

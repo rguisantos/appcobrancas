@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { db } from '@/lib/db'
 import { format } from 'date-fns'
+import { toNumber } from '@/lib/decimal'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -17,9 +18,9 @@ export async function GET(request: NextRequest) {
   cobrancas.forEach(c => {
     const month = c.dataInicio ? format(new Date(c.dataInicio), 'yyyy-MM') : 'unknown'
     if (!porMes[month]) porMes[month] = { receita: 0, total: 0 }
-    porMes[month].total += c.totalClientePaga
+    porMes[month].total += toNumber(c.totalClientePaga)
     if (c.status === 'Pago' || c.status === 'Parcial') {
-      porMes[month].receita += c.valorRecebido
+      porMes[month].receita += toNumber(c.valorRecebido)
     }
   })
 

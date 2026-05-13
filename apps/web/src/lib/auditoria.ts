@@ -1,4 +1,5 @@
 import { db } from './db'
+import { Prisma } from '@prisma/client'
 
 type Severidade = 'info' | 'aviso' | 'critico' | 'seguranca'
 type Origem = 'web' | 'mobile' | 'sistema' | 'cron'
@@ -26,9 +27,9 @@ export async function registrarAuditoria(input: AuditoriaInput) {
         entidade: input.entidade,
         entidadeId: input.entidadeId,
         entidadeNome: input.entidadeNome,
-        detalhes: input.detalhes || null,
-        antes: input.antes || null,
-        depois: input.depois || null,
+        detalhes: input.detalhes ? (input.detalhes as Prisma.InputJsonValue) : Prisma.JsonNull,
+        antes: input.antes ? (input.antes as Prisma.InputJsonValue) : Prisma.JsonNull,
+        depois: input.depois ? (input.depois as Prisma.InputJsonValue) : Prisma.JsonNull,
         ip: input.ip,
         severidade: input.severidade || 'info',
         origem: input.origem || 'web',

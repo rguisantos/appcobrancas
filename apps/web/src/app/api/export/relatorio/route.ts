@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { format } from 'date-fns'
+import { toNumber } from '@/lib/decimal'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -63,19 +64,19 @@ async function generateFinancialReport(dateFilter: Record<string, unknown>, form
   })
 
   const totalCobrancas = cobrancas.length
-  const totalValor = cobrancas.reduce((acc, c) => acc + c.totalClientePaga, 0)
-  const totalRecebido = cobrancas.reduce((acc, c) => acc + c.valorRecebido, 0)
+  const totalValor = cobrancas.reduce((acc, c) => acc + toNumber(c.totalClientePaga), 0)
+  const totalRecebido = cobrancas.reduce((acc, c) => acc + toNumber(c.valorRecebido), 0)
   const totalPendente = cobrancas
     .filter(c => c.status === 'Pendente' || c.status === 'Atrasado' || c.status === 'Parcial')
-    .reduce((acc, c) => acc + (c.totalClientePaga - c.valorRecebido), 0)
+    .reduce((acc, c) => acc + (toNumber(c.totalClientePaga) - toNumber(c.valorRecebido)), 0)
   const totalAtrasado = cobrancas
     .filter(c => c.status === 'Atrasado')
-    .reduce((acc, c) => acc + (c.totalClientePaga - c.valorRecebido), 0)
+    .reduce((acc, c) => acc + (toNumber(c.totalClientePaga) - toNumber(c.valorRecebido)), 0)
 
   if (formato === 'csv') {
     const header = 'ID,Cliente,Produto,Período,Valor Total,Recebido,Saldo Devedor,Status,Forma Pgto,Data Pagamento\n'
     const rows = cobrancas.map(c =>
-      `"${c.id}","${c.clienteNome}","${c.produtoIdentificador}","${c.dataInicio ? format(new Date(c.dataInicio), 'yyyy-MM-dd') : ''} a ${c.dataFim ? format(new Date(c.dataFim), 'yyyy-MM-dd') : ''}",${c.totalClientePaga},${c.valorRecebido},${c.saldoDevedorGerado},"${c.status}","${c.formaPagamento}","${c.dataPagamento ? format(new Date(c.dataPagamento), 'yyyy-MM-dd') : ''}"`
+      `"${c.id}","${c.clienteNome}","${c.produtoIdentificador}","${c.dataInicio ? format(new Date(c.dataInicio), 'yyyy-MM-dd') : ''} a ${c.dataFim ? format(new Date(c.dataFim), 'yyyy-MM-dd') : ''}",${toNumber(c.totalClientePaga)},${toNumber(c.valorRecebido)},${toNumber(c.saldoDevedorGerado)},"${c.status}","${c.formaPagamento}","${c.dataPagamento ? format(new Date(c.dataPagamento), 'yyyy-MM-dd') : ''}"`
     ).join('\n')
 
     const summary = `\n\nResumo Financeiro\nTotal de Cobranças,${totalCobrancas}\nValor Total,${totalValor.toFixed(2)}\nTotal Recebido,${totalRecebido.toFixed(2)}\nTotal Pendente,${totalPendente.toFixed(2)}\nTotal Atrasado,${totalAtrasado.toFixed(2)}\n`
@@ -131,7 +132,7 @@ async function generateCobrancasReport(dateFilter: Record<string, unknown>, form
   if (formato === 'csv') {
     const header = 'ID,Cliente,Produto,Início,Fim,Vencimento,Valor,Recebido,Status,Forma Pgto\n'
     const rows = cobrancas.map(c =>
-      `"${c.id}","${c.clienteNome}","${c.produtoIdentificador}","${c.dataInicio ? format(new Date(c.dataInicio), 'yyyy-MM-dd') : ''}","${c.dataFim ? format(new Date(c.dataFim), 'yyyy-MM-dd') : ''}","${c.dataVencimento ? format(new Date(c.dataVencimento), 'yyyy-MM-dd') : ''}",${c.totalClientePaga},${c.valorRecebido},"${c.status}","${c.formaPagamento}"`
+      `"${c.id}","${c.clienteNome}","${c.produtoIdentificador}","${c.dataInicio ? format(new Date(c.dataInicio), 'yyyy-MM-dd') : ''}","${c.dataFim ? format(new Date(c.dataFim), 'yyyy-MM-dd') : ''}","${c.dataVencimento ? format(new Date(c.dataVencimento), 'yyyy-MM-dd') : ''}",${toNumber(c.totalClientePaga)},${toNumber(c.valorRecebido)},"${c.status}","${c.formaPagamento}"`
     ).join('\n')
 
     return new NextResponse(header + rows, {

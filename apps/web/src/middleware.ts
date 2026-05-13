@@ -11,11 +11,26 @@ const PUBLIC_ROUTES = [
   '/api/cron',
 ]
 
+/** Restrictive CORS origins in production; dev-friendly default otherwise. */
+function getAllowedOrigin(): string {
+  const envOrigin = process.env.ALLOWED_ORIGINS
+  if (envOrigin) return envOrigin
+  // In production, default to same-origin only; in dev, allow localhost
+  if (process.env.NODE_ENV === 'production') {
+    return '' // No wildcard in production — must be explicitly configured
+  }
+  return 'http://localhost:3000'
+}
+
 function addCorsHeaders(response: NextResponse | Response) {
-  response.headers.set('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGINS || '*')
+  const origin = getAllowedOrigin()
+  if (origin) {
+    response.headers.set('Access-Control-Allow-Origin', origin)
+  }
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cron-secret')
   response.headers.set('Access-Control-Max-Age', '86400')
+  response.headers.set('Access-Control-Allow-Credentials', 'true')
   return response
 }
 
@@ -63,6 +78,8 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set('x-user-email', payload.email as string)
     requestHeaders.set('x-user-permission-type', (payload.tipoPermissao as string) || '')
     requestHeaders.set('x-user-permissions', JSON.stringify(payload.permissoesWeb || {}))
+    // Pass the raw token so route handlers can validate against the Sessao table
+    requestHeaders.set('x-raw-token', token)
 
     const response = NextResponse.next({
       request: {

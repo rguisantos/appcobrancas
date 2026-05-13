@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { toNumber } from '@/lib/decimal'
 
 export async function GET(
   _request: NextRequest,
@@ -33,20 +34,20 @@ export async function GET(
   })
 
   const totalCobrancas = cobrancas.length
-  const totalReceita = cobrancas.reduce((acc, c) => acc + c.valorRecebido, 0)
+  const totalReceita = cobrancas.reduce((acc, c) => acc + toNumber(c.valorRecebido), 0)
   const totalPendente = cobrancas
     .filter(c => c.status === 'Pendente' || c.status === 'Atrasado' || c.status === 'Parcial')
-    .reduce((acc, c) => acc + (c.totalClientePaga - c.valorRecebido), 0)
+    .reduce((acc, c) => acc + (toNumber(c.totalClientePaga) - toNumber(c.valorRecebido)), 0)
   const cobrancasPagas = cobrancas.filter(c => c.status === 'Pago' || c.status === 'Parcial').length
   const taxaPagamento = totalCobrancas > 0 ? (cobrancasPagas / totalCobrancas) * 100 : 0
   const valorMedio = totalCobrancas > 0
-    ? cobrancas.reduce((acc, c) => acc + c.totalClientePaga, 0) / totalCobrancas
+    ? cobrancas.reduce((acc, c) => acc + toNumber(c.totalClientePaga), 0) / totalCobrancas
     : 0
 
   // Revenue by month
   const receitaMensal: Record<string, { mes: string; receita: number; cobrancas: number }> = {}
   cobrancas.forEach(c => {
-    if (c.valorRecebido > 0) {
+    if (toNumber(c.valorRecebido) > 0) {
       let mesKey = ''
       try {
         const date = c.dataPagamento ? new Date(c.dataPagamento) : new Date(c.dataInicio)
@@ -57,7 +58,7 @@ export async function GET(
       if (!receitaMensal[mesKey]) {
         receitaMensal[mesKey] = { mes: mesKey, receita: 0, cobrancas: 0 }
       }
-      receitaMensal[mesKey].receita += c.valorRecebido
+      receitaMensal[mesKey].receita += toNumber(c.valorRecebido)
       receitaMensal[mesKey].cobrancas += 1
     }
   })

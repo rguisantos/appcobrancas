@@ -1,20 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireMutationRole } from '@/lib/rbac'
 import { db } from '@/lib/db'
 import ExcelJS from 'exceljs'
-import { format } from 'date-fns'
+import { format as formatDate } from 'date-fns'
+import { toNumber } from '@/lib/decimal'
 
 type ReportType = 'financeiro' | 'clientes' | 'produtos' | 'locacoes' | 'inadimplencia' | 'recebimentos' | 'rotas' | 'comparativo'
 
 const VALID_TYPES: ReportType[] = ['financeiro', 'clientes', 'produtos', 'locacoes', 'inadimplencia', 'recebimentos', 'rotas', 'comparativo']
 
 export async function GET(request: NextRequest) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  // Export requires at least Secretario role — contains sensitive financial data
+  const { authorized, response } = await requireMutationRole()
+  if (!authorized) return response
 
   const searchParams = request.nextUrl.searchParams
   const tipo = searchParams.get('tipo') as ReportType | null
-  const format = searchParams.get('format') as 'xlsx' | 'csv' | null
+  const outputFormat = searchParams.get('format') as 'xlsx' | 'csv' | null
   const dataInicio = searchParams.get('dataInicio')
   const dataFim = searchParams.get('dataFim')
 
@@ -22,7 +25,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Tipo de relatório inválido' }, { status: 400 })
   }
 
-  if (!format || !['xlsx', 'csv'].includes(format)) {
+  if (!outputFormat || !['xlsx', 'csv'].includes(outputFormat)) {
     return NextResponse.json({ error: 'Formato inválido. Use xlsx ou csv' }, { status: 400 })
   }
 
@@ -30,7 +33,7 @@ export async function GET(request: NextRequest) {
     const { headers, rows } = await generateReportData(tipo, dataInicio, dataFim)
     const filename = `relatorio-${tipo}-${new Date().toISOString().slice(0, 10)}`
 
-    if (format === 'csv') {
+    if (outputFormat === 'csv') {
       const csvContent = generateCSV(headers, rows)
       return new Response(csvContent, {
         headers: {
@@ -156,16 +159,16 @@ async function generateFinanceiroReport(dataInicio: string | null, dataFim: stri
     where.dataInicio = { gte: dataInicio, lte: dataFim }
   }
 
-  const cobrancas = await db.cobranca.findMany({ where })
+  const cobrancas = await db.cobranca.findMany({ where, take: 10000 })
 
   const monthlyData: Record<string, { receita: number; pendente: number }> = {}
   cobrancas.forEach((c) => {
-    const month = c.dataInicio ? format(new Date(c.dataInicio), 'yyyy-MM') : 'unknown'
+    const month = c.dataInicio ? formatDate(new Date(c.dataInicio), 'yyyy-MM') : 'unknown'
     if (!monthlyData[month]) monthlyData[month] = { receita: 0, pendente: 0 }
     if (c.status === 'Pago' || c.status === 'Parcial') {
-      monthlyData[month].receita += c.valorRecebido
+      monthlyData[month].receita += toNumber(c.valorRecebido)
     } else {
-      monthlyData[month].pendente += c.totalClientePaga
+      monthlyData[month].pendente += toNumber(c.totalClientePaga)
     }
   })
 
@@ -192,15 +195,16 @@ async function generateClientesReport() {
       cobrancas: { where: { deletedAt: null } },
       rota: true,
     },
+    take: 5000,
   })
 
   const rows = clientes.map((c) => {
     const totalPago = c.cobrancas
       .filter((cb) => cb.status === 'Pago')
-      .reduce((s, cb) => s + cb.valorRecebido, 0)
+      .reduce((s, cb) => s + toNumber(cb.valorRecebido), 0)
     const totalPendente = c.cobrancas
       .filter((cb) => cb.status === 'Pendente' || cb.status === 'Atrasado')
-      .reduce((s, cb) => s + cb.totalClientePaga, 0)
+      .reduce((s, cb) => s + toNumber(cb.totalClientePaga), 0)
 
     return [
       c.nomeExibicao,
@@ -260,7 +264,7 @@ async function generateLocacoesReport(dataInicio: string | null, dataFim: string
       l.clienteNome,
       l.produtoIdentificador,
       l.produtoTipo,
-      l.dataLocacao ? format(new Date(l.dataLocacao), 'yyyy-MM-dd') : '',
+      l.dataLocacao ? formatDate(new Date(l.dataLocacao), 'yyyy-MM-dd') : '',
       l.formaPagamento,
       l.status,
     ]),
@@ -271,6 +275,7 @@ async function generateInadimplenciaReport() {
   const cobrancas = await db.cobranca.findMany({
     where: { deletedAt: null, status: { in: ['Atrasado', 'Parcial', 'Pendente'] } },
     orderBy: { dataVencimento: 'asc' },
+    take: 5000,
   })
 
   return {
@@ -278,8 +283,8 @@ async function generateInadimplenciaReport() {
     rows: cobrancas.map((c) => [
       c.clienteNome,
       c.produtoIdentificador,
-      Number((c.totalClientePaga - c.valorRecebido).toFixed(2)),
-      c.dataVencimento ? format(new Date(c.dataVencimento), 'yyyy-MM-dd') : '',
+      Number((toNumber(c.totalClientePaga) - toNumber(c.valorRecebido)).toFixed(2)),
+      c.dataVencimento ? formatDate(new Date(c.dataVencimento), 'yyyy-MM-dd') : '',
       c.status,
     ]),
   }
@@ -297,8 +302,8 @@ async function generateRecebimentosReport() {
     rows: cobrancas.map((c) => [
       c.clienteNome,
       c.produtoIdentificador,
-      Number(c.valorRecebido.toFixed(2)),
-      c.dataPagamento ? format(new Date(c.dataPagamento), 'yyyy-MM-dd') : '',
+      Number(toNumber(c.valorRecebido).toFixed(2)),
+      c.dataPagamento ? formatDate(new Date(c.dataPagamento), 'yyyy-MM-dd') : '',
     ]),
   }
 }
@@ -322,11 +327,11 @@ async function generateRotasReport() {
       const receita = r.clientes
         .flatMap((c) => c.cobrancas)
         .filter((cb) => cb.status === 'Pago' || cb.status === 'Parcial')
-        .reduce((s, cb) => s + cb.valorRecebido, 0)
+        .reduce((s, cb) => s + toNumber(cb.valorRecebido), 0)
       const pendente = r.clientes
         .flatMap((c) => c.cobrancas)
         .filter((cb) => cb.status === 'Pendente' || cb.status === 'Atrasado')
-        .reduce((s, cb) => s + cb.totalClientePaga, 0)
+        .reduce((s, cb) => s + toNumber(cb.totalClientePaga), 0)
 
       return [
         r.descricao,
@@ -345,15 +350,15 @@ async function generateComparativoReport(dataInicio: string | null, dataFim: str
     where.dataInicio = { gte: dataInicio, lte: dataFim }
   }
 
-  const cobrancas = await db.cobranca.findMany({ where })
+  const cobrancas = await db.cobranca.findMany({ where, take: 10000 })
 
   const monthlyData: Record<string, { receita: number; total: number }> = {}
   cobrancas.forEach((c) => {
-    const month = c.dataInicio ? format(new Date(c.dataInicio), 'yyyy-MM') : 'unknown'
+    const month = c.dataInicio ? formatDate(new Date(c.dataInicio), 'yyyy-MM') : 'unknown'
     if (!monthlyData[month]) monthlyData[month] = { receita: 0, total: 0 }
-    monthlyData[month].total += c.totalClientePaga
+    monthlyData[month].total += toNumber(c.totalClientePaga)
     if (c.status === 'Pago' || c.status === 'Parcial') {
-      monthlyData[month].receita += c.valorRecebido
+      monthlyData[month].receita += toNumber(c.valorRecebido)
     }
   })
 

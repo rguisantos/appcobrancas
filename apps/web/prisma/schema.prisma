@@ -282,7 +282,7 @@ model Usuario {
   rotasPermitidas       Json      @default("[]")
   status                String    @default("Ativo")
   bloqueado             Boolean   @default(false)
-  dataUltimoAcesso      String?
+  dataUltimoAcesso      DateTime?
   ultimoAcessoDispositivo String?
   version               Int       @default(1)
   deletedAt             DateTime?

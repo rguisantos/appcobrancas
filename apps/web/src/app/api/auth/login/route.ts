@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     await db.usuario.update({
       where: { id: usuario.id },
       data: {
-        dataUltimoAcesso: new Date().toISOString(),
+        dataUltimoAcesso: new Date(),
         ultimoAcessoDispositivo: 'Web',
       },
     })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { toNumber, toMoney } from '@/lib/decimal'
 
 /** Escape HTML special characters to prevent XSS in receipt HTML. */
 function escapeHtml(str: string | null | undefined): string {
@@ -58,7 +59,7 @@ export async function GET(
   if (!cobranca) return NextResponse.json({ error: 'Cobrança não encontrada' }, { status: 404 })
 
   const receiptNumber = cobranca.id.substring(0, 8).toUpperCase()
-  const descontos = (cobranca.descontoPartidasValor || 0) + (cobranca.descontoDinheiro || 0)
+  const descontos = toNumber(cobranca.descontoPartidasValor) + toNumber(cobranca.descontoDinheiro)
   const now = new Date()
   const dateStr = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
@@ -88,10 +89,10 @@ export async function GET(
     ? `
       <div class="section-title">Histórico de Pagamentos</div>
       <div class="payment-history">
-        ${(cobranca.pagamentos || []).map((p: { dataPagamento: string; formaPagamento: string; valor: number; observacao: string | null }) => `
+        ${(cobranca.pagamentos || []).map((p) => `
           <div class="payment-row">
             <span>${formatDate(p.dataPagamento)} — ${p.formaPagamento}${p.observacao ? ` (${p.observacao})` : ''}</span>
-            <span>${formatCurrency(p.valor)}</span>
+            <span>${formatCurrency(toMoney(p.valor))}</span>
           </div>
         `).join('')}
       </div>
@@ -239,7 +240,7 @@ export async function GET(
         </div>
         <div class="info-item">
           <div class="info-label">Valor por Ficha</div>
-          <div class="info-value">${formatCurrency(cobranca.valorFicha)}</div>
+          <div class="info-value">${formatCurrency(toMoney(cobranca.valorFicha))}</div>
         </div>
       </div>
 
@@ -247,7 +248,7 @@ export async function GET(
       <div class="financial">
         <div class="financial-row">
           <span>Total Bruto</span>
-          <span>${formatCurrency(cobranca.totalBruto)}</span>
+          <span>${formatCurrency(toMoney(cobranca.totalBruto))}</span>
         </div>
         <div class="financial-row">
           <span>Descontos</span>
@@ -255,15 +256,15 @@ export async function GET(
         </div>
         <div class="financial-row">
           <span>Subtotal após Descontos</span>
-          <span>${formatCurrency(cobranca.subtotalAposDescontos)}</span>
+          <span>${formatCurrency(toMoney(cobranca.subtotalAposDescontos))}</span>
         </div>
         <div class="financial-row">
           <span>Percentual Empresa (${cobranca.percentualEmpresa}%)</span>
-          <span>${formatCurrency(cobranca.valorPercentual)}</span>
+          <span>${formatCurrency(toMoney(cobranca.valorPercentual))}</span>
         </div>
         <div class="financial-row financial-total">
           <span>Total Cliente Paga</span>
-          <span>${formatCurrency(cobranca.totalClientePaga)}</span>
+          <span>${formatCurrency(toMoney(cobranca.totalClientePaga))}</span>
         </div>
       </div>
 
@@ -271,7 +272,7 @@ export async function GET(
       <div class="info-grid">
         <div class="info-item">
           <div class="info-label">Valor Recebido</div>
-          <div class="info-value" style="color: #059669; font-weight: 700;">${formatCurrency(cobranca.valorRecebido)}</div>
+          <div class="info-value" style="color: #059669; font-weight: 700;">${formatCurrency(toMoney(cobranca.valorRecebido))}</div>
         </div>
         <div class="info-item">
           <div class="info-label">Status</div>
@@ -283,8 +284,8 @@ export async function GET(
         </div>
         <div class="info-item">
           <div class="info-label">Saldo Devedor</div>
-          <div class="info-value" style="color: ${cobranca.saldoDevedorGerado > 0 ? '#dc2626' : 'inherit'};">
-            ${cobranca.saldoDevedorGerado > 0 ? formatCurrency(cobranca.saldoDevedorGerado) : '—'}
+          <div class="info-value" style="color: ${toNumber(cobranca.saldoDevedorGerado) > 0 ? '#dc2626' : 'inherit'};">
+            ${toNumber(cobranca.saldoDevedorGerado) > 0 ? formatCurrency(toMoney(cobranca.saldoDevedorGerado)) : '—'}
           </div>
         </div>
       </div>
