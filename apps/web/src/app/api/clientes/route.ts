@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireMutationRole } from '@/lib/rbac'
 import { clienteSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { generateUniqueIdentifier } from '@/lib/auto-identifier'
@@ -55,8 +56,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized) return response
 
   try {
     const body = await request.json()

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { db } from '@/lib/db'
 import ExcelJS from 'exceljs'
+import { format } from 'date-fns'
 
 type ReportType = 'financeiro' | 'clientes' | 'produtos' | 'locacoes' | 'inadimplencia' | 'recebimentos' | 'rotas' | 'comparativo'
 
@@ -159,7 +160,7 @@ async function generateFinanceiroReport(dataInicio: string | null, dataFim: stri
 
   const monthlyData: Record<string, { receita: number; pendente: number }> = {}
   cobrancas.forEach((c) => {
-    const month = c.dataInicio?.substring(0, 7) || 'unknown'
+    const month = c.dataInicio ? format(new Date(c.dataInicio), 'yyyy-MM') : 'unknown'
     if (!monthlyData[month]) monthlyData[month] = { receita: 0, pendente: 0 }
     if (c.status === 'Pago' || c.status === 'Parcial') {
       monthlyData[month].receita += c.valorRecebido
@@ -259,7 +260,7 @@ async function generateLocacoesReport(dataInicio: string | null, dataFim: string
       l.clienteNome,
       l.produtoIdentificador,
       l.produtoTipo,
-      l.dataLocacao,
+      l.dataLocacao ? format(new Date(l.dataLocacao), 'yyyy-MM-dd') : '',
       l.formaPagamento,
       l.status,
     ]),
@@ -278,7 +279,7 @@ async function generateInadimplenciaReport() {
       c.clienteNome,
       c.produtoIdentificador,
       Number((c.totalClientePaga - c.valorRecebido).toFixed(2)),
-      c.dataVencimento || '',
+      c.dataVencimento ? format(new Date(c.dataVencimento), 'yyyy-MM-dd') : '',
       c.status,
     ]),
   }
@@ -297,7 +298,7 @@ async function generateRecebimentosReport() {
       c.clienteNome,
       c.produtoIdentificador,
       Number(c.valorRecebido.toFixed(2)),
-      c.dataPagamento || '',
+      c.dataPagamento ? format(new Date(c.dataPagamento), 'yyyy-MM-dd') : '',
     ]),
   }
 }
@@ -348,7 +349,7 @@ async function generateComparativoReport(dataInicio: string | null, dataFim: str
 
   const monthlyData: Record<string, { receita: number; total: number }> = {}
   cobrancas.forEach((c) => {
-    const month = c.dataInicio?.substring(0, 7) || 'unknown'
+    const month = c.dataInicio ? format(new Date(c.dataInicio), 'yyyy-MM') : 'unknown'
     if (!monthlyData[month]) monthlyData[month] = { receita: 0, total: 0 }
     monthlyData[month].total += c.totalClientePaga
     if (c.status === 'Pago' || c.status === 'Parcial') {

@@ -268,7 +268,7 @@ export function RelatoriosView() {
   // ==================== RECEBIMENTOS REPORT ====================
   const recebimentosData = cobrancas
     .filter(c => c.valorRecebido > 0 && c.dataPagamento)
-    .sort((a, b) => (b.dataPagamento || '').localeCompare(a.dataPagamento || ''))
+    .sort((a, b) => new Date(b.dataPagamento!).getTime() - new Date(a.dataPagamento!).getTime())
 
   const recebimentosMonthly = (() => {
     const map = new Map<string, { mes: string; valor: number }>()

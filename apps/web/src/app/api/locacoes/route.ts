@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireMutationRole } from '@/lib/rbac'
 import { locacaoSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { writeSyncLog } from '@/lib/sync-log'
@@ -110,8 +111,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized) return response
 
   try {
     const body = await request.json()
@@ -133,8 +134,8 @@ export async function POST(request: NextRequest) {
         produtoId: data.produtoId,
         produtoIdentificador: produto.identificador,
         produtoTipo: produto.tipoNome,
-        dataLocacao: data.dataLocacao,
-        dataFim: data.dataFim,
+        dataLocacao: new Date(data.dataLocacao),
+        dataFim: new Date(data.dataFim),
         formaPagamento: data.formaPagamento,
         numeroRelogio: data.numeroRelogio,
         precoFicha: data.precoFicha,
@@ -142,7 +143,7 @@ export async function POST(request: NextRequest) {
         percentualCliente: data.percentualCliente,
         valorFixo: data.valorFixo,
         periodicidade: data.periodicidade,
-        dataPrimeiraCobranca: data.dataPrimeiraCobranca,
+        dataPrimeiraCobranca: new Date(data.dataPrimeiraCobranca),
         observacoes: data.observacoes,
         trocaPano: data.trocaPano,
       },

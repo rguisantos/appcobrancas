@@ -71,9 +71,9 @@ interface Usuario {
   cpf: string | null
   telefone: string | null
   tipoPermissao: string
-  permissoesWeb: string | Record<string, boolean>
-  permissoesMobile: string | Record<string, boolean>
-  rotasPermitidas: string | string[]
+  permissoesWeb: Record<string, boolean>
+  permissoesMobile: Record<string, boolean>
+  rotasPermitidas: string[]
   status: string
   bloqueado: boolean
   dataUltimoAcesso: string | null
@@ -216,22 +216,14 @@ export function AdminUsuariosView() {
     }
   }, [currentView, selectedId, navigate, usuarios])
 
-  const parsePermissoesWeb = (pw: string | Record<string, boolean>): Record<string, boolean> => {
-    if (typeof pw === 'object') return pw
-    try {
-      return JSON.parse(pw || '{}')
-    } catch {
-      return {}
-    }
+  const ensurePermissoesWeb = (pw: Record<string, boolean> | null | undefined): Record<string, boolean> => {
+    if (pw && typeof pw === 'object') return pw
+    return {}
   }
 
-  const parseRotasPermitidas = (rp: string | string[]): string[] => {
+  const ensureRotasPermitidas = (rp: string[] | null | undefined): string[] => {
     if (Array.isArray(rp)) return rp
-    try {
-      return JSON.parse(rp || '[]')
-    } catch {
-      return []
-    }
+    return []
   }
 
   const resetForm = () => {
@@ -256,8 +248,8 @@ export function AdminUsuariosView() {
     setFormCpf(usuario.cpf || '')
     setFormTelefone(usuario.telefone || '')
     setFormTipoPermissao(usuario.tipoPermissao)
-    setFormPermissoesWeb(parsePermissoesWeb(usuario.permissoesWeb))
-    setFormRotasPermitidas(parseRotasPermitidas(usuario.rotasPermitidas))
+    setFormPermissoesWeb(ensurePermissoesWeb(usuario.permissoesWeb))
+    setFormRotasPermitidas(ensureRotasPermitidas(usuario.rotasPermitidas))
     setFormStatus(usuario.status)
     setDialogOpen(true)
   }
@@ -348,8 +340,8 @@ export function AdminUsuariosView() {
   const handleToggleStatus = async (usuario: Usuario) => {
     const newStatus = usuario.status === 'Ativo' ? 'Inativo' : 'Ativo'
     try {
-      const permissoesWeb = parsePermissoesWeb(usuario.permissoesWeb)
-      const rotasPermitidas = parseRotasPermitidas(usuario.rotasPermitidas)
+      const permissoesWeb = ensurePermissoesWeb(usuario.permissoesWeb)
+      const rotasPermitidas = ensureRotasPermitidas(usuario.rotasPermitidas)
 
       const res = await fetch(`/api/usuarios/${usuario.id}`, {
         method: 'PUT',

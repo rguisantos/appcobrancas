@@ -11,12 +11,30 @@ const PUBLIC_ROUTES = [
   '/api/cron',
 ]
 
+function addCorsHeaders(response: NextResponse | Response) {
+  response.headers.set('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGINS || '*')
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cron-secret')
+  response.headers.set('Access-Control-Max-Age', '86400')
+  return response
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // Handle preflight OPTIONS requests
+  if (request.method === 'OPTIONS') {
+    const response = new NextResponse(null, { status: 204 })
+    return addCorsHeaders(response)
+  }
+
   // Allow public routes
   if (PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
-    return NextResponse.next()
+    const response = NextResponse.next()
+    if (pathname.startsWith('/api/')) {
+      addCorsHeaders(response)
+    }
+    return response
   }
 
   // Only protect API routes
@@ -31,7 +49,8 @@ export async function middleware(request: NextRequest) {
   const token = cookieToken || bearerToken
 
   if (!token) {
-    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    const response = NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    return addCorsHeaders(response)
   }
 
   // Verify JWT token inline (avoids importing the full auth-jwt module)
@@ -45,13 +64,19 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set('x-user-permission-type', (payload.tipoPermissao as string) || '')
     requestHeaders.set('x-user-permissions', JSON.stringify(payload.permissoesWeb || {}))
 
-    return NextResponse.next({
+    const response = NextResponse.next({
       request: {
         headers: requestHeaders,
       },
     })
+
+    // Add CORS headers to all API responses
+    addCorsHeaders(response)
+
+    return response
   } catch {
-    return NextResponse.json({ error: 'Token inválido ou expirado' }, { status: 401 })
+    const response = NextResponse.json({ error: 'Token inválido ou expirado' }, { status: 401 })
+    return addCorsHeaders(response)
   }
 }
 

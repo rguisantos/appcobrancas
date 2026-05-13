@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireMutationRole } from '@/lib/rbac'
 import { cobrancaSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { calcularCobranca, calcularSaldoDevedor } from '@/lib/cobranca-calculos'
@@ -145,8 +146,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized) return response
 
   try {
     const body = await request.json()
@@ -185,11 +186,11 @@ export async function POST(request: NextRequest) {
     const { saldoDevedorGerado } = calcularSaldoDevedor(calcResult.totalClientePaga, data.valorRecebido)
 
     // Data de vencimento = dataFim
-    const dataVencimento = data.dataFim
+    const dataVencimento = new Date(data.dataFim)
 
     // Se status é Pago ou Parcial, dataPagamento = now
     const dataPagamento = (data.status === 'Pago' || data.status === 'Parcial')
-      ? new Date().toISOString().split('T')[0]
+      ? new Date()
       : null
 
     const cobranca = await db.cobranca.create({
@@ -199,8 +200,8 @@ export async function POST(request: NextRequest) {
         clienteNome: cliente.nomeExibicao,
         produtoId: locacao.produtoId,
         produtoIdentificador: locacao.produtoIdentificador,
-        dataInicio: data.dataInicio,
-        dataFim: data.dataFim,
+        dataInicio: new Date(data.dataInicio),
+        dataFim: new Date(data.dataFim),
         dataPagamento,
         dataVencimento,
         relogioAnterior: data.relogioAnterior,

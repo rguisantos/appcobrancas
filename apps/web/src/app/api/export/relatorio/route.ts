@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { format } from 'date-fns'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -74,7 +75,7 @@ async function generateFinancialReport(dateFilter: Record<string, unknown>, form
   if (formato === 'csv') {
     const header = 'ID,Cliente,Produto,Período,Valor Total,Recebido,Saldo Devedor,Status,Forma Pgto,Data Pagamento\n'
     const rows = cobrancas.map(c =>
-      `"${c.id}","${c.clienteNome}","${c.produtoIdentificador}","${c.dataInicio} a ${c.dataFim}",${c.totalClientePaga},${c.valorRecebido},${c.saldoDevedorGerado},"${c.status}","${c.formaPagamento}","${c.dataPagamento || ''}"`
+      `"${c.id}","${c.clienteNome}","${c.produtoIdentificador}","${c.dataInicio ? format(new Date(c.dataInicio), 'yyyy-MM-dd') : ''} a ${c.dataFim ? format(new Date(c.dataFim), 'yyyy-MM-dd') : ''}",${c.totalClientePaga},${c.valorRecebido},${c.saldoDevedorGerado},"${c.status}","${c.formaPagamento}","${c.dataPagamento ? format(new Date(c.dataPagamento), 'yyyy-MM-dd') : ''}"`
     ).join('\n')
 
     const summary = `\n\nResumo Financeiro\nTotal de Cobranças,${totalCobrancas}\nValor Total,${totalValor.toFixed(2)}\nTotal Recebido,${totalRecebido.toFixed(2)}\nTotal Pendente,${totalPendente.toFixed(2)}\nTotal Atrasado,${totalAtrasado.toFixed(2)}\n`
@@ -130,7 +131,7 @@ async function generateCobrancasReport(dateFilter: Record<string, unknown>, form
   if (formato === 'csv') {
     const header = 'ID,Cliente,Produto,Início,Fim,Vencimento,Valor,Recebido,Status,Forma Pgto\n'
     const rows = cobrancas.map(c =>
-      `"${c.id}","${c.clienteNome}","${c.produtoIdentificador}","${c.dataInicio}","${c.dataFim}","${c.dataVencimento || ''}",${c.totalClientePaga},${c.valorRecebido},"${c.status}","${c.formaPagamento}"`
+      `"${c.id}","${c.clienteNome}","${c.produtoIdentificador}","${c.dataInicio ? format(new Date(c.dataInicio), 'yyyy-MM-dd') : ''}","${c.dataFim ? format(new Date(c.dataFim), 'yyyy-MM-dd') : ''}","${c.dataVencimento ? format(new Date(c.dataVencimento), 'yyyy-MM-dd') : ''}",${c.totalClientePaga},${c.valorRecebido},"${c.status}","${c.formaPagamento}"`
     ).join('\n')
 
     return new NextResponse(header + rows, {

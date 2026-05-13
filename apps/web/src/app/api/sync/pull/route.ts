@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
         where: { id: deviceId },
       })
       if (dispositivo) {
-        const rotas = JSON.parse(dispositivo.rotasPermitidas || '[]')
+        const rotas = (dispositivo.rotasPermitidas as string[]) || []
         if (rotas.length > 0) {
           allowedRotaIds = rotas
         }
@@ -105,11 +105,7 @@ export async function GET(request: NextRequest) {
         // Parse the stored record data
         let record: Record<string, unknown> = { id: log.entidadeId }
         if (log.dados) {
-          try {
-            record = JSON.parse(log.dados)
-          } catch {
-            // If parse fails, just use the ID
-          }
+          record = log.dados as Record<string, unknown>
         }
 
         // Apply rota scoping for cliente-related entities

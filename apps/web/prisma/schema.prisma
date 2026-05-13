@@ -32,6 +32,7 @@ model Rota {
   @@index([updatedAt])
   @@index([deletedAt])
   @@index([status])
+  @@map("rotas")
 }
 
 model Cliente {
@@ -47,7 +48,7 @@ model Cliente {
   inscricaoEstadual String?
   telefonePrincipal String
   email             String?
-  contatos          String?  // JSON string
+  contatos          Json?
   cep               String   @default("")
   logradouro        String   @default("")
   numero            String   @default("")
@@ -73,6 +74,7 @@ model Cliente {
   @@index([deletedAt])
   @@index([rotaId])
   @@index([status])
+  @@map("clientes")
 }
 
 model TipoProduto {
@@ -83,6 +85,7 @@ model TipoProduto {
   updatedAt DateTime  @updatedAt
 
   @@index([updatedAt])
+  @@map("tipos_produto")
 }
 
 model DescricaoProduto {
@@ -93,6 +96,7 @@ model DescricaoProduto {
   updatedAt DateTime  @updatedAt
 
   @@index([updatedAt])
+  @@map("descricoes_produto")
 }
 
 model TamanhoProduto {
@@ -103,6 +107,7 @@ model TamanhoProduto {
   updatedAt DateTime  @updatedAt
 
   @@index([updatedAt])
+  @@map("tamanhos_produto")
 }
 
 model Produto {
@@ -138,16 +143,18 @@ model Produto {
   @@index([updatedAt])
   @@index([deletedAt])
   @@index([statusProduto])
+  @@map("produtos")
 }
 
 model Estabelecimento {
   id        String    @id @default(cuid())
-  nome      String
+  nome      String    @unique
   endereco  String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
   @@index([updatedAt])
+  @@map("estabelecimentos")
 }
 
 model Locacao {
@@ -157,26 +164,26 @@ model Locacao {
   produtoId           String
   produtoIdentificador String
   produtoTipo         String
-  dataLocacao         String
-  dataFim             String?
+  dataLocacao         DateTime
+  dataFim             DateTime?
   formaPagamento      String    // Periodo, PercentualPagar, PercentualReceber
   numeroRelogio       String    @default("0")
-  precoFicha          Float     @default(0)
-  percentualEmpresa   Float     @default(0)
-  percentualCliente   Float     @default(0)
-  valorFixo           Float?
+  precoFicha          Decimal   @default(0) @db.Decimal(12, 2)
+  percentualEmpresa   Decimal   @default(0) @db.Decimal(12, 2)
+  percentualCliente   Decimal   @default(0) @db.Decimal(12, 2)
+  valorFixo           Decimal?  @db.Decimal(12, 2)
   periodicidade       String?   // Semanal, Quinzenal, Mensal
-  dataPrimeiraCobranca String?
+  dataPrimeiraCobranca DateTime?
   observacoes         String?
   status              String    @default("Ativa")
-  ultimaLeituraRelogio Float?
+  ultimaLeituraRelogio Decimal? @db.Decimal(12, 2)
   trocaPano           Boolean   @default(false)
   version             Int       @default(1)
   syncOrigin          String?
   deletedAt           DateTime?
 
-  cliente             Cliente   @relation(fields: [clienteId], references: [id])
-  produto             Produto   @relation(fields: [produtoId], references: [id])
+  cliente             Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  produto             Produto   @relation(fields: [produtoId], references: [id], onDelete: Cascade)
   cobrancas           Cobranca[]
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
@@ -186,6 +193,7 @@ model Locacao {
   @@index([clienteId])
   @@index([produtoId])
   @@index([status])
+  @@map("locacoes")
 }
 
 model Cobranca {
@@ -195,24 +203,24 @@ model Cobranca {
   clienteNome           String
   produtoId             String?
   produtoIdentificador  String
-  dataInicio            String
-  dataFim               String
-  dataPagamento         String?
-  dataVencimento        String?
-  relogioAnterior       Float     @default(0)
-  relogioAtual          Float     @default(0)
-  fichasRodadas         Float     @default(0)
-  valorFicha            Float     @default(0)
-  totalBruto            Float     @default(0)
-  descontoPartidasQtd   Float?
-  descontoPartidasValor Float?
-  descontoDinheiro      Float?
-  percentualEmpresa     Float     @default(0)
-  subtotalAposDescontos Float     @default(0)
-  valorPercentual       Float     @default(0)
-  totalClientePaga      Float     @default(0)
-  valorRecebido         Float     @default(0)
-  saldoDevedorGerado    Float     @default(0)
+  dataInicio            DateTime
+  dataFim               DateTime
+  dataPagamento         DateTime?
+  dataVencimento        DateTime?
+  relogioAnterior       Decimal   @default(0) @db.Decimal(12, 2)
+  relogioAtual          Decimal   @default(0) @db.Decimal(12, 2)
+  fichasRodadas         Decimal   @default(0) @db.Decimal(12, 2)
+  valorFicha            Decimal   @default(0) @db.Decimal(12, 2)
+  totalBruto            Decimal   @default(0) @db.Decimal(12, 2)
+  descontoPartidasQtd   Decimal?  @db.Decimal(12, 2)
+  descontoPartidasValor Decimal?  @db.Decimal(12, 2)
+  descontoDinheiro      Decimal?  @db.Decimal(12, 2)
+  percentualEmpresa     Decimal   @default(0) @db.Decimal(12, 2)
+  subtotalAposDescontos Decimal   @default(0) @db.Decimal(12, 2)
+  valorPercentual       Decimal   @default(0) @db.Decimal(12, 2)
+  totalClientePaga      Decimal   @default(0) @db.Decimal(12, 2)
+  valorRecebido         Decimal   @default(0) @db.Decimal(12, 2)
+  saldoDevedorGerado    Decimal   @default(0) @db.Decimal(12, 2)
   status                String    @default("Pendente")
   formaPagamento        String    @default("Periodo")
   observacao            String?
@@ -220,9 +228,9 @@ model Cobranca {
   syncOrigin            String?
   deletedAt             DateTime?
 
-  locacao               Locacao             @relation(fields: [locacaoId], references: [id])
-  cliente               Cliente             @relation(fields: [clienteId], references: [id])
-  produto               Produto?            @relation(fields: [produtoId], references: [id])
+  locacao               Locacao             @relation(fields: [locacaoId], references: [id], onDelete: Cascade)
+  cliente               Cliente             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  produto               Produto?            @relation(fields: [produtoId], references: [id], onDelete: SetNull)
   pagamentos            PagamentoCobranca[]
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
@@ -232,26 +240,29 @@ model Cobranca {
   @@index([clienteId])
   @@index([locacaoId])
   @@index([status])
-  @@index([dataVencimento])
+  @@index([status, dataVencimento])
+  @@index([deletedAt, status])
+  @@map("cobrancas")
 }
 
 model PagamentoCobranca {
   id              String    @id @default(cuid())
   cobrancaId      String
-  valor           Float
+  valor           Decimal   @db.Decimal(12, 2)
   formaPagamento  String    @default("Pix")  // Dinheiro, Pix, Cartao, Transferencia
-  dataPagamento   String
+  dataPagamento   DateTime
   observacao      String?
   usuarioId       String?
   usuarioNome     String?
   syncOrigin      String?
 
-  cobranca        Cobranca  @relation(fields: [cobrancaId], references: [id])
+  cobranca        Cobranca  @relation(fields: [cobrancaId], references: [id], onDelete: Cascade)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@index([updatedAt])
   @@index([cobrancaId])
+  @@map("pagamentos_cobranca")
 }
 
 // ============================================
@@ -266,9 +277,9 @@ model Usuario {
   cpf                   String?
   telefone              String?
   tipoPermissao         String    @default("AcessoControlado")
-  permissoesWeb         String    @default("{}") // JSON string
-  permissoesMobile      String    @default("{}") // JSON string
-  rotasPermitidas       String    @default("[]") // JSON array of IDs
+  permissoesWeb         Json      @default("{}")
+  permissoesMobile      Json      @default("{}")
+  rotasPermitidas       Json      @default("[]")
   status                String    @default("Ativo")
   bloqueado             Boolean   @default(false)
   dataUltimoAcesso      String?
@@ -288,6 +299,7 @@ model Usuario {
   @@index([updatedAt])
   @@index([deletedAt])
   @@index([status])
+  @@map("usuarios")
 }
 
 model UsuarioRota {
@@ -295,10 +307,11 @@ model UsuarioRota {
   usuarioId String
   rotaId    String
 
-  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
-  rota      Rota     @relation(fields: [rotaId], references: [id])
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  rota      Rota     @relation(fields: [rotaId], references: [id], onDelete: Cascade)
 
   @@unique([usuarioId, rotaId])
+  @@map("usuarios_rotas")
 }
 
 // ============================================
@@ -316,12 +329,13 @@ model HistoricoRelogio {
   usuarioNome String?
   syncOrigin  String?
 
-  produto     Produto   @relation(fields: [produtoId], references: [id])
+  produto     Produto   @relation(fields: [produtoId], references: [id], onDelete: Cascade)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   @@index([updatedAt])
   @@index([produtoId])
+  @@map("historico_relogio")
 }
 
 model Manutencao {
@@ -330,22 +344,23 @@ model Manutencao {
   produtoIdentificador String?
   tipo        String    // preventiva, corretiva, troca_pano, etc.
   descricao   String
-  dataInicio  String
-  dataFim     String?
-  custo       Float     @default(0)
+  dataInicio  DateTime
+  dataFim     DateTime?
+  custo       Decimal   @default(0) @db.Decimal(12, 2)
   status      String    @default("EmAndamento")
   observacao  String?
   usuarioId   String?
   usuarioNome String?
   syncOrigin  String?
 
-  produto     Produto   @relation(fields: [produtoId], references: [id])
+  produto     Produto   @relation(fields: [produtoId], references: [id], onDelete: Cascade)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   @@index([updatedAt])
   @@index([produtoId])
   @@index([status])
+  @@map("manutencoes")
 }
 
 model Notificacao {
@@ -357,32 +372,35 @@ model Notificacao {
   lida      Boolean   @default(false)
   link      String?
 
-  usuario   Usuario   @relation(fields: [usuarioId], references: [id])
+  usuario   Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
   @@index([usuarioId])
   @@index([lida])
+  @@index([usuarioId, lida])
+  @@map("notificacoes")
 }
 
 model Meta {
   id          String    @id @default(cuid())
   nome        String
   tipo        String    // receita, cobrancas, adimplencia
-  valorMeta   Float
-  valorAtual  Float     @default(0)
+  valorMeta   Decimal   @db.Decimal(12, 2)
+  valorAtual  Decimal   @default(0) @db.Decimal(12, 2)
   dataInicio  DateTime
   dataFim     DateTime
   rotaId      String?
   status      String    @default("ativa")
   criadoPor   String?
 
-  rota        Rota?     @relation(fields: [rotaId], references: [id])
+  rota        Rota?     @relation(fields: [rotaId], references: [id], onDelete: SetNull)
   usuario     Usuario?  @relation(fields: [criadoPor], references: [id])
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   @@index([updatedAt])
+  @@map("metas")
 }
 
 model LogAuditoria {
@@ -392,18 +410,20 @@ model LogAuditoria {
   entidade      String
   entidadeId    String?
   entidadeNome  String?
-  detalhes      String?   // JSON string
-  antes         String?   // JSON string
-  depois        String?   // JSON string
+  detalhes      Json?
+  antes         Json?
+  depois        Json?
   ip            String?
   severidade    String    @default("info")
   origem        String    @default("web")
 
-  usuario       Usuario?  @relation(fields: [usuarioId], references: [id])
+  usuario       Usuario?  @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
   createdAt     DateTime  @default(now())
 
   @@index([entidade])
   @@index([createdAt])
+  @@index([entidade, createdAt])
+  @@map("logs_auditoria")
 }
 
 model Sessao {
@@ -414,11 +434,12 @@ model Sessao {
   ip          String?
   expiraEm    DateTime
 
-  usuario     Usuario   @relation(fields: [usuarioId], references: [id])
+  usuario     Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   createdAt   DateTime  @default(now())
 
   @@index([usuarioId])
   @@index([expiraEm])
+  @@map("sessoes")
 }
 
 model Dispositivo {
@@ -429,14 +450,15 @@ model Dispositivo {
   ativo           Boolean   @default(false)
   ultimoSync      DateTime?
   usuarioId       String?
-  rotasPermitidas String    @default("[]") // JSON array of rota IDs for sync scoping
+  rotasPermitidas Json      @default("[]")
 
-  usuario         Usuario?  @relation(fields: [usuarioId], references: [id])
+  usuario         Usuario?  @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
   syncCursors     DeviceSyncCursor[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@index([usuarioId])
+  @@map("dispositivos")
 }
 
 // ============================================
@@ -450,7 +472,7 @@ model SyncLog {
   entidade    String   // cliente, produto, locacao, cobranca, etc.
   entidadeId  String
   operacao    String   // create, update, delete
-  dados       String?  // JSON: full record snapshot after mutation
+  dados       Json?    // full record snapshot after mutation
   updatedAt   DateTime // the entity updatedAt at time of change
 
   createdAt   DateTime @default(now())
@@ -458,6 +480,7 @@ model SyncLog {
   @@index([entidade, updatedAt])
   @@index([updatedAt])
   @@index([entidadeId])
+  @@map("sync_logs")
 }
 
 /// Tracks sync progress per device per entity.
@@ -468,9 +491,10 @@ model DeviceSyncCursor {
   entidade      String
   lastSyncAt    DateTime
 
-  dispositivo   Dispositivo @relation(fields: [dispositivoId], references: [id])
+  dispositivo   Dispositivo @relation(fields: [dispositivoId], references: [id], onDelete: Cascade)
   updatedAt     DateTime    @updatedAt
 
   @@unique([dispositivoId, entidade])
   @@index([dispositivoId])
+  @@map("device_sync_cursors")
 }

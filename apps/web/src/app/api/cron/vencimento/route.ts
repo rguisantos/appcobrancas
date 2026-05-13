@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const today = new Date().toISOString().slice(0, 10)
+    const today = new Date()
 
     // Find all pending cobranças past their due date
     const cobrancasVencidas = await db.cobranca.findMany({

@@ -32,9 +32,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       user: {
         ...usuario,
-        permissoesWeb: JSON.parse(usuario.permissoesWeb || '{}'),
-        permissoesMobile: JSON.parse(usuario.permissoesMobile || '{}'),
-        rotasPermitidas: JSON.parse(usuario.rotasPermitidas || '[]'),
+        permissoesWeb: (usuario.permissoesWeb as Record<string, boolean>) || {},
+        permissoesMobile: (usuario.permissoesMobile as Record<string, boolean>) || {},
+        rotasPermitidas: (usuario.rotasPermitidas as string[]) || [],
       },
     })
   } catch (error) {

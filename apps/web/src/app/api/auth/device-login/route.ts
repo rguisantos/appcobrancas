@@ -53,8 +53,8 @@ export async function POST(request: NextRequest) {
     let payload: AuthPayload
 
     if (usuario && usuario.status === 'Ativo' && !usuario.bloqueado) {
-      const permissoesWeb = JSON.parse(usuario.permissoesWeb || '{}')
-      const rotasPermitidas = JSON.parse(usuario.rotasPermitidas || '[]')
+      const permissoesWeb = (usuario.permissoesWeb as Record<string, boolean>) || {}
+      const rotasPermitidas = (usuario.rotasPermitidas as string[]) || []
 
       payload = {
         userId: usuario.id,
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Usuario associado inativo ou bloqueado' }, { status: 403 })
     } else {
       // Device without user association - limited access
-      const rotasPermitidas = JSON.parse(dispositivo.rotasPermitidas || '[]')
+      const rotasPermitidas = (dispositivo.rotasPermitidas as string[]) || []
       payload = {
         userId: `device:${dispositivo.id}`,
         email: `device-${dispositivo.deviceKey}@local`,
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       device: {
         id: dispositivo.id,
         nome: dispositivo.nome,
-        rotasPermitidas: JSON.parse(dispositivo.rotasPermitidas || '[]'),
+        rotasPermitidas: (dispositivo.rotasPermitidas as string[]) || [],
       },
       user: usuario
         ? {
@@ -111,8 +111,8 @@ export async function POST(request: NextRequest) {
             nome: usuario.nome,
             email: usuario.email,
             tipoPermissao: usuario.tipoPermissao,
-            permissoesMobile: JSON.parse(usuario.permissoesMobile || '{}'),
-            rotasPermitidas: JSON.parse(usuario.rotasPermitidas || '[]'),
+            permissoesMobile: (usuario.permissoesMobile as Record<string, boolean>) || {},
+            rotasPermitidas: (usuario.rotasPermitidas as string[]) || [],
           }
         : null,
     })

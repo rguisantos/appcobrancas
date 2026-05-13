@@ -75,7 +75,7 @@ export async function PUT(
 
       // Set payment date if status changed to Pago/Parcial
       if ((body.status === 'Pago' || body.status === 'Parcial') && !existing.dataPagamento) {
-        updateData.dataPagamento = new Date().toISOString().split('T')[0]
+        updateData.dataPagamento = new Date()
       }
 
       const cobranca = await db.cobranca.update({
@@ -114,15 +114,15 @@ export async function PUT(
 
     // Se status mudou para Pago ou Parcial, definir dataPagamento
     const dataPagamento = (data.status === 'Pago' || data.status === 'Parcial') && !existing.dataPagamento
-      ? new Date().toISOString().split('T')[0]
+      ? new Date()
       : existing.dataPagamento
 
     const cobranca = await db.cobranca.update({
       where: { id },
       data: {
         locacaoId: data.locacaoId,
-        dataInicio: data.dataInicio,
-        dataFim: data.dataFim,
+        dataInicio: new Date(data.dataInicio),
+        dataFim: new Date(data.dataFim),
         dataPagamento,
         relogioAnterior: data.relogioAnterior,
         relogioAtual: data.relogioAtual,
@@ -209,7 +209,7 @@ export async function PATCH(
 
     // Set payment date if first payment
     const dataPagamentoCobranca = (newStatus === 'Pago' || newStatus === 'Parcial') && !existing.dataPagamento
-      ? (dataPagamento || new Date().toISOString().split('T')[0])
+      ? (dataPagamento ? new Date(dataPagamento) : new Date())
       : existing.dataPagamento
 
     // Create the payment record and update cobrança in a transaction
@@ -219,7 +219,7 @@ export async function PATCH(
           cobrancaId: id,
           valor,
           formaPagamento,
-          dataPagamento: dataPagamento || new Date().toISOString().split('T')[0],
+          dataPagamento: dataPagamento ? new Date(dataPagamento) : new Date(),
           observacao: observacao || null,
           usuarioId: session.userId,
           usuarioNome: session.nome || null,

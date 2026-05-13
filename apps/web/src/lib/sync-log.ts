@@ -35,7 +35,7 @@ export async function writeSyncLog(
         entidade,
         entidadeId,
         operacao,
-        dados: dados ? JSON.stringify(dados) : null,
+        dados: dados || null,
         updatedAt,
       },
     })

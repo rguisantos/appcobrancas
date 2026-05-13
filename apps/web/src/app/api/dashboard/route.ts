@@ -8,8 +8,8 @@ export async function GET() {
 
   try {
     const now = new Date()
-    const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
-    const fimMes = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+    const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1)
+    const fimMes = new Date(now.getFullYear(), now.getMonth() + 1, 0)
 
     // Total clientes ativos
     const totalClientes = await db.cliente.count({
@@ -65,7 +65,7 @@ export async function GET() {
     const totalAtrasadoValor = (cobrancasAtrasadasValor._sum.totalClientePaga || 0) - (cobrancasAtrasadasValor._sum.valorRecebido || 0)
 
     // Clientes sem cobranças recentes (últimos 30 dias)
-    const trintaDiasAtras = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const trintaDiasAtras = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
     const clientesComCobrancaRecente = await db.cobranca.findMany({
       where: {
@@ -88,26 +88,29 @@ export async function GET() {
       take: 20,
     })
 
-    // Chart: Monthly revenue (last 12 months)
-    const receitaMensal: { mes: string; valor: number }[] = []
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const mesInicio = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0]
-      const mesFim = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0]
-      const mesLabel = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')
+    // Chart: Monthly revenue (last 12 months) — parallel aggregate queries
+    const receitaMensal = await Promise.all(
+      Array.from({ length: 12 }, (_, i) => {
+        const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1)
+        const mesInicio = new Date(d.getFullYear(), d.getMonth(), 1)
+        const mesFim = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999)
+        const mesLabel = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')
 
-      const cobrancasDoMes = await db.cobranca.findMany({
-        where: {
-          deletedAt: null,
-          status: { in: ['Pago', 'Parcial'] },
-          dataPagamento: { gte: mesInicio, lte: mesFim },
-        },
-        select: { valorRecebido: true },
+        return db.cobranca
+          .aggregate({
+            where: {
+              deletedAt: null,
+              status: { in: ['Pago', 'Parcial'] },
+              dataPagamento: { gte: mesInicio, lte: mesFim },
+            },
+            _sum: { valorRecebido: true },
+          })
+          .then((result) => ({
+            mes: mesLabel,
+            valor: result._sum.valorRecebido || 0,
+          }))
       })
-      const totalMes = cobrancasDoMes.reduce((acc, c) => acc + c.valorRecebido, 0)
-
-      receitaMensal.push({ mes: mesLabel, valor: totalMes })
-    }
+    )
 
     // Chart: Cobranças by status
     const cobrancasByStatusRaw = await db.cobranca.groupBy({

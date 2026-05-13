@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { db } from '@/lib/db'
+import { format } from 'date-fns'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
 
   const porMes: Record<string, number> = {}
   cobrancas.forEach(c => {
-    const month = c.dataPagamento?.substring(0, 7) || 'unknown'
+    const month = c.dataPagamento ? format(new Date(c.dataPagamento), 'yyyy-MM') : 'unknown'
     porMes[month] = (porMes[month] || 0) + c.valorRecebido
   })
 

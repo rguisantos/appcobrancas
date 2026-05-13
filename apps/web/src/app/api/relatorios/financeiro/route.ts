@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { db } from '@/lib/db'
+import { format } from 'date-fns'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
   // Monthly breakdown
   const monthlyData: Record<string, { receita: number; pendente: number }> = {}
   cobrancas.forEach(c => {
-    const month = c.dataInicio?.substring(0, 7) || 'unknown'
+    const month = c.dataInicio ? format(new Date(c.dataInicio), 'yyyy-MM') : 'unknown'
     if (!monthlyData[month]) monthlyData[month] = { receita: 0, pendente: 0 }
     if (c.status === 'Pago' || c.status === 'Parcial') {
       monthlyData[month].receita += c.valorRecebido

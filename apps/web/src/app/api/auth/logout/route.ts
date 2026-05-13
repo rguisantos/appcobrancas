@@ -8,6 +8,7 @@ export async function POST() {
     const session = await getAuthSession()
 
     if (session) {
+      // Delete all sessions for this user (effective logout across all devices)
       await db.sessao.deleteMany({ where: { usuarioId: session.userId } })
       await registrarAuditoria({
         usuarioId: session.userId,
@@ -21,7 +22,7 @@ export async function POST() {
     const response = NextResponse.json({ success: true })
     response.cookies.set('auth-token', '', {
       httpOnly: true,
-      secure: process.env.SECURE_COOKIES === 'true',
+      secure: process.env.SECURE_COOKIES === 'true' || process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 0,
       path: '/',

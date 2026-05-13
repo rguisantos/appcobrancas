@@ -17,13 +17,13 @@ function formatCurrency(val: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
 }
 
-function formatDate(dateStr: string | null | undefined) {
+function formatDate(dateStr: string | Date | null | undefined) {
   if (!dateStr) return '—'
   try {
     const d = new Date(dateStr)
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
   } catch {
-    return dateStr
+    return String(dateStr)
   }
 }
 

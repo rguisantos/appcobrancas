@@ -4,11 +4,25 @@ import { verifyPassword } from '@/lib/hash'
 import { signToken, AuthPayload } from '@/lib/auth-jwt'
 import { loginSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { checkRateLimit, resetRateLimit } from '@/lib/rate-limit'
+import { hashToken } from '@/lib/session'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const data = loginSchema.parse(body)
+
+    // Rate limit by email + IP
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+    const rateLimitId = `${data.email}:${ip}`
+    const rateLimitResult = checkRateLimit(rateLimitId)
+    if (!rateLimitResult.allowed) {
+      const retryAfterSeconds = Math.ceil((rateLimitResult.resetAtMs - Date.now()) / 1000)
+      return NextResponse.json(
+        { error: 'Muitas tentativas de login. Tente novamente mais tarde.', retryAfterSeconds },
+        { status: 429, headers: { 'Retry-After': String(retryAfterSeconds) } }
+      )
+    }
 
     const usuario = await db.usuario.findUnique({
       where: { email: data.email },
@@ -35,8 +49,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 })
     }
 
-    const permissoesWeb = JSON.parse(usuario.permissoesWeb || '{}')
-    const rotasPermitidas = JSON.parse(usuario.rotasPermitidas || '[]')
+    const permissoesWeb = (usuario.permissoesWeb as Record<string, boolean>) || {}
+    const rotasPermitidas = (usuario.rotasPermitidas as string[]) || []
 
     const payload: AuthPayload = {
       userId: usuario.id,
@@ -60,12 +74,15 @@ export async function POST(request: NextRequest) {
     await db.sessao.create({
       data: {
         usuarioId: usuario.id,
-        token,
+        token: hashToken(token),
         dispositivo: 'Web',
         ip: request.headers.get('x-forwarded-for') || null,
         expiraEm: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     })
+
+    // Reset rate limit on successful login
+    resetRateLimit(rateLimitId)
 
     await registrarAuditoria({
       usuarioId: usuario.id,
