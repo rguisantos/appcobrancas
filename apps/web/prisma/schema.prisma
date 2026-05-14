@@ -32,7 +32,6 @@ model Rota {
   @@index([updatedAt])
   @@index([deletedAt])
   @@index([status])
-  @@index([produtoId, status])
   @@map("rotas")
 }
 
@@ -75,7 +74,6 @@ model Cliente {
   @@index([deletedAt])
   @@index([rotaId])
   @@index([status])
-  @@index([produtoId, status])
   @@index([nomeExibicao])
   @@index([deletedAt, status])
   @@map("clientes")
@@ -200,7 +198,6 @@ model Locacao {
   @@index([produtoId])
   @@index([status])
   @@index([produtoId, status])
-  @@index([produtoId, status])
   @@index([deletedAt, status])
   @@index([dataLocacao])
   @@map("locacoes")
@@ -313,7 +310,6 @@ model Usuario {
   @@index([updatedAt])
   @@index([deletedAt])
   @@index([status])
-  @@index([produtoId, status])
   @@map("usuarios")
 }
 
