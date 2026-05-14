@@ -5,16 +5,12 @@ import { requireAdmin } from '@/lib/rbac'
 import { usuarioSchema } from '@/lib/validations'
 import { hashPassword } from '@/lib/hash'
 import { registrarAuditoria } from '@/lib/auditoria'
-import { safeLimit, safePage } from '@/lib/api-utils'
+import { safeLimit, safePage, handleApiError } from '@/lib/api-utils'
 import { Prisma } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
-
-  if (session.tipoPermissao !== 'Administrador') {
-    return NextResponse.json({ error: 'Acesso restrito a administradores' }, { status: 403 })
-  }
+  const { authorized, response, session } = await requireAdmin()
+  if (!authorized || !session) return response
 
   try {
   const searchParams = request.nextUrl.searchParams
@@ -54,8 +50,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({ data, total, page, totalPages: Math.ceil(total / limit) })
   } catch (error) {
-    console.error('Erro ao buscar usuários:', error)
-    return NextResponse.json({ error: 'Erro ao buscar usuários' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar usuários')
   }
 }
 
@@ -116,9 +111,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(usuario, { status: 201 })
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'issues' in error) {
-      return NextResponse.json({ error: 'Dados inválidos', details: (error as { issues: unknown }).issues }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Erro ao criar usuário' }, { status: 500 })
+    return handleApiError(error, 'Erro ao criar usuário')
   }
 }

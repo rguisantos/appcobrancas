@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { NextRequest, NextResponse } from 'next/server'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireMutationRole } from '@/lib/rbac'
 import {
   writeSyncLog,
   BIDI_SYNC_ENTITIES,
@@ -9,6 +10,7 @@ import {
   type SyncOperation,
 } from '@/lib/sync-log'
 import { pickAllowedFields } from '@/lib/sync-allowed-fields'
+import { handleApiError } from '@/lib/api-utils'
 import { z } from 'zod/v4'
 
 const pushChangeSchema = z.object({
@@ -16,7 +18,7 @@ const pushChangeSchema = z.object({
   entidadeId: z.string(),
   operacao: z.enum(['create', 'update', 'delete']),
   dados: z.record(z.string(), z.unknown()).optional(),
-  updatedAt: z.string(), // ISO 8601
+  updatedAt: z.string().datetime({ local: true }).or(z.string().datetime()),
 })
 
 const pushBodySchema = z.object({
@@ -30,10 +32,8 @@ const pushBodySchema = z.object({
  * All changes are wrapped in a transaction for atomicity.
  */
 export async function POST(request: NextRequest) {
-  const session = await getAuthSession()
-  if (!session) {
-    return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 })
-  }
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized || !session) return response
 
   try {
     const body = await request.json()
@@ -48,12 +48,10 @@ export async function POST(request: NextRequest) {
       error?: string
     }> = []
 
-    // Wrap all changes in a transaction for atomicity
     await db.$transaction(async (tx) => {
       for (const change of changes) {
         const entidade = change.entidade as SyncEntity
 
-        // Validate entity is syncable bidirectionally
         if (!BIDI_SYNC_ENTITIES.includes(entidade)) {
           results.push({
             entidadeId: change.entidadeId,
@@ -65,22 +63,32 @@ export async function POST(request: NextRequest) {
         }
 
         try {
-          const model = getPrismaModel(entidade)
-          // Use tx-based model via delegation: we use the model for findUnique/update/create
-          // but need to use the transaction client. Since getPrismaModel returns db-based models,
-          // we access the tx equivalents directly.
-          const txModel = (tx as any)[entidade] // eslint-disable-line @typescript-eslint/no-explicit-any
+          const txModel = (tx as Record<string, unknown>)[entidade] as {
+            findUnique: (args: { where: { id: string } }) => Promise<Record<string, unknown> | null>
+            create: (args: { data: Record<string, unknown> }) => Promise<Record<string, unknown>>
+            update: (args: { where: { id: string }; data: Record<string, unknown> }) => Promise<Record<string, unknown>>
+          }
+
           const clientTime = new Date(change.updatedAt).getTime()
 
+          // Validate parsed date is not NaN
+          if (Number.isNaN(clientTime)) {
+            results.push({
+              entidadeId: change.entidadeId,
+              entidade: change.entidade,
+              status: 'error',
+              error: 'updatedAt inválido — deve ser data ISO 8601 válida',
+            })
+            continue
+          }
+
           if (change.operacao === 'create') {
-            // For creates, check if record already exists (idempotency)
             const existing = await txModel.findUnique({
               where: { id: change.entidadeId },
             })
 
             if (existing) {
-              // Already exists - treat as update with LWW
-              const serverTime = new Date(existing.updatedAt).getTime()
+              const serverTime = new Date(existing.updatedAt as string | Date).getTime()
               if (clientTime > serverTime) {
                 const updateData = pickAllowedFields(entidade, change.dados)
                 await txModel.update({
@@ -104,7 +112,6 @@ export async function POST(request: NextRequest) {
                 })
               }
             } else {
-              // New record
               const createData = pickAllowedFields(entidade, change.dados)
               const created = await txModel.create({
                 data: {
@@ -113,12 +120,12 @@ export async function POST(request: NextRequest) {
                   syncOrigin: deviceId || 'mobile',
                 },
               })
-              await writeSyncLog(entidade, created.id, 'create', created, new Date())
+              await writeSyncLog(entidade, String(created.id), 'create', created, new Date())
               results.push({
                 entidadeId: change.entidadeId,
                 entidade: change.entidade,
                 status: 'applied',
-                serverEntidadeId: created.id,
+                serverEntidadeId: String(created.id),
               })
             }
           } else if (change.operacao === 'update') {
@@ -136,10 +143,9 @@ export async function POST(request: NextRequest) {
               continue
             }
 
-            const serverTime = new Date(existing.updatedAt).getTime()
+            const serverTime = new Date(existing.updatedAt as string | Date).getTime()
 
             if (clientTime > serverTime) {
-              // Client wins - apply update
               const updateData = pickAllowedFields(entidade, change.dados)
               await txModel.update({
                 where: { id: change.entidadeId },
@@ -153,7 +159,6 @@ export async function POST(request: NextRequest) {
                 status: 'applied',
               })
             } else {
-              // Server wins
               results.push({
                 entidadeId: change.entidadeId,
                 entidade: change.entidade,
@@ -170,15 +175,14 @@ export async function POST(request: NextRequest) {
               results.push({
                 entidadeId: change.entidadeId,
                 entidade: change.entidade,
-                status: 'applied', // Already gone
+                status: 'applied',
               })
               continue
             }
 
-            const serverTime = new Date(existing.updatedAt).getTime()
+            const serverTime = new Date(existing.updatedAt as string | Date).getTime()
 
             if (clientTime > serverTime) {
-              // Soft-delete
               await txModel.update({
                 where: { id: change.entidadeId },
                 data: { deletedAt: new Date(), syncOrigin: deviceId || 'mobile' },
@@ -216,13 +220,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ accepted, conflicts, errors })
   } catch (error) {
-    if (error && typeof error === 'object' && 'issues' in error) {
-      return NextResponse.json(
-        { error: 'Dados invalidos', details: (error as { issues: unknown }).issues },
-        { status: 400 }
-      )
-    }
-    console.error('Sync push error:', error)
-    return NextResponse.json({ error: 'Erro ao processar push' }, { status: 500 })
+    return handleApiError(error, 'Erro ao processar sync push')
   }
 }

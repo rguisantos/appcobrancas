@@ -4,6 +4,8 @@ import { getAuthSession } from '@/lib/auth-jwt'
 import { requireMutationRole, requireAdmin } from '@/lib/rbac'
 import { produtoSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { writeSyncLog } from '@/lib/sync-log'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function GET(
   _request: NextRequest,
@@ -22,8 +24,7 @@ export async function GET(
   if (!produto) return NextResponse.json({ error: 'Produto não encontrado' }, { status: 404 })
   return NextResponse.json(produto)
   } catch (error) {
-    console.error('Erro ao buscar produto:', error)
-    return NextResponse.json({ error: 'Erro ao buscar produto' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar produto')
   }
 }
 
@@ -59,12 +60,11 @@ export async function PUT(
       severidade: 'info',
     })
 
+    await writeSyncLog('produto', produto.id, 'update', produto as unknown as Record<string, unknown>, new Date())
+
     return NextResponse.json(produto)
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'issues' in error) {
-      return NextResponse.json({ error: 'Dados inválidos', details: (error as { issues: unknown }).issues }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Erro ao atualizar produto' }, { status: 500 })
+    return handleApiError(error, 'Erro ao atualizar produto')
   }
 }
 
@@ -95,9 +95,10 @@ export async function DELETE(
     severidade: 'aviso',
   })
 
+  await writeSyncLog('produto', produto.id, 'delete', null, new Date())
+
   return NextResponse.json({ message: 'Produto excluído com sucesso' })
   } catch (error) {
-    console.error('Erro ao excluir produto:', error)
-    return NextResponse.json({ error: 'Erro ao excluir produto' }, { status: 500 })
+    return handleApiError(error, 'Erro ao excluir produto')
   }
 }

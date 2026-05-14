@@ -1,0 +1,46 @@
+/**
+ * Centralized view label mapping.
+ * Single source of truth for view display names used by breadcrumb and top-bar.
+ */
+import type { ViewType } from '@/lib/store/navigation'
+
+export const viewLabels: Record<ViewType, string> = {
+  dashboard: 'Dashboard',
+  clientes: 'Clientes',
+  'cliente-novo': 'Novo Cliente',
+  'cliente-detalhe': 'Detalhes do Cliente',
+  'cliente-editar': 'Editar Cliente',
+  produtos: 'Produtos',
+  'produto-novo': 'Novo Produto',
+  'produto-detalhe': 'Detalhes do Produto',
+  'produto-editar': 'Editar Produto',
+  locacoes: 'Locações',
+  'locacao-nova': 'Nova Locação',
+  'locacao-detalhe': 'Detalhes da Locação',
+  'locacao-editar': 'Editar Locação',
+  cobrancas: 'Cobranças',
+  'cobranca-nova': 'Nova Cobrança',
+  'cobranca-detalhe': 'Detalhes da Cobrança',
+  'cobranca-editar': 'Editar Cobrança',
+  relatorios: 'Relatórios',
+  mapa: 'Mapa de Rotas',
+  agenda: 'Agenda',
+  manutencoes: 'Manutenções',
+  'manutencao-nova': 'Nova Manutenção',
+  relogios: 'Relógios',
+  'relogio-novo': 'Registrar Relógio',
+  'admin-usuarios': 'Usuários',
+  'admin-usuario-novo': 'Novo Usuário',
+  'admin-usuario-editar': 'Editar Usuário',
+  'admin-rotas': 'Rotas',
+  'admin-rota-nova': 'Nova Rota',
+  'admin-rota-editar': 'Editar Rota',
+  'admin-cadastros': 'Cadastros',
+  'admin-dispositivos': 'Dispositivos',
+  'admin-auditoria': 'Auditoria',
+  'admin-metas': 'Metas',
+  'admin-meta-nova': 'Nova Meta',
+  'admin-meta-editar': 'Editar Meta',
+  perfil: 'Perfil',
+  notificacoes: 'Notificações',
+}

@@ -4,6 +4,7 @@ import { getAuthSession } from '@/lib/auth-jwt'
 import { requireMutationRole } from '@/lib/rbac'
 import { metaSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function GET() {
   const session = await getAuthSession()
@@ -18,8 +19,7 @@ export async function GET() {
 
   return NextResponse.json(data)
   } catch (error) {
-    console.error('Erro ao buscar metas:', error)
-    return NextResponse.json({ error: 'Erro ao buscar metas' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar metas')
   }
 }
 
@@ -54,9 +54,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(meta, { status: 201 })
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'issues' in error) {
-      return NextResponse.json({ error: 'Dados inválidos', details: (error as { issues: unknown }).issues }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Erro ao criar meta' }, { status: 500 })
+    return handleApiError(error, 'Erro ao criar meta')
   }
 }

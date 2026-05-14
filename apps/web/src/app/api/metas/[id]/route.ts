@@ -4,6 +4,7 @@ import { getAuthSession } from '@/lib/auth-jwt'
 import { requireAdmin } from '@/lib/rbac'
 import { metaSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function GET(
   _request: NextRequest,
@@ -22,8 +23,7 @@ export async function GET(
   if (!meta) return NextResponse.json({ error: 'Meta não encontrada' }, { status: 404 })
   return NextResponse.json(meta)
   } catch (error) {
-    console.error('Erro ao buscar meta:', error)
-    return NextResponse.json({ error: 'Erro ao buscar meta' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar meta')
   }
 }
 
@@ -68,10 +68,7 @@ export async function PUT(
 
     return NextResponse.json(meta)
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'issues' in error) {
-      return NextResponse.json({ error: 'Dados inválidos', details: (error as { issues: unknown }).issues }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Erro ao atualizar meta' }, { status: 500 })
+    return handleApiError(error, 'Erro ao atualizar meta')
   }
 }
 
@@ -87,9 +84,7 @@ export async function DELETE(
   const existing = await db.meta.findFirst({ where: { id } })
   if (!existing) return NextResponse.json({ error: 'Meta não encontrada' }, { status: 404 })
 
-  const meta = await db.meta.delete({
-    where: { id },
-  })
+  await db.meta.delete({ where: { id } })
 
   await registrarAuditoria({
     usuarioId: session.userId,
@@ -103,7 +98,6 @@ export async function DELETE(
 
   return NextResponse.json({ message: 'Meta excluída com sucesso' })
   } catch (error) {
-    console.error('Erro ao excluir meta:', error)
-    return NextResponse.json({ error: 'Erro ao excluir meta' }, { status: 500 })
+    return handleApiError(error, 'Erro ao excluir meta')
   }
 }

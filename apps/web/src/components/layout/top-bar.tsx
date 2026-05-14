@@ -1,7 +1,8 @@
 'use client'
 
 import { useAuth } from '@/lib/store/auth'
-import { useNavigation } from '@/lib/store/navigation'
+import { useNavigation, type ViewType } from '@/lib/store/navigation'
+import { viewLabels } from '@/lib/view-labels'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
@@ -27,14 +28,36 @@ import {
 } from '@/components/ui/command'
 import { Users, Package, DollarSign, FileText } from 'lucide-react'
 
+interface Notification {
+  id: string
+  titulo: string
+  mensagem: string
+  lida: boolean
+}
+
+interface SearchResult {
+  id: string
+  nomeExibicao?: string
+  identificador?: string
+  clienteNome?: string
+  status?: string
+}
+
+interface SearchResults {
+  clientes?: SearchResult[]
+  produtos?: SearchResult[]
+  locacoes?: SearchResult[]
+  cobrancas?: SearchResult[]
+}
+
 export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   const { user, logout } = useAuth()
   const { currentView, goBack, history, navigate } = useNavigation()
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<any>(null)
+  const [searchResults, setSearchResults] = useState<SearchResults | null>(null)
   const [searching, setSearching] = useState(false)
-  const [notifications, setNotifications] = useState<any[]>([])
+  const [notifications, setNotifications] = useState<Notification[]>([])
 
   // Keyboard shortcut: Cmd+K / Ctrl+K
   useEffect(() => {
@@ -58,7 +81,9 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
           const data = await res.json()
           if (!cancelled) setNotifications(data.data || data || [])
         }
-      } catch {}
+      } catch {
+        // Silently fail
+      }
     }
     load()
     return () => { cancelled = true }
@@ -81,6 +106,7 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
             setSearchResults(data)
           }
         } catch {
+          // Silently fail
         } finally {
           setSearching(false)
         }
@@ -92,58 +118,19 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
     }
   }, [searchQuery, searchOpen])
 
-  const unreadCount = notifications.filter((n: any) => !n.lida).length
-
-  const viewLabels: Record<string, string> = {
-    dashboard: 'Dashboard',
-    clientes: 'Clientes',
-    'cliente-novo': 'Novo Cliente',
-    'cliente-detalhe': 'Detalhes do Cliente',
-    'cliente-editar': 'Editar Cliente',
-    produtos: 'Produtos',
-    'produto-novo': 'Novo Produto',
-    'produto-detalhe': 'Detalhes do Produto',
-    'produto-editar': 'Editar Produto',
-    locacoes: 'Locações',
-    'locacao-nova': 'Nova Locação',
-    'locacao-detalhe': 'Detalhes da Locação',
-    'locacao-editar': 'Editar Locação',
-    cobrancas: 'Cobranças',
-    'cobranca-nova': 'Nova Cobrança',
-    'cobranca-detalhe': 'Detalhes da Cobrança',
-    'cobranca-editar': 'Editar Cobrança',
-    relatorios: 'Relatórios',
-    mapa: 'Mapa de Rotas',
-    agenda: 'Agenda',
-    manutencoes: 'Manutenções',
-    'manutencao-nova': 'Nova Manutenção',
-    relogios: 'Relógios',
-    'relogio-novo': 'Registrar Relógio',
-    'admin-usuarios': 'Usuários',
-    'admin-usuario-novo': 'Novo Usuário',
-    'admin-usuario-editar': 'Editar Usuário',
-    'admin-rotas': 'Rotas',
-    'admin-rota-nova': 'Nova Rota',
-    'admin-rota-editar': 'Editar Rota',
-    'admin-cadastros': 'Cadastros',
-    'admin-dispositivos': 'Dispositivos',
-    'admin-auditoria': 'Auditoria',
-    'admin-metas': 'Metas',
-    'admin-meta-nova': 'Nova Meta',
-    perfil: 'Perfil',
-  }
+  const unreadCount = notifications.filter((n) => !n.lida).length
 
   const currentLabel = viewLabels[currentView] || currentView
   const hasHistory = history.length > 0
 
   const handleSelectResult = (type: string, id: string) => {
-    const viewMap: Record<string, string> = {
+    const viewMap: Record<string, ViewType> = {
       clientes: 'cliente-detalhe',
       produtos: 'produto-detalhe',
       locacoes: 'locacao-detalhe',
       cobrancas: 'cobranca-detalhe',
     }
-    navigate(viewMap[type] as any, id)
+    navigate(viewMap[type] || 'dashboard', id)
     setSearchOpen(false)
     setSearchQuery('')
   }
@@ -155,7 +142,7 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
     cobrancas: { label: 'Cobranças', icon: <FileText className="h-4 w-4 text-red-500" /> },
   }
 
-  const hasAnyResults = searchResults && Object.values(searchResults).some((arr: any) => arr?.length > 0)
+  const hasAnyResults = searchResults && Object.values(searchResults).some((arr) => arr && arr.length > 0)
 
   return (
     <>
@@ -232,7 +219,7 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
                 Nenhuma notificação
               </div>
             ) : (
-              notifications.slice(0, 5).map((n: any) => (
+              notifications.slice(0, 5).map((n) => (
                 <DropdownMenuItem key={n.id} className="flex flex-col items-start gap-1 p-3">
                   <span className="font-medium text-sm">{n.titulo}</span>
                   <span className="text-xs text-muted-foreground line-clamp-2">{n.mensagem}</span>
@@ -306,12 +293,12 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
             </div>
           )}
           {searchResults && !searching && ['clientes', 'produtos', 'locacoes', 'cobrancas'].map((type) => {
-            const items = searchResults[type] || []
+            const items = searchResults[type as keyof SearchResults] || []
             if (items.length === 0) return null
             const config = entityConfig[type]
             return (
               <CommandGroup key={type} heading={config.label}>
-                {items.slice(0, 8).map((item: any) => (
+                {items.slice(0, 8).map((item) => (
                   <CommandItem
                     key={item.id}
                     value={`${type}-${item.id}`}

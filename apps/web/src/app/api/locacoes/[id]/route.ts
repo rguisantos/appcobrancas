@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireMutationRole, requireAdmin } from '@/lib/rbac'
 import { locacaoSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { writeSyncLog } from '@/lib/sync-log'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function GET(
   _request: NextRequest,
@@ -21,8 +24,7 @@ export async function GET(
   if (!locacao) return NextResponse.json({ error: 'Locação não encontrada' }, { status: 404 })
   return NextResponse.json(locacao)
   } catch (error) {
-    console.error('Erro ao buscar locação:', error)
-    return NextResponse.json({ error: 'Erro ao buscar locação' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar locação')
   }
 }
 
@@ -30,8 +32,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized || !session) return response
 
   const { id } = await params
   const existing = await db.locacao.findFirst({ where: { id, deletedAt: null } })
@@ -42,7 +44,6 @@ export async function PUT(
     const data = locacaoSchema.parse(body)
     const antes = existing as Record<string, unknown>
 
-    // Buscar dados do cliente e produto para campos denormalizados
     const [cliente, produto] = await Promise.all([
       db.cliente.findFirst({ where: { id: data.clienteId, deletedAt: null } }),
       db.produto.findFirst({ where: { id: data.produtoId, deletedAt: null } }),
@@ -86,12 +87,11 @@ export async function PUT(
       severidade: 'info',
     })
 
+    await writeSyncLog('locacao', locacao.id, 'update', locacao as unknown as Record<string, unknown>, new Date())
+
     return NextResponse.json(locacao)
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'issues' in error) {
-      return NextResponse.json({ error: 'Dados inválidos', details: (error as { issues: unknown }).issues }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Erro ao atualizar locação' }, { status: 500 })
+    return handleApiError(error, 'Erro ao atualizar locação')
   }
 }
 
@@ -99,8 +99,8 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireAdmin()
+  if (!authorized || !session) return response
 
   try {
   const { id } = await params
@@ -122,9 +122,10 @@ export async function DELETE(
     severidade: 'aviso',
   })
 
+  await writeSyncLog('locacao', locacao.id, 'delete', null, new Date())
+
   return NextResponse.json({ message: 'Locação excluída com sucesso' })
   } catch (error) {
-    console.error('Erro ao excluir locação:', error)
-    return NextResponse.json({ error: 'Erro ao excluir locação' }, { status: 500 })
+    return handleApiError(error, 'Erro ao excluir locação')
   }
 }

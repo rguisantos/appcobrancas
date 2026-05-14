@@ -31,7 +31,7 @@ export async function GET(
   return NextResponse.json(cobranca)
   } catch (error) {
     console.error('Erro ao buscar cobrança:', error)
-    return NextResponse.json({ error: 'Erro ao buscar cobrança' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar cobrança')
   }
 }
 
@@ -156,12 +156,11 @@ export async function PUT(
       severidade: 'info',
     })
 
+    await writeSyncLog('cobranca', cobranca.id, 'update', cobranca as unknown as Record<string, unknown>, new Date())
+
     return NextResponse.json(cobranca)
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'issues' in error) {
-      return NextResponse.json({ error: 'Dados inválidos', details: (error as { issues: unknown }).issues }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Erro ao atualizar cobrança' }, { status: 500 })
+    return handleApiError(error, 'Erro ao atualizar cobrança')
   }
 }
 
@@ -266,8 +265,7 @@ export async function PATCH(
       },
     })
   } catch (error) {
-    console.error('Erro ao registrar pagamento:', error)
-    return NextResponse.json({ error: 'Erro ao registrar pagamento' }, { status: 500 })
+    return handleApiError(error, 'Erro ao registrar pagamento')
   }
 }
 
@@ -298,9 +296,10 @@ export async function DELETE(
     severidade: 'aviso',
   })
 
+  await writeSyncLog('cobranca', cobranca.id, 'delete', null, new Date())
+
   return NextResponse.json({ message: 'Cobrança excluída com sucesso' })
   } catch (error) {
-    console.error('Erro ao excluir cobrança:', error)
-    return NextResponse.json({ error: 'Erro ao excluir cobrança' }, { status: 500 })
+    return handleApiError(error, 'Erro ao excluir cobrança')
   }
 }

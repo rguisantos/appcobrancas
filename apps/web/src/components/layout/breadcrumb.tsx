@@ -1,46 +1,8 @@
 'use client'
 
 import { useNavigation, type ViewType } from '@/lib/store/navigation'
+import { viewLabels } from '@/lib/view-labels'
 import { ChevronRight } from 'lucide-react'
-
-const viewLabels: Record<string, string> = {
-  dashboard: 'Dashboard',
-  clientes: 'Clientes',
-  'cliente-novo': 'Novo Cliente',
-  'cliente-detalhe': 'Detalhes',
-  'cliente-editar': 'Editar',
-  produtos: 'Produtos',
-  'produto-novo': 'Novo Produto',
-  'produto-detalhe': 'Detalhes',
-  'produto-editar': 'Editar',
-  locacoes: 'Locações',
-  'locacao-nova': 'Nova Locação',
-  'locacao-detalhe': 'Detalhes',
-  'locacao-editar': 'Editar',
-  cobrancas: 'Cobranças',
-  'cobranca-nova': 'Nova Cobrança',
-  'cobranca-detalhe': 'Detalhes',
-  'cobranca-editar': 'Editar',
-  relatorios: 'Relatórios',
-  mapa: 'Mapa de Rotas',
-  agenda: 'Agenda',
-  manutencoes: 'Manutenções',
-  'manutencao-nova': 'Nova Manutenção',
-  relogios: 'Relógios',
-  'relogio-novo': 'Registrar Relógio',
-  'admin-usuarios': 'Usuários',
-  'admin-usuario-novo': 'Novo Usuário',
-  'admin-usuario-editar': 'Editar Usuário',
-  'admin-rotas': 'Rotas',
-  'admin-rota-nova': 'Nova Rota',
-  'admin-rota-editar': 'Editar Rota',
-  'admin-cadastros': 'Cadastros',
-  'admin-dispositivos': 'Dispositivos',
-  'admin-auditoria': 'Auditoria',
-  'admin-metas': 'Metas',
-  'admin-meta-nova': 'Nova Meta',
-  perfil: 'Perfil',
-}
 
 const viewParents: Record<string, string> = {
   'cliente-novo': 'clientes',
@@ -73,7 +35,7 @@ export function Breadcrumb() {
 
   const parent = viewParents[currentView]
   if (parent) {
-    items.push({ label: viewLabels[parent] || parent, view: parent as ViewType })
+    items.push({ label: viewLabels[parent as ViewType] || parent, view: parent as ViewType })
   }
 
   if (currentView !== 'dashboard') {

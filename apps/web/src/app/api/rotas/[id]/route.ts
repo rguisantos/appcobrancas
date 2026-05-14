@@ -4,6 +4,8 @@ import { getAuthSession } from '@/lib/auth-jwt'
 import { requireMutationRole, requireAdmin } from '@/lib/rbac'
 import { rotaSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { writeSyncLog } from '@/lib/sync-log'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function GET(
   _request: NextRequest,
@@ -22,8 +24,7 @@ export async function GET(
   if (!rota) return NextResponse.json({ error: 'Rota não encontrada' }, { status: 404 })
   return NextResponse.json(rota)
   } catch (error) {
-    console.error('Erro ao buscar rota:', error)
-    return NextResponse.json({ error: 'Erro ao buscar rota' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar rota')
   }
 }
 
@@ -59,12 +60,11 @@ export async function PUT(
       severidade: 'info',
     })
 
+    await writeSyncLog('rota', rota.id, 'update', rota as unknown as Record<string, unknown>, new Date())
+
     return NextResponse.json(rota)
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'issues' in error) {
-      return NextResponse.json({ error: 'Dados inválidos', details: (error as { issues: unknown }).issues }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Erro ao atualizar rota' }, { status: 500 })
+    return handleApiError(error, 'Erro ao atualizar rota')
   }
 }
 
@@ -95,9 +95,10 @@ export async function DELETE(
     severidade: 'aviso',
   })
 
+  await writeSyncLog('rota', rota.id, 'delete', null, new Date())
+
   return NextResponse.json({ message: 'Rota excluída com sucesso' })
   } catch (error) {
-    console.error('Erro ao excluir rota:', error)
-    return NextResponse.json({ error: 'Erro ao excluir rota' }, { status: 500 })
+    return handleApiError(error, 'Erro ao excluir rota')
   }
 }

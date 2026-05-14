@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/rbac'
 import { z } from 'zod/v4'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { hashPassword } from '@/lib/hash'
+import { handleApiError } from '@/lib/api-utils'
 
 const dispositivoSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório'),
@@ -34,8 +35,7 @@ export async function GET() {
 
   return NextResponse.json(data)
   } catch (error) {
-    console.error('Erro ao buscar dispositivos:', error)
-    return NextResponse.json({ error: 'Erro ao buscar dispositivos' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar dispositivos')
   }
 }
 
@@ -67,13 +67,9 @@ export async function POST(request: NextRequest) {
       severidade: 'seguranca',
     })
 
-    // Exclude senha from response
     const { senha: _senha, ...dispositivoSafe } = dispositivo
     return NextResponse.json(dispositivoSafe, { status: 201 })
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'issues' in error) {
-      return NextResponse.json({ error: 'Dados inválidos', details: (error as { issues: unknown }).issues }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Erro ao criar dispositivo' }, { status: 500 })
+    return handleApiError(error, 'Erro ao criar dispositivo')
   }
 }

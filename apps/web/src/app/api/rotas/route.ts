@@ -4,6 +4,8 @@ import { getAuthSession } from '@/lib/auth-jwt'
 import { requireMutationRole } from '@/lib/rbac'
 import { rotaSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { writeSyncLog } from '@/lib/sync-log'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -27,8 +29,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json(data)
   } catch (error) {
-    console.error('Erro ao buscar rotas:', error)
-    return NextResponse.json({ error: 'Erro ao buscar rotas' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar rotas')
   }
 }
 
@@ -51,11 +52,10 @@ export async function POST(request: NextRequest) {
       severidade: 'info',
     })
 
+    await writeSyncLog('rota', rota.id, 'create', rota as unknown as Record<string, unknown>, new Date())
+
     return NextResponse.json(rota, { status: 201 })
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'issues' in error) {
-      return NextResponse.json({ error: 'Dados inválidos', details: (error as { issues: unknown }).issues }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Erro ao criar rota' }, { status: 500 })
+    return handleApiError(error, 'Erro ao criar rota')
   }
 }
