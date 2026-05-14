@@ -23,7 +23,8 @@ export async function GET() {
     select: {
       id: true,
       nome: true,
-      // deviceKey excluded — sensitive authentication credential
+      deviceKey: true, // Admin needs to see deviceKey for setup/configuration
+      // senha excluded — hashed password must never be sent to frontend
       ativo: true,
       usuarioId: true,
       ultimoSync: true,

@@ -49,6 +49,7 @@ export async function PUT(
     const body = await request.json()
 
     // Support partial updates (e.g., for FIFO payment)
+    // NOTE: Direct status changes require admin role to prevent financial tampering
     if (body._partial && (body.valorRecebido !== undefined || body.status !== undefined)) {
       const partialSchema = z.object({
         _partial: z.literal(true),
@@ -58,12 +59,19 @@ export async function PUT(
       const partialData = partialSchema.parse(body)
       const updateData: Record<string, unknown> = {}
 
-      if (partialData.valorRecebido !== undefined) {
-        updateData.valorRecebido = partialData.valorRecebido
+      // Direct status changes require admin role — prevents Secretario from marking as Pago without payment
+      if (partialData.status !== undefined) {
+        if (session.tipoPermissao !== 'Administrador') {
+          return NextResponse.json(
+            { error: 'Apenas administradores podem alterar o status diretamente. Use o fluxo de pagamento.' },
+            { status: 403 }
+          )
+        }
+        updateData.status = partialData.status
       }
 
-      if (partialData.status !== undefined) {
-        updateData.status = partialData.status
+      if (partialData.valorRecebido !== undefined) {
+        updateData.valorRecebido = partialData.valorRecebido
       }
 
       // Recalculate saldo devedor if valorRecebido changed
@@ -80,6 +88,18 @@ export async function PUT(
       const cobranca = await db.cobranca.update({
         where: { id },
         data: { ...updateData, version: { increment: 1 } },
+      })
+
+      // Audit log for partial updates (security-relevant: financial data changes)
+      await registrarAuditoria({
+        usuarioId: session.userId,
+        acao: 'atualizar_cobranca_parcial',
+        entidade: 'cobranca',
+        entidadeId: id,
+        entidadeNome: `${existing.clienteNome} - ${existing.dataInicio}/${existing.dataFim}`,
+        antes: { valorRecebido: toNumber(existing.valorRecebido), status: existing.status },
+        depois: partialData as Record<string, unknown>,
+        severidade: 'seguranca',
       })
 
       return NextResponse.json(cobranca)
@@ -185,35 +205,14 @@ export async function PATCH(
     })
     const { valor, formaPagamento, dataPagamento, observacao } = pagamentoSchema.parse(body)
 
-    // Determine total for status calculation (read for status logic only, not for valorRecebido)
-    const totalClientePagaNum = toNumber(existing.totalClientePaga)
-    // Calculate expected new valorRecebido for status determination
-    const currentValorRecebido = toNumber(existing.valorRecebido)
-    const expectedValorRecebido = currentValorRecebido + valor
-
-    // Determine new status based on payment
-    let newStatus = existing.status
-    if (expectedValorRecebido >= totalClientePagaNum) {
-      newStatus = 'Pago'
-    } else if (expectedValorRecebido > 0 && expectedValorRecebido < totalClientePagaNum) {
-      newStatus = 'Parcial'
-    }
-
-    // Calculate new saldo devedor
-    const { saldoDevedorGerado: newSaldoDevedor } = calcularSaldoDevedor(
-      totalClientePagaNum,
-      expectedValorRecebido
-    )
-
-    // Set payment date if first payment
-    const dataPagamentoCobranca = (newStatus === 'Pago' || newStatus === 'Parcial') && !existing.dataPagamento
-      ? (dataPagamento ? new Date(dataPagamento) : new Date())
-      : existing.dataPagamento
-
-    // Create the payment record and update cobrança in a transaction
-    // Use atomic increment for valorRecebido to prevent race conditions
-    const [pagamento] = await db.$transaction([
-      db.pagamentoCobranca.create({
+    // Use a transaction with a re-read to fix the TOCTOU race condition:
+    // 1. Create payment record
+    // 2. Atomic increment of valorRecebido
+    // 3. Re-read the cobrança inside the transaction to get the actual post-increment value
+    // 4. Recalculate status and saldoDevedor from the real value
+    const result = await db.$transaction(async (tx) => {
+      // Create payment record
+      const pagamento = await tx.pagamentoCobranca.create({
         data: {
           cobrancaId: id,
           valor,
@@ -223,20 +222,57 @@ export async function PATCH(
           usuarioId: session.userId,
           usuarioNome: session.nome || null,
         },
-      }),
-      db.cobranca.update({
+      })
+
+      // Atomic increment of valorRecebido
+      await tx.cobranca.update({
         where: { id },
         data: {
           valorRecebido: { increment: valor },
-          saldoDevedorGerado: newSaldoDevedor,
-          status: newStatus,
-          dataPagamento: dataPagamentoCobranca,
           version: { increment: 1 },
         },
-      }),
-    ])
+      })
 
-    const newValorRecebido = expectedValorRecebido
+      // Re-read the cobrança to get the actual post-increment valorRecebido
+      const updatedCobranca = await tx.cobranca.findFirst({
+        where: { id, deletedAt: null },
+      })
+      if (!updatedCobranca) throw new Error('Cobrança não encontrada após atualização')
+
+      const actualValorRecebido = toNumber(updatedCobranca.valorRecebido)
+      const totalClientePagaNum = toNumber(updatedCobranca.totalClientePaga)
+
+      // Determine new status based on the actual (post-increment) value
+      let newStatus = updatedCobranca.status
+      if (actualValorRecebido >= totalClientePagaNum) {
+        newStatus = 'Pago'
+      } else if (actualValorRecebido > 0 && actualValorRecebido < totalClientePagaNum) {
+        newStatus = 'Parcial'
+      }
+
+      // Calculate new saldo devedor
+      const { saldoDevedorGerado: newSaldoDevedor } = calcularSaldoDevedor(
+        totalClientePagaNum,
+        actualValorRecebido
+      )
+
+      // Set payment date if first payment
+      const dataPagamentoCobranca = (newStatus === 'Pago' || newStatus === 'Parcial') && !updatedCobranca.dataPagamento
+        ? (dataPagamento ? new Date(dataPagamento) : new Date())
+        : updatedCobranca.dataPagamento
+
+      // Update status and saldoDevedor from the correct values
+      await tx.cobranca.update({
+        where: { id },
+        data: {
+          status: newStatus,
+          saldoDevedorGerado: newSaldoDevedor,
+          dataPagamento: dataPagamentoCobranca,
+        },
+      })
+
+      return { pagamento, newStatus, newSaldoDevedor, actualValorRecebido }
+    })
 
     // Audit log
     await registrarAuditoria({
@@ -249,18 +285,18 @@ export async function PATCH(
         valor,
         formaPagamento,
         dataPagamento,
-        novoStatus: newStatus,
-        novoValorRecebido: newValorRecebido,
+        novoStatus: result.newStatus,
+        novoValorRecebido: result.actualValorRecebido,
       },
       severidade: 'info',
     })
 
     return NextResponse.json({
-      pagamento,
+      pagamento: result.pagamento,
       cobrancaAtualizada: {
-        valorRecebido: newValorRecebido,
-        saldoDevedorGerado: newSaldoDevedor,
-        status: newStatus,
+        valorRecebido: result.actualValorRecebido,
+        saldoDevedorGerado: result.newSaldoDevedor,
+        status: result.newStatus,
       },
     })
   } catch (error) {

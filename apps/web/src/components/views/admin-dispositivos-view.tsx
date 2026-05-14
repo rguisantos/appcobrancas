@@ -48,7 +48,7 @@ interface Dispositivo {
   id: string
   nome: string
   deviceKey: string
-  senha: string
+  // senha intentionally excluded — device passwords must never be sent to the frontend
   ativo: boolean
   ultimoSync: string | null
   usuarioId: string | null
@@ -57,19 +57,25 @@ interface Dispositivo {
 }
 
 function generateRandomKey(length: number): string {
+  // Crypto-safe random generation instead of Math.random()
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  const array = new Uint32Array(length)
+  crypto.getRandomValues(array)
   let result = ''
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
+    result += chars.charAt(array[i] % chars.length)
   }
   return result
 }
 
 function generateRandomPassword(length: number): string {
+  // Crypto-safe random generation instead of Math.random()
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*'
+  const array = new Uint32Array(length)
+  crypto.getRandomValues(array)
   let result = ''
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
+    result += chars.charAt(array[i] % chars.length)
   }
   return result
 }

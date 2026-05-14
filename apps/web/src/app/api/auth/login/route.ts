@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
         permissoesWeb,
         rotasPermitidas,
       },
-      token,
+
     })
 
     response.cookies.set('auth-token', token, {

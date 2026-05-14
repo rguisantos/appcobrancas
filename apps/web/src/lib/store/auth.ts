@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { registerLogoutHandler } from '@/lib/fetch-client'
 
 interface User {
   id: string
@@ -84,3 +85,7 @@ export const useAuth = create<AuthState>((set) => ({
 
   clearError: () => set({ error: null }),
 }))
+
+// Register the logout handler so authFetch can trigger it on 401
+const store = useAuth
+registerLogoutHandler(() => store.getState().logout())

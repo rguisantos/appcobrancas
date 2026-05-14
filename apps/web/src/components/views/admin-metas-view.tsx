@@ -122,7 +122,7 @@ export function AdminMetasView() {
   const [formDataInicio, setFormDataInicio] = useState('')
   const [formDataFim, setFormDataFim] = useState('')
   const [formRotaId, setFormRotaId] = useState<string>('')
-  const [formStatus, setFormStatus] = useState<string>('ativa')
+  const [formStatus, setFormStatus] = useState<string>('Ativa')
 
   const isEditing = !!editingId
   const isNova = currentView === 'admin-meta-nova'
@@ -192,7 +192,7 @@ export function AdminMetasView() {
     setFormDataInicio('')
     setFormDataFim('')
     setFormRotaId('')
-    setFormStatus('ativa')
+    setFormStatus('Ativa')
     setEditingId(null)
   }
 
@@ -558,7 +558,7 @@ export function AdminMetasView() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ativa">Ativa</SelectItem>
+                    <SelectItem value="Ativa">Ativa</SelectItem>
                     <SelectItem value="concluida">Concluída</SelectItem>
                   </SelectContent>
                 </Select>

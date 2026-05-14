@@ -570,33 +570,33 @@ function ViewRouter({ currentView }: { currentView: ViewType }) {
     case 'clientes':
       return <ClientesView />
     case 'cliente-novo':
-      return <ClienteFormView />
+      return <ClienteFormView key="cliente-novo" />
     case 'cliente-editar':
-      return <ClienteFormView />
+      return <ClienteFormView key="cliente-editar" />
     case 'cliente-detalhe':
       return <ClienteDetalheView />
     case 'produtos':
       return <ProdutosView />
     case 'produto-novo':
-      return <ProdutoFormView />
+      return <ProdutoFormView key="produto-novo" />
     case 'produto-editar':
-      return <ProdutoFormView />
+      return <ProdutoFormView key="produto-editar" />
     case 'produto-detalhe':
       return <ProdutoDetalheView />
     case 'locacoes':
       return <LocacoesView />
     case 'locacao-nova':
-      return <LocacaoFormView />
+      return <LocacaoFormView key="locacao-nova" />
     case 'locacao-editar':
-      return <LocacaoFormView />
+      return <LocacaoFormView key="locacao-editar" />
     case 'locacao-detalhe':
       return <LocacaoDetalheView />
     case 'cobrancas':
       return <CobrancasView />
     case 'cobranca-nova':
-      return <CobrancaFormView />
+      return <CobrancaFormView key="cobranca-nova" />
     case 'cobranca-editar':
-      return <CobrancaFormView />
+      return <CobrancaFormView key="cobranca-editar" />
     case 'cobranca-detalhe':
       return <CobrancaDetalheView />
     case 'relatorios':
@@ -608,23 +608,23 @@ function ViewRouter({ currentView }: { currentView: ViewType }) {
     case 'manutencoes':
       return <ManutencoesView />
     case 'manutencao-nova':
-      return <ManutencoesView />
+      return <ManutencoesView key="manutencao-nova" />
     case 'relogios':
       return <RelogiosView />
     case 'relogio-novo':
-      return <RelogiosView />
+      return <RelogiosView key="relogio-novo" />
     case 'admin-usuarios':
       return <AdminUsuariosView />
     case 'admin-usuario-novo':
-      return <AdminUsuariosView />
+      return <AdminUsuariosView key="admin-usuario-novo" />
     case 'admin-usuario-editar':
-      return <AdminUsuariosView />
+      return <AdminUsuariosView key="admin-usuario-editar" />
     case 'admin-rotas':
       return <AdminRotasView />
     case 'admin-rota-nova':
-      return <AdminRotasView />
+      return <AdminRotasView key="admin-rota-nova" />
     case 'admin-rota-editar':
-      return <AdminRotasView />
+      return <AdminRotasView key="admin-rota-editar" />
     case 'admin-cadastros':
       return <AdminCadastrosView />
     case 'admin-dispositivos':
@@ -634,7 +634,7 @@ function ViewRouter({ currentView }: { currentView: ViewType }) {
     case 'admin-metas':
       return <AdminMetasView />
     case 'admin-meta-nova':
-      return <AdminMetasView />
+      return <AdminMetasView key="admin-meta-nova" />
     case 'perfil':
       return <PerfilView />
     case 'notificacoes':

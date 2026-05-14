@@ -96,7 +96,7 @@ export const cobrancaSchema = z.object({
 export const usuarioSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório'),
   email: z.string().email('Email inválido'),
-  senha: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres').optional(),
+  senha: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres').regex(/[A-Z]/, 'Deve conter ao menos uma letra maiúscula').regex(/[0-9]/, 'Deve conter ao menos um número').optional(),
   cpf: z.string().optional(),
   telefone: z.string().optional(),
   tipoPermissao: z.enum(['Administrador', 'Secretario', 'AcessoControlado']).default('AcessoControlado'),
@@ -110,6 +110,18 @@ export const usuarioSchema = z.object({
 export const loginSchema = z.object({
   email: z.string().email('Email inválido'),
   senha: z.string().min(1, 'Senha é obrigatória'),
+})
+
+// Device Login
+export const deviceLoginSchema = z.object({
+  deviceKey: z.string().min(1, 'deviceKey é obrigatória').max(255, 'deviceKey muito longo'),
+  senha: z.string().min(1, 'Senha é obrigatória'),
+})
+
+// Batch Cobranças
+export const batchCobrancaSchema = z.object({
+  action: z.enum(['marcar-atrasado', 'enviar-lembrete']),
+  cobrancaIds: z.array(z.string().min(1)).min(1, 'Pelo menos uma cobrança é obrigatória').max(100, 'Máximo de 100 cobranças por operação'),
 })
 
 // Meta

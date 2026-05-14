@@ -147,6 +147,8 @@ model Produto {
   @@index([statusProduto])
   @@index([deletedAt, statusProduto])
   @@index([tipoId, deletedAt])
+  @@index([descricaoId])
+  @@index([tamanhoId])
   @@map("produtos")
 }
 
@@ -199,6 +201,7 @@ model Locacao {
   @@index([status])
   @@index([produtoId, status])
   @@index([deletedAt, status])
+  @@index([clienteId, status])
   @@index([dataLocacao])
   @@map("locacoes")
 }
@@ -249,10 +252,11 @@ model Cobranca {
   @@index([status])
   @@index([produtoId, status])
   @@index([status, dataVencimento])
-  @@index([deletedAt, status])
   @@index([clienteId, status])
   @@index([deletedAt, status, dataVencimento])
   @@index([deletedAt, clienteId, status])
+  @@index([dataVencimento])
+  @@index([dataPagamento])
   @@map("cobrancas")
 }
 
@@ -320,6 +324,9 @@ model UsuarioRota {
 
   usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   rota      Rota     @relation(fields: [rotaId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([usuarioId, rotaId])
   @@map("usuarios_rotas")
@@ -403,7 +410,7 @@ model Meta {
   dataInicio  DateTime
   dataFim     DateTime
   rotaId      String?
-  status      String    @default("ativa")
+  status      String    @default("Ativa")
   criadoPor   String?
 
   rota        Rota?     @relation(fields: [rotaId], references: [id], onDelete: SetNull)
@@ -412,6 +419,9 @@ model Meta {
   updatedAt   DateTime  @updatedAt
 
   @@index([updatedAt])
+  @@index([rotaId])
+  @@index([criadoPor])
+  @@index([status])
   @@map("metas")
 }
 
@@ -493,6 +503,7 @@ model SyncLog {
   @@index([entidade, updatedAt])
   @@index([updatedAt])
   @@index([entidadeId])
+  @@index([entidade, entidadeId])
   @@map("sync_logs")
 }
 

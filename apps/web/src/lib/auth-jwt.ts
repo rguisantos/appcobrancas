@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from 'jose'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { JWT_SECRET, JWT_EXPIRATION } from './jwt-config'
+import { validateSession } from './session'
 
 export interface AuthPayload {
   userId: string
@@ -28,9 +29,24 @@ export async function verifyToken(token: string): Promise<AuthPayload | null> {
   }
 }
 
+/**
+ * Get the current authenticated session.
+ * Supports both cookie-based auth (web) and Bearer token auth (mobile).
+ * Also validates the session against the database to reject revoked tokens.
+ */
 export async function getAuthSession(): Promise<AuthPayload | null> {
+  // Try cookie first (web browser), then fall back to x-raw-token header set by middleware (mobile Bearer)
   const cookieStore = await cookies()
   const token = cookieStore.get('auth-token')?.value
+    || (await headers()).get('x-raw-token')
   if (!token) return null
-  return verifyToken(token)
+
+  const payload = await verifyToken(token)
+  if (!payload) return null
+
+  // Validate session exists in DB (not revoked)
+  const isValid = await validateSession(token)
+  if (!isValid) return null
+
+  return payload
 }

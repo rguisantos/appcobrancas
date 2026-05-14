@@ -279,10 +279,13 @@ export function ClienteFormView() {
   }
 
   const updateContato = (index: number, field: string, value: string) => {
-    setContatosList(prev => prev.map((c, i) => i === index ? { ...c, [field]: value } : c))
-    // Also update formData.contatos to keep in sync
-    const updated = contatosList.map((c, i) => i === index ? { ...c, [field]: value } : c)
-    setFormData(prev => ({ ...prev, contatos: updated.filter(c => c.nome || c.telefone) }))
+    // Use functional update to avoid stale closure — derive from the latest state
+    setContatosList(prev => {
+      const updated = prev.map((c, i) => i === index ? { ...c, [field]: value } : c)
+      // Sync formData.contatos from the updated list (not from stale closure)
+      setFormData(prevFormData => ({ ...prevFormData, contatos: updated.filter(c => c.nome || c.telefone) }))
+      return updated
+    })
   }
 
   // ViaCEP lookup - only fills empty fields

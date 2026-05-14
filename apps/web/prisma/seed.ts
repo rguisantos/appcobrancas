@@ -19,13 +19,13 @@ async function main() {
   console.log('✅ Database connection established')
 
   // Create admin user
-  const existingAdmin = await prisma.usuario.findUnique({ where: { email: 'admin@locacao.com' } })
+  const existingAdmin = await prisma.usuario.findUnique({ where: { email: process.env.ADMIN_EMAIL || 'admin@locacao.com' } })
   if (!existingAdmin) {
     const senhaHash = await hashPassword('admin123')
     await prisma.usuario.create({
       data: {
         nome: 'Administrador',
-        email: 'admin@locacao.com',
+        email: process.env.ADMIN_EMAIL || 'admin@locacao.com',
         senha: senhaHash,
         tipoPermissao: 'Administrador',
         permissoesWeb: JSON.stringify(PERMISSOES_WEB_ADMIN),
@@ -220,7 +220,7 @@ async function main() {
   console.log('✅ Cobranças criadas')
 
   // Create sample notificações for admin
-  const admin = await prisma.usuario.findUnique({ where: { email: 'admin@locacao.com' } })
+  const admin = await prisma.usuario.findUnique({ where: { email: process.env.ADMIN_EMAIL || 'admin@locacao.com' } })
   if (admin) {
     const notificacoes = [
       { tipo: 'cobranca_vencida', titulo: 'Cobrança Vencida', mensagem: 'A cobrança de Bar do João venceu há 5 dias.' },

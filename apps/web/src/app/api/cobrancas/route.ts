@@ -142,7 +142,27 @@ export async function GET(request: NextRequest) {
       db.cobranca.count({ where }),
     ])
 
-    return NextResponse.json({ data, total, page, totalPages: Math.ceil(total / limit) })
+    // Compute server-side summary across all matching records (not just current page)
+    const [totalRecebido, totalPendente, totalAtrasado, totalGeral] = await Promise.all([
+      db.cobranca.aggregate({ where, _sum: { valorRecebido: true }, _count: true }),
+      db.cobranca.aggregate({ where: { ...where, status: 'Pendente' }, _sum: { totalClientePaga: true } }),
+      db.cobranca.aggregate({ where: { ...where, status: 'Atrasado' }, _sum: { totalClientePaga: true, saldoDevedorGerado: true } }),
+      db.cobranca.aggregate({ where, _sum: { totalClientePaga: true } }),
+    ])
+
+    return NextResponse.json({
+      data,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+      _summary: {
+        totalRecebido: Number(totalRecebido._sum.valorRecebido || 0),
+        totalPendente: Number(totalPendente._sum.totalClientePaga || 0),
+        totalAtrasado: Number(totalAtrasado._sum.saldoDevedorGerado || 0),
+        totalGeral: Number(totalGeral._sum.totalClientePaga || 0),
+        countRecebido: totalRecebido._count,
+      },
+    })
   } catch (error) {
     return handleApiError(error, 'Erro ao buscar cobranças')
   }

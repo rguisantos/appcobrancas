@@ -6,6 +6,12 @@ import { registrarAuditoria } from '@/lib/auditoria'
 import { checkRateLimit, resetRateLimit } from '@/lib/rate-limit'
 import { hashToken } from '@/lib/session'
 import { handleApiError } from '@/lib/api-utils'
+import { z } from 'zod/v4'
+
+const deviceLoginSchema = z.object({
+  deviceKey: z.string().min(1).max(255, 'deviceKey muito longo'),
+  senha: z.string().min(1, 'Senha é obrigatória'),
+})
 
 /**
  * POST /api/auth/device-login
@@ -15,18 +21,11 @@ import { handleApiError } from '@/lib/api-utils'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { deviceKey, senha } = body
-
-    if (!deviceKey || !senha) {
-      return NextResponse.json(
-        { error: 'deviceKey e senha sao obrigatorios' },
-        { status: 400 }
-      )
-    }
+    const data = deviceLoginSchema.parse(body)
 
     // Rate limit by deviceKey + IP to prevent brute-force
     const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
-    const rateLimitId = `device:${deviceKey}:${ip}`
+    const rateLimitId = `device:${data.deviceKey}:${ip}`
     const rateLimitResult = checkRateLimit(rateLimitId)
     if (!rateLimitResult.allowed) {
       const retryAfterSeconds = Math.ceil((rateLimitResult.resetAtMs - Date.now()) / 1000)
@@ -37,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     const dispositivo = await db.dispositivo.findUnique({
-      where: { deviceKey },
+      where: { deviceKey: data.deviceKey },
       include: { usuario: true },
     })
 
@@ -49,7 +48,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Dispositivo inativo' }, { status: 403 })
     }
 
-    const senhaValida = await verifyPassword(senha, dispositivo.senha)
+    const senhaValida = await verifyPassword(data.senha, dispositivo.senha)
     if (!senhaValida) {
       await registrarAuditoria({
         acao: 'device_login_falha',
@@ -96,25 +95,26 @@ export async function POST(request: NextRequest) {
 
     const token = await signToken(payload)
 
-    // Create session record in database (hashed token)
-    await db.sessao.create({
-      data: {
-        usuarioId: usuario?.id || dispositivo.id,
-        token: hashToken(token),
-        dispositivo: dispositivo.nome || 'Mobile',
-        ip: request.headers.get('x-forwarded-for') || null,
-        expiraEm: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    })
+    // Wrap session creation + device update in a transaction for atomicity
+    const sessionUsuarioId = usuario?.id || dispositivo.id
+    await db.$transaction([
+      db.sessao.create({
+        data: {
+          usuarioId: sessionUsuarioId,
+          token: hashToken(token),
+          dispositivo: dispositivo.nome || 'Mobile',
+          ip: request.headers.get('x-forwarded-for') || null,
+          expiraEm: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
+      }),
+      db.dispositivo.update({
+        where: { id: dispositivo.id },
+        data: { ultimoSync: new Date() },
+      }),
+    ])
 
     // Reset rate limit on successful login
     resetRateLimit(rateLimitId)
-
-    // Update last sync timestamp
-    await db.dispositivo.update({
-      where: { id: dispositivo.id },
-      data: { ultimoSync: new Date() },
-    })
 
     await registrarAuditoria({
       usuarioId: usuario?.id,

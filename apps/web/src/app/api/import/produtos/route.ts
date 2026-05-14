@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
 
           success++
         } catch (err) {
-          const message = err instanceof Error ? err.message : 'Erro ao criar produto'
+          const message = err instanceof Error && err.name === 'ZodError' ? err.message : 'Erro ao criar registro. Verifique os dados e tente novamente.'
           errors.push({ row: rowIndex, error: message })
         }
       })

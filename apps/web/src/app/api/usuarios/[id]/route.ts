@@ -79,8 +79,17 @@ export async function PUT(
 
     // Se senha foi fornecida e não está vazia, verificar senha atual e hash a nova
     if (data.senha && data.senha.trim() !== '') {
-      // If senhaAtual is provided (self-service password change), verify it
+      // If changing own password, require current password verification
+      const isSelfUpdate = id === session.userId
       const senhaAtual = (body as Record<string, unknown>).senhaAtual as string | undefined
+
+      if (isSelfUpdate && !senhaAtual) {
+        return NextResponse.json(
+          { error: 'Senha atual é obrigatória para alterar sua própria senha' },
+          { status: 400 }
+        )
+      }
+
       if (senhaAtual) {
         const isValid = await verifyPassword(senhaAtual, existing.senha)
         if (!isValid) {

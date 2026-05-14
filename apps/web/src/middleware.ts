@@ -2,14 +2,27 @@ import { NextRequest, NextResponse } from 'next/server'
 import { jwtVerify } from 'jose'
 import { JWT_SECRET } from './lib/jwt-config'
 
-// Routes that don't require authentication
+// Routes that don't require authentication (exact matches only)
 const PUBLIC_ROUTES = [
   '/api/auth/login',
   '/api/auth/device-login',
   '/api/auth/logout',
   '/api/health',
+]
+
+// Route prefixes that are public (exact prefix, not substring match)
+const PUBLIC_PREFIXES = [
   '/api/cron',
 ]
+
+/** Check if a pathname matches a public route */
+function isPublicRoute(pathname: string): boolean {
+  // Exact match
+  if (PUBLIC_ROUTES.includes(pathname)) return true
+  // Prefix match — must be followed by / or be the exact prefix
+  if (PUBLIC_PREFIXES.some(prefix => pathname === prefix || pathname.startsWith(prefix + '/'))) return true
+  return false
+}
 
 /** Restrictive CORS origins in production; dev-friendly default otherwise. */
 function getAllowedOrigin(): string {
@@ -26,11 +39,12 @@ function addCorsHeaders(response: NextResponse | Response) {
   const origin = getAllowedOrigin()
   if (origin) {
     response.headers.set('Access-Control-Allow-Origin', origin)
+    // Only set Allow-Credentials when we have a specific origin
+    response.headers.set('Access-Control-Allow-Credentials', 'true')
   }
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cron-secret')
   response.headers.set('Access-Control-Max-Age', '86400')
-  response.headers.set('Access-Control-Allow-Credentials', 'true')
   return response
 }
 
@@ -43,8 +57,8 @@ export async function middleware(request: NextRequest) {
     return addCorsHeaders(response)
   }
 
-  // Allow public routes
-  if (PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
+  // Allow public routes (exact match + controlled prefix match)
+  if (isPublicRoute(pathname)) {
     const response = NextResponse.next()
     if (pathname.startsWith('/api/')) {
       addCorsHeaders(response)

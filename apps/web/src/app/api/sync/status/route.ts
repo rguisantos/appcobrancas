@@ -6,6 +6,7 @@ import { handleApiError } from '@/lib/api-utils'
 /**
  * GET /api/sync/status?deviceId=xxx
  * Returns the sync status for a device: cursors per entity and pending changes.
+ * Only admins or the device's associated user can query device status.
  */
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -27,6 +28,13 @@ export async function GET(request: NextRequest) {
 
     if (!dispositivo) {
       return NextResponse.json({ error: 'Dispositivo nao encontrado' }, { status: 404 })
+    }
+
+    // Authorization check: only admins or the device's associated user can view device status
+    const isAdmin = session.tipoPermissao === 'Administrador'
+    const isDeviceUser = dispositivo.usuarioId === session.userId
+    if (!isAdmin && !isDeviceUser) {
+      return NextResponse.json({ error: 'Sem permissão para acessar este dispositivo' }, { status: 403 })
     }
 
     // Build cursors map

@@ -4,6 +4,12 @@ import { requireAdmin } from '@/lib/rbac'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { handleApiError } from '@/lib/api-utils'
+import { z } from 'zod/v4'
+
+const batchSchema = z.object({
+  action: z.enum(['marcar-atrasado', 'enviar-lembrete']),
+  cobrancaIds: z.array(z.string().min(1)).min(1, 'Pelo menos uma cobrança é obrigatória').max(100, 'Máximo de 100 cobranças por operação'),
+})
 
 export async function POST(request: NextRequest) {
   const { authorized, response, session } = await requireAdmin()
@@ -20,31 +26,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { action, cobrancaIds } = body as {
-      action: 'marcar-atrasado' | 'enviar-lembrete'
-      cobrancaIds: string[]
-    }
-
-    if (!action || !cobrancaIds || !Array.isArray(cobrancaIds) || cobrancaIds.length === 0) {
-      return NextResponse.json(
-        { error: 'action e cobrancaIds são obrigatórios' },
-        { status: 400 }
-      )
-    }
-
-    if (cobrancaIds.length > 100) {
-      return NextResponse.json(
-        { error: 'Máximo de 100 cobranças por operação batch' },
-        { status: 400 }
-      )
-    }
-
-    if (action !== 'marcar-atrasado' && action !== 'enviar-lembrete') {
-      return NextResponse.json(
-        { error: 'Ação inválida. Use: marcar-atrasado ou enviar-lembrete' },
-        { status: 400 }
-      )
-    }
+    const { action, cobrancaIds } = batchSchema.parse(body)
 
     if (action === 'marcar-atrasado') {
       // Update all specified cobranças with status 'Pendente' to 'Atrasado'
