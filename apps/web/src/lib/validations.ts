@@ -16,7 +16,7 @@ export const clienteSchema = z.object({
   contatos: z.array(z.object({
     nome: z.string().min(1, 'Nome do contato é obrigatório'),
     telefone: z.string().min(1, 'Telefone do contato é obrigatório'),
-    relacao: z.string().optional(),
+    funcao: z.string().optional(),
   })).nullable().optional(),
   cep: z.string().default(''),
   logradouro: z.string().default(''),

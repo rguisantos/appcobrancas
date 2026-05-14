@@ -215,6 +215,19 @@ export function ClienteDetalheView() {
     }))
   }, [cliente?.cobrancas])
 
+  // Financial summary calculations (computed before early returns for hooks rules)
+  const { cobrancasAtivas, totalRecebido, totalPendente, totalAtrasado } = useMemo(() => {
+    const ativas = cliente?.cobrancas?.filter(c => c.status !== 'Cancelada') || []
+    const recebido = ativas.reduce((acc, c) => acc + (c.valorRecebido || 0), 0)
+    const pendente = ativas
+      .filter(c => c.status === 'Pendente' || c.status === 'Parcial')
+      .reduce((acc, c) => acc + (c.totalClientePaga - c.valorRecebido), 0)
+    const atrasado = ativas
+      .filter(c => c.status === 'Atrasado')
+      .reduce((acc, c) => acc + c.totalClientePaga, 0)
+    return { cobrancasAtivas: ativas, totalRecebido: recebido, totalPendente: pendente, totalAtrasado: atrasado }
+  }, [cliente?.cobrancas])
+
   if (loading) {
     return <DetailSkeleton />
   }
@@ -226,16 +239,6 @@ export function ClienteDetalheView() {
       </div>
     )
   }
-
-  // Financial summary calculations
-  const cobrancasAtivas = cliente.cobrancas?.filter(c => c.status !== 'Cancelada') || []
-  const totalRecebido = cobrancasAtivas.reduce((acc, c) => acc + (c.valorRecebido || 0), 0)
-  const totalPendente = cobrancasAtivas
-    .filter(c => c.status === 'Pendente' || c.status === 'Parcial')
-    .reduce((acc, c) => acc + (c.totalClientePaga - c.valorRecebido), 0)
-  const totalAtrasado = cobrancasAtivas
-    .filter(c => c.status === 'Atrasado')
-    .reduce((acc, c) => acc + c.totalClientePaga, 0)
 
   const fullAddress = [
     cliente.logradouro,

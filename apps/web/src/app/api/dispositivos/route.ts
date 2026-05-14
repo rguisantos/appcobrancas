@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getAuthSession } from '@/lib/auth-jwt'
+import { requireAdmin } from '@/lib/rbac'
 import { z } from 'zod/v4'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { hashPassword } from '@/lib/hash'
@@ -14,11 +14,20 @@ const dispositivoSchema = z.object({
 })
 
 export async function GET() {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireAdmin()
+  if (!authorized || !session) return response
 
   try {
   const data = await db.dispositivo.findMany({
+    select: {
+      id: true,
+      nome: true,
+      deviceKey: true,
+      ativo: true,
+      usuarioId: true,
+      createdAt: true,
+      updatedAt: true,
+    },
     orderBy: { createdAt: 'desc' },
   })
 
@@ -30,8 +39,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireAdmin()
+  if (!authorized || !session) return response
 
   try {
     const body = await request.json()
@@ -57,7 +66,9 @@ export async function POST(request: NextRequest) {
       severidade: 'seguranca',
     })
 
-    return NextResponse.json(dispositivo, { status: 201 })
+    // Exclude senha from response
+    const { senha: _senha, ...dispositivoSafe } = dispositivo
+    return NextResponse.json(dispositivoSafe, { status: 201 })
   } catch (error: unknown) {
     if (error && typeof error === 'object' && 'issues' in error) {
       return NextResponse.json({ error: 'Dados inválidos', details: (error as { issues: unknown }).issues }, { status: 400 })

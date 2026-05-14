@@ -25,8 +25,9 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    if (!usuario || usuario.status !== 'Ativo') {
-      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
+    if (!usuario) return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
+    if (usuario.status !== 'Ativo') {
+      return NextResponse.json({ error: 'Usuário inativo' }, { status: 403 })
     }
 
     return NextResponse.json({

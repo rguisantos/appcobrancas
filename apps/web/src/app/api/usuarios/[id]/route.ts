@@ -127,6 +127,10 @@ export async function DELETE(
   const existing = await db.usuario.findFirst({ where: { id, deletedAt: null } })
   if (!existing) return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
 
+  if (id === session.userId) {
+    return NextResponse.json({ error: 'Não é possível excluir seu próprio usuário' }, { status: 400 })
+  }
+
   const usuario = await db.usuario.update({
     where: { id },
     data: { deletedAt: new Date() },
