@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireMutationRole, requireAdmin } from '@/lib/rbac'
 import { historicoRelogioSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
 
@@ -8,8 +9,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized || !session) return response
 
   const { id } = await params
   const existing = await db.historicoRelogio.findFirst({ where: { id } })

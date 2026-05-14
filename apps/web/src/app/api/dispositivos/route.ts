@@ -22,9 +22,10 @@ export async function GET() {
     select: {
       id: true,
       nome: true,
-      deviceKey: true,
+      // deviceKey excluded — sensitive authentication credential
       ativo: true,
       usuarioId: true,
+      ultimoSync: true,
       createdAt: true,
       updatedAt: true,
     },

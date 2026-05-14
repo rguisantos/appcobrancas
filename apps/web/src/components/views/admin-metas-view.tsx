@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
+import { sanitizeColor } from '@/lib/sanitize'
 import { format, parseISO } from 'date-fns'
 import { Progress } from '@/components/ui/progress'
 import {
@@ -411,7 +412,7 @@ export function AdminMetasView() {
                     <div className="flex items-center gap-2 text-xs mb-3">
                       <div
                         className="h-2.5 w-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: meta.rota.cor }}
+                        style={{ backgroundColor: sanitizeColor(meta.rota.cor) }}
                       />
                       <span className="text-muted-foreground">{meta.rota.descricao}</span>
                     </div>
@@ -538,7 +539,7 @@ export function AdminMetasView() {
                       <div className="flex items-center gap-2">
                         <div
                           className="h-2.5 w-2.5 rounded-full"
-                          style={{ backgroundColor: rota.cor }}
+                          style={{ backgroundColor: sanitizeColor(rota.cor) }}
                         />
                         {rota.descricao}
                       </div>

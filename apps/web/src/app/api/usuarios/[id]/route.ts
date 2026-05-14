@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireAdmin } from '@/lib/rbac'
 import { usuarioSchema } from '@/lib/validations'
-import { hashPassword } from '@/lib/hash'
+import { hashPassword, verifyPassword } from '@/lib/hash'
 import { registrarAuditoria } from '@/lib/auditoria'
 
 const USUARIO_SELECT = {
@@ -28,8 +29,8 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireAdmin()
+  if (!authorized || !session) return response
 
   try {
   const { id } = await params
@@ -50,12 +51,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
-
-  if (session.tipoPermissao !== 'Administrador') {
-    return NextResponse.json({ error: 'Acesso restrito a administradores' }, { status: 403 })
-  }
+  const { authorized, response, session } = await requireAdmin()
+  if (!authorized || !session) return response
 
   const { id } = await params
   const existing = await db.usuario.findFirst({ where: { id, deletedAt: null } })
@@ -80,8 +77,16 @@ export async function PUT(
       version: { increment: 1 },
     }
 
-    // Se senha foi fornecida e não está vazia, hash e atualize
+    // Se senha foi fornecida e não está vazia, verificar senha atual e hash a nova
     if (data.senha && data.senha.trim() !== '') {
+      // If senhaAtual is provided (self-service password change), verify it
+      const senhaAtual = (body as Record<string, unknown>).senhaAtual as string | undefined
+      if (senhaAtual) {
+        const isValid = await verifyPassword(senhaAtual, existing.senha)
+        if (!isValid) {
+          return NextResponse.json({ error: 'Senha atual incorreta' }, { status: 400 })
+        }
+      }
       updateData.senha = await hashPassword(data.senha)
     }
 
@@ -115,12 +120,8 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
-
-  if (session.tipoPermissao !== 'Administrador') {
-    return NextResponse.json({ error: 'Acesso restrito a administradores' }, { status: 403 })
-  }
+  const { authorized, response, session } = await requireAdmin()
+  if (!authorized || !session) return response
 
   try {
   const { id } = await params

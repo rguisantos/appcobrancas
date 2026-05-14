@@ -6,6 +6,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
 import { useNavigation } from '@/lib/store/navigation'
+import { sanitizeColor } from '@/lib/sanitize'
 
 // Fix default marker icon
 const defaultIcon = L.icon({
@@ -483,7 +484,7 @@ export default function MapInner({
             key={line.rotaId}
             positions={line.positions}
             pathOptions={{
-              color: line.cor,
+              color: sanitizeColor(line.cor),
               weight: 3,
               opacity: 0.5,
               dashArray: '8, 12',

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireMutationRole } from '@/lib/rbac'
 import { registrarAuditoria } from '@/lib/auditoria'
 
 interface CsvRow {
@@ -77,8 +78,8 @@ async function findOrCreateTamanho(nome: string): Promise<{ id: string; nome: st
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized || !session) return response
 
   try {
     const formData = await request.formData()

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireMutationRole, requireAdmin } from '@/lib/rbac'
 import { manutencaoSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { safeLimit, safePage } from '@/lib/api-utils'
@@ -41,8 +42,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized || !session) return response
 
   try {
     const body = await request.json()
@@ -52,29 +53,34 @@ export async function POST(request: NextRequest) {
     const produto = await db.produto.findFirst({ where: { id: data.produtoId } })
     if (!produto) return NextResponse.json({ error: 'Produto não encontrado' }, { status: 400 })
 
-    const manutencao = await db.manutencao.create({
-      data: {
-        produtoId: data.produtoId,
-        produtoIdentificador: produto.identificador,
-        tipo: data.tipo,
-        descricao: data.descricao,
-        dataInicio: new Date(data.dataInicio),
-        dataFim: data.dataFim ? new Date(data.dataFim) : undefined,
-        custo: data.custo,
-        status: data.status,
-        observacao: data.observacao,
-        usuarioId: session.userId,
-        usuarioNome: session.nome,
-      },
-    })
-
-    // Se manutenção em andamento, atualizar status do produto
-    if (data.status === 'EmAndamento') {
-      await db.produto.update({
-        where: { id: data.produtoId },
-        data: { statusProduto: 'Manutenção' },
+    // Wrap create + produto status update in transaction for atomicity
+    const manutencao = await db.$transaction(async (tx) => {
+      const created = await tx.manutencao.create({
+        data: {
+          produtoId: data.produtoId,
+          produtoIdentificador: produto.identificador,
+          tipo: data.tipo,
+          descricao: data.descricao,
+          dataInicio: new Date(data.dataInicio),
+          dataFim: data.dataFim ? new Date(data.dataFim) : undefined,
+          custo: data.custo,
+          status: data.status,
+          observacao: data.observacao,
+          usuarioId: session.userId,
+          usuarioNome: session.nome,
+        },
       })
-    }
+
+      // Se manutenção em andamento, atualizar status do produto
+      if (data.status === 'EmAndamento') {
+        await tx.produto.update({
+          where: { id: data.produtoId },
+          data: { statusProduto: 'Manutenção' },
+        })
+      }
+
+      return created
+    })
 
     await registrarAuditoria({
       usuarioId: session.userId,

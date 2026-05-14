@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireMutationRole, requireAdmin } from '@/lib/rbac'
 import { z } from 'zod/v4'
 import { registrarAuditoria } from '@/lib/auditoria'
 
@@ -12,8 +13,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized || !session) return response
 
   const { id } = await params
   const existing = await db.tipoProduto.findFirst({ where: { id } })
@@ -53,8 +54,8 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireAdmin()
+  if (!authorized || !session) return response
 
   const { id } = await params
   const existing = await db.tipoProduto.findFirst({ where: { id } })

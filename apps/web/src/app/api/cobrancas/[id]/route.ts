@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { requireMutationRole, requireAdmin } from '@/lib/rbac'
 import { cobrancaSchema } from '@/lib/validations'
+import { z } from 'zod/v4'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { calcularCobranca, calcularSaldoDevedor } from '@/lib/cobranca-calculos'
 import { writeSyncLog } from '@/lib/sync-log'
@@ -50,33 +51,30 @@ export async function PUT(
 
     // Support partial updates (e.g., for FIFO payment)
     if (body._partial && (body.valorRecebido !== undefined || body.status !== undefined)) {
+      const partialSchema = z.object({
+        _partial: z.literal(true),
+        valorRecebido: z.number().min(0).finite().optional(),
+        status: z.enum(['Pendente', 'Pago', 'Parcial', 'Atrasado']).optional(),
+      })
+      const partialData = partialSchema.parse(body)
       const updateData: Record<string, unknown> = {}
 
-      // Validate valorRecebido: must be a non-negative number
-      if (body.valorRecebido !== undefined) {
-        if (typeof body.valorRecebido !== 'number' || body.valorRecebido < 0) {
-          return NextResponse.json({ error: 'valorRecebido deve ser um número não negativo' }, { status: 400 })
-        }
-        updateData.valorRecebido = body.valorRecebido
+      if (partialData.valorRecebido !== undefined) {
+        updateData.valorRecebido = partialData.valorRecebido
       }
 
-      // Validate status: must be one of the allowed values
-      const validStatuses = ['Pendente', 'Pago', 'Parcial', 'Atrasado']
-      if (body.status !== undefined) {
-        if (!validStatuses.includes(body.status)) {
-          return NextResponse.json({ error: `status deve ser um de: ${validStatuses.join(', ')}` }, { status: 400 })
-        }
-        updateData.status = body.status
+      if (partialData.status !== undefined) {
+        updateData.status = partialData.status
       }
 
       // Recalculate saldo devedor if valorRecebido changed
-      if (body.valorRecebido !== undefined) {
-        const { saldoDevedorGerado } = calcularSaldoDevedor(toNumber(existing.totalClientePaga), body.valorRecebido)
+      if (partialData.valorRecebido !== undefined) {
+        const { saldoDevedorGerado } = calcularSaldoDevedor(toNumber(existing.totalClientePaga), partialData.valorRecebido)
         updateData.saldoDevedorGerado = saldoDevedorGerado
       }
 
       // Set payment date if status changed to Pago/Parcial
-      if ((body.status === 'Pago' || body.status === 'Parcial') && !existing.dataPagamento) {
+      if ((partialData.status === 'Pago' || partialData.status === 'Parcial') && !existing.dataPagamento) {
         updateData.dataPagamento = new Date()
       }
 
@@ -181,33 +179,32 @@ export async function PATCH(
 
   try {
     const body = await request.json()
-    const { valor, formaPagamento, dataPagamento, observacao } = body
+    const pagamentoSchema = z.object({
+      valor: z.number().positive('Valor do pagamento deve ser maior que zero').finite(),
+      formaPagamento: z.enum(['Dinheiro', 'Pix', 'Cartão', 'Transferência'], { message: 'Forma de pagamento inválida' }),
+      dataPagamento: z.string().optional(),
+      observacao: z.string().optional(),
+    })
+    const { valor, formaPagamento, dataPagamento, observacao } = pagamentoSchema.parse(body)
 
-    if (!valor || valor <= 0) {
-      return NextResponse.json({ error: 'Valor do pagamento deve ser maior que zero' }, { status: 400 })
-    }
-
-    const validFormasPagamento = ['Dinheiro', 'Pix', 'Cartão', 'Transferência']
-    if (!validFormasPagamento.includes(formaPagamento)) {
-      return NextResponse.json({ error: 'Forma de pagamento inválida' }, { status: 400 })
-    }
-
-    // Calculate new valorRecebido (cumulative)
-    const newValorRecebido = toNumber(existing.valorRecebido) + valor
+    // Determine total for status calculation (read for status logic only, not for valorRecebido)
+    const totalClientePagaNum = toNumber(existing.totalClientePaga)
+    // Calculate expected new valorRecebido for status determination
+    const currentValorRecebido = toNumber(existing.valorRecebido)
+    const expectedValorRecebido = currentValorRecebido + valor
 
     // Determine new status based on payment
-    const totalClientePagaNum = toNumber(existing.totalClientePaga)
     let newStatus = existing.status
-    if (newValorRecebido >= totalClientePagaNum) {
+    if (expectedValorRecebido >= totalClientePagaNum) {
       newStatus = 'Pago'
-    } else if (newValorRecebido > 0 && newValorRecebido < totalClientePagaNum) {
+    } else if (expectedValorRecebido > 0 && expectedValorRecebido < totalClientePagaNum) {
       newStatus = 'Parcial'
     }
 
     // Calculate new saldo devedor
     const { saldoDevedorGerado: newSaldoDevedor } = calcularSaldoDevedor(
       totalClientePagaNum,
-      newValorRecebido
+      expectedValorRecebido
     )
 
     // Set payment date if first payment
@@ -216,6 +213,7 @@ export async function PATCH(
       : existing.dataPagamento
 
     // Create the payment record and update cobrança in a transaction
+    // Use atomic increment for valorRecebido to prevent race conditions
     const [pagamento] = await db.$transaction([
       db.pagamentoCobranca.create({
         data: {
@@ -231,7 +229,7 @@ export async function PATCH(
       db.cobranca.update({
         where: { id },
         data: {
-          valorRecebido: newValorRecebido,
+          valorRecebido: { increment: valor },
           saldoDevedorGerado: newSaldoDevedor,
           status: newStatus,
           dataPagamento: dataPagamentoCobranca,
@@ -239,6 +237,8 @@ export async function PATCH(
         },
       }),
     ])
+
+    const newValorRecebido = expectedValorRecebido
 
     // Audit log
     await registrarAuditoria({

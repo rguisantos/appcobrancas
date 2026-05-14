@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigation } from '@/lib/store/navigation'
+import { sanitizeColor } from '@/lib/sanitize'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -435,13 +436,13 @@ export function ClientesView() {
                         >
                           <span
                             className="h-3 w-3 rounded-full shrink-0"
-                            style={{ backgroundColor: rota.cor }}
+                            style={{ backgroundColor: sanitizeColor(rota.cor) }}
                           />
-                          <span className="text-xs font-medium truncate max-w-[100px]" style={{ color: rota.cor }}>
+                          <span className="text-xs font-medium truncate max-w-[100px]" style={{ color: sanitizeColor(rota.cor) }}>
                             {rota.descricao}
                           </span>
                           <span className="text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1"
-                            style={{ backgroundColor: `${rota.cor}20`, color: rota.cor }}
+                            style={{ backgroundColor: `${rota.cor}20`, color: sanitizeColor(rota.cor) }}
                           >
                             {count}
                           </span>
@@ -522,7 +523,7 @@ export function ClientesView() {
                           className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium border-0"
                           style={{
                             backgroundColor: `${cliente.rota.cor}20`,
-                            color: cliente.rota.cor,
+                            color: sanitizeColor(cliente.rota.cor),
                           }}
                         >
                           {cliente.rota.descricao}

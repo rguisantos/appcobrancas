@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigation } from '@/lib/store/navigation'
+import { sanitizeColor } from '@/lib/sanitize'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -288,7 +289,7 @@ export function AdminRotasView() {
                   <div className="flex items-center gap-3">
                     <div
                       className="h-8 w-8 rounded-full shrink-0 border-2 border-white shadow-sm"
-                      style={{ backgroundColor: rota.cor }}
+                      style={{ backgroundColor: sanitizeColor(rota.cor) }}
                     />
                     <div>
                       <h3

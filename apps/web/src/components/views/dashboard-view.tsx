@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { useNavigation, type ViewType } from '@/lib/store/navigation'
 import { useAuth } from '@/lib/store/auth'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
+import { sanitizeColor } from '@/lib/sanitize'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/shared/status-badge'
@@ -306,15 +307,18 @@ const formaPagamentoChartConfig: ChartConfig = {
 function useCountUp(end: number, duration: number = 1000) {
   const [count, setCount] = useState(0)
   useEffect(() => {
-    let start = 0
     const startTime = Date.now()
-    const timer = setInterval(() => {
+    let rafId: number
+    const animate = () => {
       const elapsed = Date.now() - startTime
       const progress = Math.min(elapsed / duration, 1)
       setCount(Math.floor(progress * end))
-      if (progress >= 1) clearInterval(timer)
-    }, 16)
-    return () => clearInterval(timer)
+      if (progress < 1) {
+        rafId = requestAnimationFrame(animate)
+      }
+    }
+    rafId = requestAnimationFrame(animate)
+    return () => cancelAnimationFrame(rafId)
   }, [end, duration])
   return count
 }

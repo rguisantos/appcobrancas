@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireMutationRole } from '@/lib/rbac'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { generateUniqueIdentifier } from '@/lib/auto-identifier'
 
@@ -97,8 +98,8 @@ async function fetchViaCEP(cep: string): Promise<Record<string, string> | null> 
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized || !session) return response
 
   try {
     const formData = await request.formData()

@@ -3,8 +3,11 @@ import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { StatusBar } from 'expo-status-bar'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useAuthStore } from '@/store/auth'
 import { restoreAuth } from '@/lib/auth-persistence'
+import { useSyncStore } from '@/store/sync'
 import { colors } from '@/theme/colors'
 
 // Screens
@@ -144,14 +147,34 @@ export default function App() {
     restoreAuth()
   }, [])
 
+  // Start network listener when authenticated, stop on logout
+  useEffect(() => {
+    if (isAuthenticated) {
+      useSyncStore.getState().startNetworkListener()
+    }
+    return () => {
+      useSyncStore.getState().stopNetworkListener()
+    }
+  }, [isAuthenticated])
+
   if (isLoading) {
-    return <LoadingScreen message="Iniciando..." />
+    return (
+      <SafeAreaProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <LoadingScreen message="Iniciando..." />
+        </GestureHandlerRootView>
+      </SafeAreaProvider>
+    )
   }
 
   return (
-    <NavigationContainer>
-      <StatusBar style="auto" />
-      {isAuthenticated ? <AuthenticatedStack /> : <LoginScreen />}
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <NavigationContainer>
+          <StatusBar style="auto" />
+          {isAuthenticated ? <AuthenticatedStack /> : <LoginScreen />}
+        </NavigationContainer>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   )
 }

@@ -41,6 +41,7 @@ import {
 import { Plus, Search, MoreHorizontal, Eye, Pencil, Repeat, Warehouse, ChevronLeft, ChevronRight, Download, DollarSign, CheckCircle, XCircle, PauseCircle, Table2, Music, Gamepad2, Wind, CircleDot, ChevronDown, ChevronRight as ChevronRightIcon, LayoutList, FolderTree, MapPin, User, Package, Expand, Shrink, BarChart3 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
+import { sanitizeColor } from '@/lib/sanitize'
 import { format } from 'date-fns'
 import { Badge } from '@/components/ui/badge'
 
@@ -722,7 +723,7 @@ function GroupedLocacoesView({
             open={isRotaOpen}
             onOpenChange={() => toggleRota(rotaId)}
           >
-            <Card className="shadow-sm overflow-hidden" style={{ borderLeftWidth: '4px', borderLeftColor: rotaGroup.rota.cor }}>
+            <Card className="shadow-sm overflow-hidden" style={{ borderLeftWidth: '4px', borderLeftColor: sanitizeColor(rotaGroup.rota.cor) }}>
               {/* Route header with gradient background */}
               <CollapsibleTrigger asChild>
                 <div
@@ -732,7 +733,7 @@ function GroupedLocacoesView({
                   <div className="flex items-center gap-3">
                     <div
                       className="h-3 w-3 rounded-full shrink-0"
-                      style={{ backgroundColor: rotaGroup.rota.cor }}
+                      style={{ backgroundColor: sanitizeColor(rotaGroup.rota.cor) }}
                     />
                     <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
                     <div>

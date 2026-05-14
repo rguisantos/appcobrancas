@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigation, type ViewType } from '@/lib/store/navigation'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
+import { sanitizeColor } from '@/lib/sanitize'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -267,7 +268,7 @@ export function ClienteDetalheView() {
                 className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium border-0"
                 style={{
                   backgroundColor: `${cliente.rota.cor}20`,
-                  color: cliente.rota.cor,
+                  color: sanitizeColor(cliente.rota.cor),
                 }}
               >
                 <Route className="h-3 w-3 mr-1" />
@@ -414,7 +415,7 @@ export function ClienteDetalheView() {
                 <div className="flex items-center gap-2">
                   <span
                     className="h-3 w-3 rounded-full"
-                    style={{ backgroundColor: cliente.rota.cor }}
+                    style={{ backgroundColor: sanitizeColor(cliente.rota.cor) }}
                   />
                   <span className="text-sm font-medium">{cliente.rota.descricao}</span>
                 </div>

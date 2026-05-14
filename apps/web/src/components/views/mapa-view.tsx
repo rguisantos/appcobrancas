@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
+import { sanitizeColor } from '@/lib/sanitize'
 import { MapPin, Users, TrendingUp, AlertTriangle, Layers, Navigation, MapPinned, Route, ChevronDown, ChevronUp, Filter, Search, Crosshair, LocateFixed, Navigation2 } from 'lucide-react'
 
 const MapInner = dynamic(() => import('./map-inner'), {
@@ -407,7 +408,7 @@ export function MapaView() {
                         <div className="flex items-center gap-2">
                           <span
                             className="h-2.5 w-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: rota.cor }}
+                            style={{ backgroundColor: sanitizeColor(rota.cor) }}
                           />
                           {rota.descricao} ({rota.totalClientes})
                         </div>
@@ -578,7 +579,7 @@ export function MapaView() {
                 >
                   <span
                     className="h-2.5 w-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: rota.cor }}
+                    style={{ backgroundColor: sanitizeColor(rota.cor) }}
                   />
                   {rota.descricao} ({rota.totalClientes})
                 </button>
@@ -609,13 +610,13 @@ export function MapaView() {
                     className={`rounded-lg border p-3 transition-all cursor-pointer hover:shadow-md ${
                       hiddenRotas.has(rota.id) ? 'opacity-40' : ''
                     }`}
-                    style={{ borderLeftColor: rota.cor, borderLeftWidth: '4px' }}
+                    style={{ borderLeftColor: sanitizeColor(rota.cor), borderLeftWidth: '4px' }}
                     onClick={() => toggleRota(rota.id)}
                   >
                     <div className="flex items-center gap-2 mb-2">
                       <span
                         className="h-3 w-3 rounded-full shrink-0"
-                        style={{ backgroundColor: rota.cor }}
+                        style={{ backgroundColor: sanitizeColor(rota.cor) }}
                       />
                       <span className="text-sm font-medium">{rota.descricao}</span>
                     </div>
@@ -671,7 +672,7 @@ export function MapaView() {
                       <span className="font-semibold">Rota sugerida: </span>
                       <span
                         className="font-bold"
-                        style={{ color: sugestao.cor }}
+                        style={{ color: sanitizeColor(sugestao.cor) }}
                       >
                         {sugestao.descricao}
                       </span>

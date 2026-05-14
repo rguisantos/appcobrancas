@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireAdmin } from '@/lib/rbac'
 import { registrarAuditoria } from '@/lib/auditoria'
 
 export async function POST(request: NextRequest) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
-
-  // Admin only
-  if (session.tipoPermissao !== 'Admin') {
-    return NextResponse.json({ error: 'Acesso restrito a administradores' }, { status: 403 })
-  }
+  const { authorized, response, session } = await requireAdmin()
+  if (!authorized || !session) return response
 
   try {
     const body = await request.json()
@@ -22,6 +18,13 @@ export async function POST(request: NextRequest) {
     if (!action || !cobrancaIds || !Array.isArray(cobrancaIds) || cobrancaIds.length === 0) {
       return NextResponse.json(
         { error: 'action e cobrancaIds são obrigatórios' },
+        { status: 400 }
+      )
+    }
+
+    if (cobrancaIds.length > 100) {
+      return NextResponse.json(
+        { error: 'Máximo de 100 cobranças por operação batch' },
         { status: 400 }
       )
     }

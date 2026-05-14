@@ -63,23 +63,25 @@ export async function POST(request: NextRequest) {
 
     const token = await signToken(payload)
 
-    await db.usuario.update({
-      where: { id: usuario.id },
-      data: {
-        dataUltimoAcesso: new Date(),
-        ultimoAcessoDispositivo: 'Web',
-      },
-    })
-
-    await db.sessao.create({
-      data: {
-        usuarioId: usuario.id,
-        token: hashToken(token),
-        dispositivo: 'Web',
-        ip: request.headers.get('x-forwarded-for') || null,
-        expiraEm: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    })
+    // Wrap update + session creation in transaction for atomicity
+    await db.$transaction([
+      db.usuario.update({
+        where: { id: usuario.id },
+        data: {
+          dataUltimoAcesso: new Date(),
+          ultimoAcessoDispositivo: 'Web',
+        },
+      }),
+      db.sessao.create({
+        data: {
+          usuarioId: usuario.id,
+          token: hashToken(token),
+          dispositivo: 'Web',
+          ip: request.headers.get('x-forwarded-for') || null,
+          expiraEm: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
+      }),
+    ])
 
     // Reset rate limit on successful login
     resetRateLimit(rateLimitId)

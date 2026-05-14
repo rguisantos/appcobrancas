@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { format, parseISO } from 'date-fns'
 import { getPermissoesByTipo } from '@/lib/permissoes-padrao'
+import { sanitizeColor } from '@/lib/sanitize'
 import {
   Table,
   TableBody,
@@ -674,7 +675,7 @@ export function AdminUsuariosView() {
                         />
                         <div
                           className="h-3 w-3 rounded-full shrink-0"
-                          style={{ backgroundColor: rota.cor }}
+                          style={{ backgroundColor: sanitizeColor(rota.cor) }}
                         />
                         <Label htmlFor={`rota-${rota.id}`} className="text-sm font-normal cursor-pointer">
                           {rota.descricao}

@@ -64,7 +64,7 @@ model Cliente {
   syncOrigin        String?
   deletedAt         DateTime?
 
-  rota              Rota?    @relation(fields: [rotaId], references: [id])
+  rota              Rota?    @relation(fields: [rotaId], references: [id], onDelete: SetNull)
   locacoes          Locacao[]
   cobrancas         Cobranca[]
   createdAt         DateTime @default(now())
@@ -74,6 +74,7 @@ model Cliente {
   @@index([deletedAt])
   @@index([rotaId])
   @@index([status])
+  @@index([nomeExibicao])
   @@map("clientes")
 }
 
@@ -130,9 +131,9 @@ model Produto {
   syncOrigin        String?
   deletedAt         DateTime?
 
-  tipo              TipoProduto     @relation(fields: [tipoId], references: [id])
-  descricao         DescricaoProduto @relation(fields: [descricaoId], references: [id])
-  tamanho           TamanhoProduto  @relation(fields: [tamanhoId], references: [id])
+  tipo              TipoProduto     @relation(fields: [tipoId], references: [id], onDelete: Restrict)
+  descricao         DescricaoProduto @relation(fields: [descricaoId], references: [id], onDelete: Restrict)
+  tamanho           TamanhoProduto  @relation(fields: [tamanhoId], references: [id], onDelete: Restrict)
   locacoes          Locacao[]
   cobrancas         Cobranca[]
   historicoRelogio  HistoricoRelogio[]
@@ -193,6 +194,7 @@ model Locacao {
   @@index([clienteId])
   @@index([produtoId])
   @@index([status])
+  @@index([produtoId, status])
   @@map("locacoes")
 }
 
@@ -242,6 +244,8 @@ model Cobranca {
   @@index([status])
   @@index([status, dataVencimento])
   @@index([deletedAt, status])
+  @@index([clienteId, status])
+  @@index([deletedAt, status, dataVencimento])
   @@map("cobrancas")
 }
 
@@ -395,7 +399,7 @@ model Meta {
   criadoPor   String?
 
   rota        Rota?     @relation(fields: [rotaId], references: [id], onDelete: SetNull)
-  usuario     Usuario?  @relation(fields: [criadoPor], references: [id])
+  usuario     Usuario?  @relation(fields: [criadoPor], references: [id], onDelete: SetNull)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

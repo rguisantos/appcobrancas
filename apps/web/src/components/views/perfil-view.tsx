@@ -229,6 +229,7 @@ export function PerfilView() {
           rotasPermitidas: user.rotasPermitidas || [],
           status: 'Ativo',
           senha: novaSenha,
+          senhaAtual,
         }),
       })
 

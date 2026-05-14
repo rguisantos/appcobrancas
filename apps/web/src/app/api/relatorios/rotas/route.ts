@@ -1,35 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { db } from '@/lib/db'
-import { toNumber } from '@/lib/decimal'
+import { Prisma } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
   try {
-  const rotas = await db.rota.findMany({
-    where: { deletedAt: null },
-    include: {
-      clientes: { where: { deletedAt: null } },
-    },
-  })
+  // Single aggregate query instead of N+1 — group cobranças by rota
+  const rotaStats = await db.$queryRaw<Array<{
+    id: string
+    descricao: string
+    cor: string
+    regiao: string | null
+    totalClientes: bigint
+    totalCobrancas: bigint
+    totalRecebido: number
+    totalPendente: number
+  }>>`
+    SELECT
+      r.id,
+      r.descricao,
+      r.cor,
+      r.regiao,
+      COUNT(DISTINCT c2.id) AS "totalClientes",
+      COUNT(cb.id) AS "totalCobrancas",
+      COALESCE(SUM(CASE WHEN cb.status IN ('Pago', 'Parcial') THEN cb."valorRecebido" ELSE 0 END), 0) AS "totalRecebido",
+      COALESCE(SUM(CASE WHEN cb.status IN ('Pendente', 'Atrasado') THEN cb."totalClientePaga" ELSE 0 END), 0) AS "totalPendente"
+    FROM rotas r
+    LEFT JOIN clientes c2 ON c2."rotaId" = r.id AND c2."deletedAt" IS NULL
+    LEFT JOIN cobrancas cb ON cb."clienteId" = c2.id AND cb."deletedAt" IS NULL
+    WHERE r."deletedAt" IS NULL
+    GROUP BY r.id, r.descricao, r.cor, r.regiao
+    ORDER BY r.descricao
+  `
 
-  const data = await Promise.all(rotas.map(async r => {
-    const cobrancas = await db.cobranca.findMany({
-      where: { deletedAt: null, cliente: { rotaId: r.id } },
-    })
-
-    return {
-      id: r.id,
-      descricao: r.descricao,
-      cor: r.cor,
-      regiao: r.regiao,
-      totalClientes: r.clientes.length,
-      totalCobrancas: cobrancas.length,
-      totalRecebido: cobrancas.filter(c => c.status === 'Pago' || c.status === 'Parcial').reduce((s, c) => s + toNumber(c.valorRecebido), 0),
-      totalPendente: cobrancas.filter(c => c.status === 'Pendente' || c.status === 'Atrasado').reduce((s, c) => s + toNumber(c.totalClientePaga), 0),
-    }
+  const data = rotaStats.map(r => ({
+    id: r.id,
+    descricao: r.descricao,
+    cor: r.cor,
+    regiao: r.regiao,
+    totalClientes: Number(r.totalClientes),
+    totalCobrancas: Number(r.totalCobrancas),
+    totalRecebido: Number(r.totalRecebido),
+    totalPendente: Number(r.totalPendente),
   }))
 
   return NextResponse.json({ data })

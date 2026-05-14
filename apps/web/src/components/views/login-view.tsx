@@ -288,7 +288,8 @@ export function LoginView() {
                 </div>
               </div>
 
-              {/* Demo credentials */}
+              {/* Demo credentials — only shown in development */}
+              {process.env.NODE_ENV === 'development' && (
               <div className="rounded-xl border-2 border-dashed border-border/60 bg-muted/20 p-4">
                 <p className="text-xs font-medium text-muted-foreground mb-2">Credenciais de demonstração:</p>
                 <div className="flex flex-col gap-1.5 text-xs text-muted-foreground/80">
@@ -302,6 +303,7 @@ export function LoginView() {
                   </div>
                 </div>
               </div>
+              )}
             </div>
 
             {/* Footer */}

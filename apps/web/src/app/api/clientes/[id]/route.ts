@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireMutationRole, requireAdmin } from '@/lib/rbac'
 import { clienteSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { generateUniqueIdentifier } from '@/lib/auto-identifier'
@@ -34,8 +35,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized || !session) return response
 
   const { id } = await params
   const existing = await db.cliente.findFirst({ where: { id, deletedAt: null } })
@@ -88,8 +89,8 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized || !session) return response
 
   const { id } = await params
   const existing = await db.cliente.findFirst({ where: { id, deletedAt: null } })
@@ -101,6 +102,11 @@ export async function PATCH(
     const updateData: Record<string, unknown> = {}
     for (const key of allowedFields) {
       if (body[key] !== undefined) updateData[key] = body[key]
+    }
+
+    // Validate status value against allowed enum
+    if (updateData.status !== undefined && !['Ativo', 'Inativo'].includes(updateData.status as string)) {
+      return NextResponse.json({ error: 'status deve ser "Ativo" ou "Inativo"' }, { status: 400 })
     }
 
     if (Object.keys(updateData).length === 0) {
@@ -125,7 +131,8 @@ export async function PATCH(
     })
 
     return NextResponse.json(cliente)
-  } catch {
+  } catch (error) {
+    console.error('Erro ao atualizar cliente:', error)
     return NextResponse.json({ error: 'Erro ao atualizar cliente' }, { status: 500 })
   }
 }
@@ -134,8 +141,8 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireAdmin()
+  if (!authorized || !session) return response
 
   try {
   const { id } = await params

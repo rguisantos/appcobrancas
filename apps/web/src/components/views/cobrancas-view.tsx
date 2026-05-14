@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
+import { sanitizeColor } from '@/lib/sanitize'
 import { format, parseISO } from 'date-fns'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -1336,7 +1337,7 @@ function GroupedCobrancasView({
             open={isRotaOpen}
             onOpenChange={() => toggleRota(rotaId)}
           >
-            <Card className="shadow-sm overflow-hidden" style={{ borderLeftWidth: '4px', borderLeftColor: rotaGroup.rota.cor }}>
+            <Card className="shadow-sm overflow-hidden" style={{ borderLeftWidth: '4px', borderLeftColor: sanitizeColor(rotaGroup.rota.cor) }}>
               {/* Route header with gradient background */}
               <CollapsibleTrigger asChild>
                 <div
@@ -1346,7 +1347,7 @@ function GroupedCobrancasView({
                   <div className="flex items-center gap-3">
                     <div
                       className="h-3 w-3 rounded-full shrink-0"
-                      style={{ backgroundColor: rotaGroup.rota.cor }}
+                      style={{ backgroundColor: sanitizeColor(rotaGroup.rota.cor) }}
                     />
                     <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
                     <div>
