@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useNavigation } from '@/lib/store/navigation'
+import { useNavigation, type ViewType } from '@/lib/store/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -113,6 +113,7 @@ interface Cobranca {
   status: string
   formaPagamento: string
   observacao: string | null
+  createdAt?: string
   locacao: {
     id: string
     formaPagamento: string
@@ -1160,7 +1161,7 @@ function GroupedCobrancasView({
 }: {
   data: GroupedData[]
   loading: boolean
-  navigate: (view: string, id?: string) => void
+  navigate: (view: ViewType, id?: string | null, params?: Record<string, string>) => void
   formatDate: (dateStr: string | null) => string
   openPaymentDialog: (cobranca: Cobranca) => void
 }) {

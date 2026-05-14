@@ -1,4 +1,5 @@
 import { db } from './db'
+import { Prisma } from '@prisma/client'
 
 /**
  * Syncable entity names matching Prisma model names (lowercase).
@@ -35,7 +36,7 @@ export async function writeSyncLog(
         entidade,
         entidadeId,
         operacao,
-        dados: dados ? JSON.stringify(dados) : null,
+        dados: dados ? (dados as Prisma.InputJsonValue) : Prisma.JsonNull,
         updatedAt,
       },
     })

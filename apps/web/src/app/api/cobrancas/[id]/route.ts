@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireMutationRole, requireAdmin } from '@/lib/rbac'
 import { cobrancaSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { calcularCobranca, calcularSaldoDevedor } from '@/lib/cobranca-calculos'
 import { writeSyncLog } from '@/lib/sync-log'
 import { handleApiError } from '@/lib/api-utils'
+import { toNumber } from '@/lib/decimal'
 
 export async function GET(
   request: NextRequest,
@@ -36,8 +38,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized || !session) return response
 
   const { id } = await params
   const existing = await db.cobranca.findFirst({ where: { id, deletedAt: null } })
@@ -49,18 +51,33 @@ export async function PUT(
     // Support partial updates (e.g., for FIFO payment)
     if (body._partial && (body.valorRecebido !== undefined || body.status !== undefined)) {
       const updateData: Record<string, unknown> = {}
-      if (body.valorRecebido !== undefined) updateData.valorRecebido = body.valorRecebido
-      if (body.status !== undefined) updateData.status = body.status
+
+      // Validate valorRecebido: must be a non-negative number
+      if (body.valorRecebido !== undefined) {
+        if (typeof body.valorRecebido !== 'number' || body.valorRecebido < 0) {
+          return NextResponse.json({ error: 'valorRecebido deve ser um número não negativo' }, { status: 400 })
+        }
+        updateData.valorRecebido = body.valorRecebido
+      }
+
+      // Validate status: must be one of the allowed values
+      const validStatuses = ['Pendente', 'Pago', 'Parcial', 'Atrasado']
+      if (body.status !== undefined) {
+        if (!validStatuses.includes(body.status)) {
+          return NextResponse.json({ error: `status deve ser um de: ${validStatuses.join(', ')}` }, { status: 400 })
+        }
+        updateData.status = body.status
+      }
 
       // Recalculate saldo devedor if valorRecebido changed
       if (body.valorRecebido !== undefined) {
-        const { saldoDevedorGerado } = calcularSaldoDevedor(existing.totalClientePaga, body.valorRecebido)
+        const { saldoDevedorGerado } = calcularSaldoDevedor(toNumber(existing.totalClientePaga), body.valorRecebido)
         updateData.saldoDevedorGerado = saldoDevedorGerado
       }
 
       // Set payment date if status changed to Pago/Parcial
       if ((body.status === 'Pago' || body.status === 'Parcial') && !existing.dataPagamento) {
-        updateData.dataPagamento = new Date().toISOString().split('T')[0]
+        updateData.dataPagamento = new Date()
       }
 
       const cobranca = await db.cobranca.update({
@@ -86,9 +103,9 @@ export async function PUT(
       formaPagamento: locacao.formaPagamento as 'Periodo' | 'PercentualPagar' | 'PercentualReceber',
       relogioAnterior: data.relogioAnterior,
       relogioAtual: data.relogioAtual,
-      precoFicha: locacao.precoFicha,
-      percentualEmpresa: locacao.percentualEmpresa,
-      valorFixo: locacao.valorFixo ?? undefined,
+      precoFicha: toNumber(locacao.precoFicha),
+      percentualEmpresa: toNumber(locacao.percentualEmpresa),
+      valorFixo: locacao.valorFixo != null ? toNumber(locacao.valorFixo) : undefined,
       descontoPartidasQtd: data.descontoPartidasQtd,
       descontoPartidasValor: data.descontoPartidasValor,
       descontoDinheiro: data.descontoDinheiro,
@@ -99,15 +116,15 @@ export async function PUT(
 
     // Se status mudou para Pago ou Parcial, definir dataPagamento
     const dataPagamento = (data.status === 'Pago' || data.status === 'Parcial') && !existing.dataPagamento
-      ? new Date().toISOString().split('T')[0]
+      ? new Date()
       : existing.dataPagamento
 
     const cobranca = await db.cobranca.update({
       where: { id },
       data: {
         locacaoId: data.locacaoId,
-        dataInicio: data.dataInicio,
-        dataFim: data.dataFim,
+        dataInicio: new Date(data.dataInicio),
+        dataFim: new Date(data.dataFim),
         dataPagamento,
         relogioAnterior: data.relogioAnterior,
         relogioAtual: data.relogioAtual,
@@ -155,8 +172,8 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized || !session) return response
 
   const { id } = await params
   const existing = await db.cobranca.findFirst({ where: { id, deletedAt: null } })
@@ -176,25 +193,26 @@ export async function PATCH(
     }
 
     // Calculate new valorRecebido (cumulative)
-    const newValorRecebido = existing.valorRecebido + valor
+    const newValorRecebido = toNumber(existing.valorRecebido) + valor
 
     // Determine new status based on payment
+    const totalClientePagaNum = toNumber(existing.totalClientePaga)
     let newStatus = existing.status
-    if (newValorRecebido >= existing.totalClientePaga) {
+    if (newValorRecebido >= totalClientePagaNum) {
       newStatus = 'Pago'
-    } else if (newValorRecebido > 0 && newValorRecebido < existing.totalClientePaga) {
+    } else if (newValorRecebido > 0 && newValorRecebido < totalClientePagaNum) {
       newStatus = 'Parcial'
     }
 
     // Calculate new saldo devedor
     const { saldoDevedorGerado: newSaldoDevedor } = calcularSaldoDevedor(
-      existing.totalClientePaga,
+      totalClientePagaNum,
       newValorRecebido
     )
 
     // Set payment date if first payment
     const dataPagamentoCobranca = (newStatus === 'Pago' || newStatus === 'Parcial') && !existing.dataPagamento
-      ? (dataPagamento || new Date().toISOString().split('T')[0])
+      ? (dataPagamento ? new Date(dataPagamento) : new Date())
       : existing.dataPagamento
 
     // Create the payment record and update cobrança in a transaction
@@ -204,7 +222,7 @@ export async function PATCH(
           cobrancaId: id,
           valor,
           formaPagamento,
-          dataPagamento: dataPagamento || new Date().toISOString().split('T')[0],
+          dataPagamento: dataPagamento ? new Date(dataPagamento) : new Date(),
           observacao: observacao || null,
           usuarioId: session.userId,
           usuarioNome: session.nome || null,
@@ -229,13 +247,13 @@ export async function PATCH(
       entidade: 'cobranca',
       entidadeId: id,
       entidadeNome: `${existing.clienteNome} - ${existing.dataInicio}/${existing.dataFim}`,
-      detalhes: JSON.stringify({
+      detalhes: {
         valor,
         formaPagamento,
         dataPagamento,
         novoStatus: newStatus,
         novoValorRecebido: newValorRecebido,
-      }),
+      },
       severidade: 'info',
     })
 
@@ -257,8 +275,8 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireAdmin()
+  if (!authorized || !session) return response
 
   try {
   const { id } = await params

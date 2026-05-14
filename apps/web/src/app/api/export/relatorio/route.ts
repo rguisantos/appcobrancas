@@ -1,6 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { format } from 'date-fns'
+import { toNumber } from '@/lib/decimal'
+
+/**
+ * Sanitize a CSV cell value to prevent CSV injection attacks.
+ * Prefixes cells starting with dangerous characters (=, +, -, @, tab, carriage return)
+ * with a single quote so spreadsheet applications treat them as text, not formulas.
+ */
+function sanitizeCsvCell(value: string): string {
+  if (/^[=+@\t\r-]/.test(value)) {
+    return `'${value}`
+  }
+  return value
+}
+
+/**
+ * Escape and sanitize a CSV cell value: sanitize for injection, then wrap in double quotes.
+ */
+function escapeCSV(value: string): string {
+  return `"${sanitizeCsvCell(value)}"`
+}
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -62,19 +83,19 @@ async function generateFinancialReport(dateFilter: Record<string, unknown>, form
   })
 
   const totalCobrancas = cobrancas.length
-  const totalValor = cobrancas.reduce((acc, c) => acc + c.totalClientePaga, 0)
-  const totalRecebido = cobrancas.reduce((acc, c) => acc + c.valorRecebido, 0)
+  const totalValor = cobrancas.reduce((acc, c) => acc + toNumber(c.totalClientePaga), 0)
+  const totalRecebido = cobrancas.reduce((acc, c) => acc + toNumber(c.valorRecebido), 0)
   const totalPendente = cobrancas
     .filter(c => c.status === 'Pendente' || c.status === 'Atrasado' || c.status === 'Parcial')
-    .reduce((acc, c) => acc + (c.totalClientePaga - c.valorRecebido), 0)
+    .reduce((acc, c) => acc + (toNumber(c.totalClientePaga) - toNumber(c.valorRecebido)), 0)
   const totalAtrasado = cobrancas
     .filter(c => c.status === 'Atrasado')
-    .reduce((acc, c) => acc + (c.totalClientePaga - c.valorRecebido), 0)
+    .reduce((acc, c) => acc + (toNumber(c.totalClientePaga) - toNumber(c.valorRecebido)), 0)
 
   if (formato === 'csv') {
     const header = 'ID,Cliente,Produto,Período,Valor Total,Recebido,Saldo Devedor,Status,Forma Pgto,Data Pagamento\n'
     const rows = cobrancas.map(c =>
-      `"${c.id}","${c.clienteNome}","${c.produtoIdentificador}","${c.dataInicio} a ${c.dataFim}",${c.totalClientePaga},${c.valorRecebido},${c.saldoDevedorGerado},"${c.status}","${c.formaPagamento}","${c.dataPagamento || ''}"`
+      `${escapeCSV(c.id)},${escapeCSV(c.clienteNome)},${escapeCSV(c.produtoIdentificador)},${escapeCSV(`${c.dataInicio ? format(new Date(c.dataInicio), 'yyyy-MM-dd') : ''} a ${c.dataFim ? format(new Date(c.dataFim), 'yyyy-MM-dd') : ''}`)},${toNumber(c.totalClientePaga)},${toNumber(c.valorRecebido)},${toNumber(c.saldoDevedorGerado)},${escapeCSV(c.status)},${escapeCSV(c.formaPagamento)},${escapeCSV(c.dataPagamento ? format(new Date(c.dataPagamento), 'yyyy-MM-dd') : '')}`
     ).join('\n')
 
     const summary = `\n\nResumo Financeiro\nTotal de Cobranças,${totalCobrancas}\nValor Total,${totalValor.toFixed(2)}\nTotal Recebido,${totalRecebido.toFixed(2)}\nTotal Pendente,${totalPendente.toFixed(2)}\nTotal Atrasado,${totalAtrasado.toFixed(2)}\n`
@@ -130,7 +151,7 @@ async function generateCobrancasReport(dateFilter: Record<string, unknown>, form
   if (formato === 'csv') {
     const header = 'ID,Cliente,Produto,Início,Fim,Vencimento,Valor,Recebido,Status,Forma Pgto\n'
     const rows = cobrancas.map(c =>
-      `"${c.id}","${c.clienteNome}","${c.produtoIdentificador}","${c.dataInicio}","${c.dataFim}","${c.dataVencimento || ''}",${c.totalClientePaga},${c.valorRecebido},"${c.status}","${c.formaPagamento}"`
+      `${escapeCSV(c.id)},${escapeCSV(c.clienteNome)},${escapeCSV(c.produtoIdentificador)},${escapeCSV(c.dataInicio ? format(new Date(c.dataInicio), 'yyyy-MM-dd') : '')},${escapeCSV(c.dataFim ? format(new Date(c.dataFim), 'yyyy-MM-dd') : '')},${escapeCSV(c.dataVencimento ? format(new Date(c.dataVencimento), 'yyyy-MM-dd') : '')},${toNumber(c.totalClientePaga)},${toNumber(c.valorRecebido)},${escapeCSV(c.status)},${escapeCSV(c.formaPagamento)}`
     ).join('\n')
 
     return new NextResponse(header + rows, {
@@ -173,7 +194,7 @@ async function generateClientesReport(dateFilter: Record<string, unknown>, forma
   if (formato === 'csv') {
     const header = 'ID,Identificador,Nome,Telefone,Email,Cidade,Estado,Status,Rota,Cobranças,Locações\n'
     const rows = clientes.map(c =>
-      `"${c.id}","${c.identificador}","${c.nomeExibicao}","${c.telefonePrincipal}","${c.email || ''}","${c.cidade}","${c.estado}","${c.status}","${c.rota?.descricao || ''}",${c._count.cobrancas},${c._count.locacoes}`
+      `${escapeCSV(c.id)},${escapeCSV(c.identificador)},${escapeCSV(c.nomeExibicao)},${escapeCSV(c.telefonePrincipal)},${escapeCSV(c.email || '')},${escapeCSV(c.cidade)},${escapeCSV(c.estado)},${escapeCSV(c.status)},${escapeCSV(c.rota?.descricao || '')},${c._count.cobrancas},${c._count.locacoes}`
     ).join('\n')
 
     return new NextResponse(header + rows, {
@@ -216,7 +237,7 @@ async function generateProdutosReport(dateFilter: Record<string, unknown>, forma
   if (formato === 'csv') {
     const header = 'ID,Identificador,Tipo,Descrição,Tamanho,Conservação,Status,Estabelecimento,Relógio,Locações,Cobranças\n'
     const rows = produtos.map(p =>
-      `"${p.id}","${p.identificador}","${p.tipoNome}","${p.descricaoNome}","${p.tamanhoNome}","${p.conservacao}","${p.statusProduto}","${p.estabelecimento || ''}","${p.numeroRelogio}",${p._count.locacoes},${p._count.cobrancas}`
+      `${escapeCSV(p.id)},${escapeCSV(p.identificador)},${escapeCSV(p.tipoNome)},${escapeCSV(p.descricaoNome)},${escapeCSV(p.tamanhoNome)},${escapeCSV(p.conservacao)},${escapeCSV(p.statusProduto)},${escapeCSV(p.estabelecimento || '')},${escapeCSV(p.numeroRelogio)},${p._count.locacoes},${p._count.cobrancas}`
     ).join('\n')
 
     return new NextResponse(header + rows, {

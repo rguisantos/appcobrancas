@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getAuthSession } from '@/lib/auth-jwt'
+import { requireAdmin } from '@/lib/rbac'
 import { registrarAuditoria } from '@/lib/auditoria'
 
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireAdmin()
+  if (!authorized || !session) return response
 
   try {
   const { id } = await params

@@ -27,9 +27,11 @@ export function CobrancasScreen() {
   const [filter, setFilter] = useState<FilterStatus>('all')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchCobrancas = useCallback(async (p = 1, status: FilterStatus = 'all') => {
     try {
+      setError(null)
       const params: Record<string, string> = { page: String(p), limit: '20' }
       if (status !== 'all') params.status = status
       const result = await api.getCobrancas(params)
@@ -39,8 +41,9 @@ export function CobrancasScreen() {
         setCobrancas((prev) => [...prev, ...result.data])
       }
       setTotalPages(result.totalPages)
-    } catch (error) {
-      console.error('Error fetching cobrancas:', error)
+    } catch (err) {
+      console.error('Error fetching cobrancas:', err)
+      setError('Erro ao carregar cobrancas')
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -107,6 +110,17 @@ export function CobrancasScreen() {
   )
 
   if (loading) return <LoadingScreen />
+
+  if (error && cobrancas.length === 0) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => { setLoading(true); fetchCobrancas(1, filter) }}>
+          <Text style={styles.retryButtonText}>Tentar novamente</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
 
   return (
     <View style={styles.container}>
@@ -216,4 +230,28 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   fabText: { color: '#fff', fontSize: 28, fontWeight: '700', marginTop: -2 },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    padding: spacing.lg,
+  },
+  errorText: {
+    fontSize: fontSize.md,
+    color: colors.danger,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: fontSize.md,
+    fontWeight: '600',
+  },
 })

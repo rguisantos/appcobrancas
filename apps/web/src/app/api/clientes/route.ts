@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireMutationRole } from '@/lib/rbac'
 import { clienteSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { generateUniqueIdentifier } from '@/lib/auto-identifier'
 import { writeSyncLog } from '@/lib/sync-log'
-import { handleApiError } from '@/lib/api-utils'
+import { handleApiError, safeLimit, safePage } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -13,8 +15,8 @@ export async function GET(request: NextRequest) {
 
   try {
   const searchParams = request.nextUrl.searchParams
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '20')
+  const page = safePage(searchParams.get('page'))
+  const limit = safeLimit(searchParams.get('limit'))
   const skip = (page - 1) * limit
   const search = searchParams.get('search') || ''
   const rotaId = searchParams.get('rotaId') || ''
@@ -55,19 +57,24 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized || !session) return response
 
   try {
     const body = await request.json()
     const data = clienteSchema.parse(body)
 
     // Auto-generate identificador if not provided
-    if (!data.identificador || data.identificador.trim() === '') {
-      data.identificador = await generateUniqueIdentifier('C', 'cliente')
-    }
+    const identificador = data.identificador?.trim()
+      || await generateUniqueIdentifier('C', 'cliente')
 
-    const cliente = await db.cliente.create({ data })
+    const cliente = await db.cliente.create({
+      data: {
+        ...data,
+        identificador,
+        contatos: data.contatos ? (data.contatos as unknown as Prisma.InputJsonValue) : undefined,
+      }
+    })
 
     await registrarAuditoria({
       usuarioId: session.userId,

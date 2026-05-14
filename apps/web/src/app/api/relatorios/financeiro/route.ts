@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { db } from '@/lib/db'
+import { format } from 'date-fns'
+import { toNumber } from '@/lib/decimal'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -20,21 +22,21 @@ export async function GET(request: NextRequest) {
   const cobrancas = await db.cobranca.findMany({ where })
 
   const totalRecebido = cobrancas.filter(c => c.status === 'Pago' || c.status === 'Parcial')
-    .reduce((sum, c) => sum + c.valorRecebido, 0)
+    .reduce((sum, c) => sum + toNumber(c.valorRecebido), 0)
   const totalPendente = cobrancas.filter(c => c.status === 'Pendente')
-    .reduce((sum, c) => sum + c.totalClientePaga, 0)
+    .reduce((sum, c) => sum + toNumber(c.totalClientePaga), 0)
   const totalAtrasado = cobrancas.filter(c => c.status === 'Atrasado')
-    .reduce((sum, c) => sum + c.totalClientePaga, 0)
+    .reduce((sum, c) => sum + toNumber(c.totalClientePaga), 0)
 
   // Monthly breakdown
   const monthlyData: Record<string, { receita: number; pendente: number }> = {}
   cobrancas.forEach(c => {
-    const month = c.dataInicio?.substring(0, 7) || 'unknown'
+    const month = c.dataInicio ? format(new Date(c.dataInicio), 'yyyy-MM') : 'unknown'
     if (!monthlyData[month]) monthlyData[month] = { receita: 0, pendente: 0 }
     if (c.status === 'Pago' || c.status === 'Parcial') {
-      monthlyData[month].receita += c.valorRecebido
+      monthlyData[month].receita += toNumber(c.valorRecebido)
     } else {
-      monthlyData[month].pendente += c.totalClientePaga
+      monthlyData[month].pendente += toNumber(c.totalClientePaga)
     }
   })
 

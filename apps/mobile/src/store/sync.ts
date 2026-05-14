@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { getNetworkStateAsync } from 'expo-network'
 import { api } from '@/services/api'
 import { useAuthStore } from './auth'
 
@@ -9,6 +10,7 @@ interface SyncState {
   lastSyncAt: string | null
   pendingChanges: number
   error: string | null
+  isOnline: boolean
 
   // Local change queue for offline mutations
   changeQueue: Array<{
@@ -26,6 +28,9 @@ interface SyncState {
   sync: () => Promise<void>
   pullChanges: () => Promise<void>
   setLastSyncAt: (date: string) => void
+  checkConnectivity: () => Promise<void>
+  startNetworkListener: (intervalMs?: number) => void
+  stopNetworkListener: () => void
 }
 
 let syncIdCounter = 0
@@ -34,11 +39,14 @@ function generateSyncId(): string {
   return `sync_${Date.now()}_${syncIdCounter}`
 }
 
+let networkInterval: ReturnType<typeof setInterval> | null = null
+
 export const useSyncStore = create<SyncState>((set, get) => ({
   status: 'idle',
   lastSyncAt: null,
   pendingChanges: 0,
   error: null,
+  isOnline: true,
   changeQueue: [],
 
   addToQueue: (change) => {
@@ -145,4 +153,29 @@ export const useSyncStore = create<SyncState>((set, get) => ({
   },
 
   setLastSyncAt: (date) => set({ lastSyncAt: date }),
+
+  checkConnectivity: async () => {
+    try {
+      const state = await getNetworkStateAsync()
+      const online = state.isConnected === true && state.isInternetReachable !== false
+      set({ isOnline: online })
+    } catch {
+      set({ isOnline: false })
+    }
+  },
+
+  startNetworkListener: (intervalMs = 5000) => {
+    get().checkConnectivity()
+    if (networkInterval) clearInterval(networkInterval)
+    networkInterval = setInterval(() => {
+      get().checkConnectivity()
+    }, intervalMs)
+  },
+
+  stopNetworkListener: () => {
+    if (networkInterval) {
+      clearInterval(networkInterval)
+      networkInterval = null
+    }
+  },
 }))

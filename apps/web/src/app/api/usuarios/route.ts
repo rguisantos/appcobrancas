@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireAdmin } from '@/lib/rbac'
 import { usuarioSchema } from '@/lib/validations'
 import { hashPassword } from '@/lib/hash'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { safeLimit, safePage } from '@/lib/api-utils'
+import { Prisma } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -15,8 +18,8 @@ export async function GET(request: NextRequest) {
 
   try {
   const searchParams = request.nextUrl.searchParams
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '20')
+  const page = safePage(searchParams.get('page'))
+  const limit = safeLimit(searchParams.get('limit'))
   const skip = (page - 1) * limit
 
   const where = { deletedAt: null }
@@ -57,12 +60,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
-
-  if (session.tipoPermissao !== 'Administrador') {
-    return NextResponse.json({ error: 'Acesso restrito a administradores' }, { status: 403 })
-  }
+  const { authorized, response, session } = await requireAdmin()
+  if (!authorized || !session) return response
 
   try {
     const body = await request.json()
@@ -82,9 +81,9 @@ export async function POST(request: NextRequest) {
         cpf: data.cpf,
         telefone: data.telefone,
         tipoPermissao: data.tipoPermissao,
-        permissoesWeb: data.permissoesWeb,
-        permissoesMobile: data.permissoesMobile,
-        rotasPermitidas: data.rotasPermitidas,
+        permissoesWeb: data.permissoesWeb as unknown as Prisma.InputJsonValue,
+        permissoesMobile: data.permissoesMobile as unknown as Prisma.InputJsonValue,
+        rotasPermitidas: data.rotasPermitidas as unknown as Prisma.InputJsonValue,
         status: data.status,
       },
       select: {

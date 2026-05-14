@@ -174,10 +174,15 @@ async function main() {
     const relogioAnterior = parseFloat(locacao.numeroRelogio)
     const relogioAtual = relogioAnterior + Math.floor(Math.random() * 200 + 50)
     const fichasRodadas = relogioAtual - relogioAnterior
-    const totalBruto = fichasRodadas * locacao.precoFicha
+    const precoFicha = Number(locacao.precoFicha)
+    const percentualEmpresa = Number(locacao.percentualEmpresa)
+    const valorFixo = Number(locacao.valorFixo || 0)
+    const totalBruto = fichasRodadas * precoFicha
     const statusIdx = Math.floor(Math.random() * 4)
     const status = cobrancaStatuses[statusIdx]
-    const valorRecebido = status === 'Pago' ? totalBruto * (locacao.percentualEmpresa / 100) : status === 'Parcial' ? totalBruto * (locacao.percentualEmpresa / 100) * 0.5 : 0
+    const valorRecebido = status === 'Pago' ? totalBruto * (percentualEmpresa / 100) : status === 'Parcial' ? totalBruto * (percentualEmpresa / 100) * 0.5 : 0
+    const totalClientePaga = locacao.formaPagamento === 'Periodo' ? valorFixo : totalBruto * (percentualEmpresa / 100)
+    const valorPercentual = totalBruto * (percentualEmpresa / 100)
 
     const existingCobranca = await prisma.cobranca.findFirst({
       where: { locacaoId: locacao.id }
@@ -198,14 +203,14 @@ async function main() {
           relogioAnterior,
           relogioAtual,
           fichasRodadas,
-          valorFicha: locacao.precoFicha,
+          valorFicha: precoFicha,
           totalBruto,
-          percentualEmpresa: locacao.percentualEmpresa,
+          percentualEmpresa,
           subtotalAposDescontos: totalBruto,
-          valorPercentual: totalBruto * (locacao.percentualEmpresa / 100),
-          totalClientePaga: locacao.formaPagamento === 'Periodo' ? (locacao.valorFixo || 0) : totalBruto * (locacao.percentualEmpresa / 100),
+          valorPercentual,
+          totalClientePaga,
           valorRecebido,
-          saldoDevedorGerado: Math.max(0, (locacao.formaPagamento === 'Periodo' ? (locacao.valorFixo || 0) : totalBruto * (locacao.percentualEmpresa / 100)) - valorRecebido),
+          saldoDevedorGerado: Math.max(0, totalClientePaga - valorRecebido),
           status,
           formaPagamento: locacao.formaPagamento,
         },

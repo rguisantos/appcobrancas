@@ -36,8 +36,11 @@ export type ViewType =
   | 'admin-auditoria'
   | 'admin-metas'
   | 'admin-meta-nova'
+  | 'admin-meta-editar'
   | 'perfil'
   | 'notificacoes'
+
+const MAX_HISTORY = 50
 
 interface NavigationState {
   currentView: ViewType
@@ -56,7 +59,7 @@ export const useNavigation = create<NavigationState>((set, get) => ({
   navigate: (view, id = null, params = {}) => {
     const { currentView, selectedId, params: currentParams } = get()
     set((state) => ({
-      history: [...state.history, { view: currentView, id: selectedId, params: currentParams }],
+      history: [...state.history.slice(-(MAX_HISTORY - 1)), { view: currentView, id: selectedId, params: currentParams }],
       currentView: view,
       selectedId: id,
       params,

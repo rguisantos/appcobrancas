@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { toNumber } from '@/lib/decimal'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -47,18 +48,10 @@ export async function GET(request: NextRequest) {
   })
 
   // Build client info with priority calculation
-  type CobrancaInfo = {
-    id: string
-    status: string
-    totalClientePaga: number
-    valorRecebido: number
-    dataVencimento: string | null
-  }
-
   const clientInfos = clientes.map((cliente) => {
-    const cobrancasAtrasadas = cliente.cobrancas.filter((c: CobrancaInfo) => c.status === 'Atrasado')
-    const cobrancasPendentes = cliente.cobrancas.filter((c: CobrancaInfo) => c.status === 'Pendente')
-    const cobrancasParciais = cliente.cobrancas.filter((c: CobrancaInfo) => c.status === 'Parcial')
+    const cobrancasAtrasadas = cliente.cobrancas.filter((c) => c.status === 'Atrasado')
+    const cobrancasPendentes = cliente.cobrancas.filter((c) => c.status === 'Pendente')
+    const cobrancasParciais = cliente.cobrancas.filter((c) => c.status === 'Parcial')
 
     // Priority: atrasadas=1 (highest), pendentes=2, parciais=3
     let prioridade = 3

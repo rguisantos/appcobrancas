@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View,
   Text,
@@ -23,13 +23,17 @@ export function ProdutosScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null)
 
   const fetchProdutos = useCallback(async (s = '') => {
     try {
+      setError(null)
       const result = await api.getProdutos({ search: s, limit: '50' })
       setProdutos(result.data)
-    } catch (error) {
-      console.error('Error fetching produtos:', error)
+    } catch (err) {
+      console.error('Error fetching produtos:', err)
+      setError('Erro ao carregar produtos')
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -37,7 +41,13 @@ export function ProdutosScreen() {
   }, [])
 
   useEffect(() => {
-    fetchProdutos(search)
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    searchTimeout.current = setTimeout(() => {
+      fetchProdutos(search)
+    }, 300)
+    return () => {
+      if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    }
   }, [fetchProdutos, search])
 
   const onRefresh = () => {
@@ -66,6 +76,17 @@ export function ProdutosScreen() {
   )
 
   if (loading) return <LoadingScreen />
+
+  if (error && produtos.length === 0) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => { setLoading(true); fetchProdutos(search) }}>
+          <Text style={styles.retryButtonText}>Tentar novamente</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
 
   return (
     <View style={styles.container}>
@@ -131,4 +152,28 @@ const styles = StyleSheet.create({
     borderTopColor: colors.borderLight,
   },
   meta: { fontSize: fontSize.xs, color: colors.textMuted },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    padding: spacing.lg,
+  },
+  errorText: {
+    fontSize: fontSize.md,
+    color: colors.danger,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: fontSize.md,
+    fontWeight: '600',
+  },
 })

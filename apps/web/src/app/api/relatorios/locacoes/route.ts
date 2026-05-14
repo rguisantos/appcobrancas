@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { db } from '@/lib/db'
+import { toNumber } from '@/lib/decimal'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
     formaPagamento: l.formaPagamento,
     status: l.status,
     totalCobrancas: l.cobrancas.length,
-    totalRecebido: l.cobrancas.filter(c => c.status === 'Pago' || c.status === 'Parcial').reduce((s, c) => s + c.valorRecebido, 0),
+    totalRecebido: l.cobrancas.filter(c => c.status === 'Pago' || c.status === 'Parcial').reduce((s, c) => s + toNumber(c.valorRecebido), 0),
   }))
 
   const porForma: Record<string, number> = {}

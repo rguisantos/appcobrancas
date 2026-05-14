@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { useNavigation } from '@/lib/store/navigation'
+import { useNavigation, type ViewType } from '@/lib/store/navigation'
 import { useAuth } from '@/lib/store/auth'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -336,7 +336,7 @@ const cardVariants = {
     transition: {
       delay: i * 100,
       duration: 0.5,
-      ease: 'easeOut',
+      ease: 'easeOut' as const,
     },
   }),
 }
@@ -349,7 +349,7 @@ const chartVariants = {
     transition: {
       delay: 400,
       duration: 0.5,
-      ease: 'easeOut',
+      ease: 'easeOut' as const,
     },
   },
 }
@@ -362,7 +362,7 @@ const bottomVariants = {
     transition: {
       delay: 600,
       duration: 0.5,
-      ease: 'easeOut',
+      ease: 'easeOut' as const,
     },
   },
 }
@@ -1195,7 +1195,7 @@ export function DashboardView() {
   )
 }
 
-function TopClientsWidget({ navigate }: { navigate: (view: string, id?: string | null) => void }) {
+function TopClientsWidget({ navigate }: { navigate: (view: ViewType, id?: string | null, params?: Record<string, string>) => void }) {
   const [topClients, setTopClients] = useState<Array<{
     id: string
     nomeExibicao: string
@@ -1520,7 +1520,7 @@ function FinancialOverviewWidget({ data }: { data: DashboardData }) {
   )
 }
 
-function ProximosVencimentosWidget({ navigate }: { navigate: (view: string, id?: string | null) => void }) {
+function ProximosVencimentosWidget({ navigate }: { navigate: (view: ViewType, id?: string | null, params?: Record<string, string>) => void }) {
   const [vencimentos, setVencimentos] = useState<Array<{
     id: string
     clienteNome: string
@@ -1934,8 +1934,8 @@ function getAuditDotColor(acao: string): string {
   return 'bg-slate-400'
 }
 
-function getAuditNavView(entidade: string): string | null {
-  const map: Record<string, string> = {
+function getAuditNavView(entidade: string): ViewType | null {
+  const map: Record<string, ViewType> = {
     cliente: 'cliente-detalhe',
     produto: 'produto-detalhe',
     locacao: 'locacao-detalhe',
@@ -1949,7 +1949,7 @@ function getAuditNavView(entidade: string): string | null {
   return map[entidade] || null
 }
 
-function RecentActivityFeed({ navigate }: { navigate: (view: string, id?: string | null) => void }) {
+function RecentActivityFeed({ navigate }: { navigate: (view: ViewType, id?: string | null, params?: Record<string, string>) => void }) {
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [loading, setLoading] = useState(true)
 

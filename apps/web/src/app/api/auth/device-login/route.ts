@@ -3,6 +3,8 @@ import { db } from '@/lib/db'
 import { verifyPassword } from '@/lib/hash'
 import { signToken, AuthPayload } from '@/lib/auth-jwt'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { checkRateLimit, resetRateLimit } from '@/lib/rate-limit'
+import { hashToken } from '@/lib/session'
 
 /**
  * POST /api/auth/device-login
@@ -18,6 +20,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'deviceKey e senha sao obrigatorios' },
         { status: 400 }
+      )
+    }
+
+    // Rate limit by deviceKey + IP to prevent brute-force
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+    const rateLimitId = `device:${deviceKey}:${ip}`
+    const rateLimitResult = checkRateLimit(rateLimitId)
+    if (!rateLimitResult.allowed) {
+      const retryAfterSeconds = Math.ceil((rateLimitResult.resetAtMs - Date.now()) / 1000)
+      return NextResponse.json(
+        { error: 'Muitas tentativas de login. Tente novamente mais tarde.', retryAfterSeconds },
+        { status: 429, headers: { 'Retry-After': String(retryAfterSeconds) } }
       )
     }
 
@@ -53,8 +67,8 @@ export async function POST(request: NextRequest) {
     let payload: AuthPayload
 
     if (usuario && usuario.status === 'Ativo' && !usuario.bloqueado) {
-      const permissoesWeb = JSON.parse(usuario.permissoesWeb || '{}')
-      const rotasPermitidas = JSON.parse(usuario.rotasPermitidas || '[]')
+      const permissoesWeb = (usuario.permissoesWeb as Record<string, boolean>) || {}
+      const rotasPermitidas = (usuario.rotasPermitidas as string[]) || []
 
       payload = {
         userId: usuario.id,
@@ -68,7 +82,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Usuario associado inativo ou bloqueado' }, { status: 403 })
     } else {
       // Device without user association - limited access
-      const rotasPermitidas = JSON.parse(dispositivo.rotasPermitidas || '[]')
+      const rotasPermitidas = (dispositivo.rotasPermitidas as string[]) || []
       payload = {
         userId: `device:${dispositivo.id}`,
         email: `device-${dispositivo.deviceKey}@local`,
@@ -80,6 +94,20 @@ export async function POST(request: NextRequest) {
     }
 
     const token = await signToken(payload)
+
+    // Create session record in database (hashed token)
+    await db.sessao.create({
+      data: {
+        usuarioId: usuario?.id || dispositivo.id,
+        token: hashToken(token),
+        dispositivo: dispositivo.nome || 'Mobile',
+        ip: request.headers.get('x-forwarded-for') || null,
+        expiraEm: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    })
+
+    // Reset rate limit on successful login
+    resetRateLimit(rateLimitId)
 
     // Update last sync timestamp
     await db.dispositivo.update({
@@ -103,7 +131,7 @@ export async function POST(request: NextRequest) {
       device: {
         id: dispositivo.id,
         nome: dispositivo.nome,
-        rotasPermitidas: JSON.parse(dispositivo.rotasPermitidas || '[]'),
+        rotasPermitidas: (dispositivo.rotasPermitidas as string[]) || [],
       },
       user: usuario
         ? {
@@ -111,8 +139,8 @@ export async function POST(request: NextRequest) {
             nome: usuario.nome,
             email: usuario.email,
             tipoPermissao: usuario.tipoPermissao,
-            permissoesMobile: JSON.parse(usuario.permissoesMobile || '{}'),
-            rotasPermitidas: JSON.parse(usuario.rotasPermitidas || '[]'),
+            permissoesMobile: (usuario.permissoesMobile as Record<string, boolean>) || {},
+            rotasPermitidas: (usuario.rotasPermitidas as string[]) || [],
           }
         : null,
     })

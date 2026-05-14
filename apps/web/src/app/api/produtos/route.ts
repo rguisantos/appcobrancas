@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireMutationRole } from '@/lib/rbac'
 import { produtoSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { writeSyncLog } from '@/lib/sync-log'
-import { handleApiError } from '@/lib/api-utils'
+import { handleApiError, safeLimit, safePage } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -12,8 +13,8 @@ export async function GET(request: NextRequest) {
 
   try {
   const searchParams = request.nextUrl.searchParams
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '20')
+  const page = safePage(searchParams.get('page'))
+  const limit = safeLimit(searchParams.get('limit'))
   const skip = (page - 1) * limit
   const busca = searchParams.get('busca') || ''
   const tipoId = searchParams.get('tipoId') || ''
@@ -60,8 +61,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized || !session) return response
 
   try {
     const body = await request.json()

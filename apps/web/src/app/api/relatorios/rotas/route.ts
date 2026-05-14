@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { db } from '@/lib/db'
+import { toNumber } from '@/lib/decimal'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -26,8 +27,8 @@ export async function GET(request: NextRequest) {
       regiao: r.regiao,
       totalClientes: r.clientes.length,
       totalCobrancas: cobrancas.length,
-      totalRecebido: cobrancas.filter(c => c.status === 'Pago' || c.status === 'Parcial').reduce((s, c) => s + c.valorRecebido, 0),
-      totalPendente: cobrancas.filter(c => c.status === 'Pendente' || c.status === 'Atrasado').reduce((s, c) => s + c.totalClientePaga, 0),
+      totalRecebido: cobrancas.filter(c => c.status === 'Pago' || c.status === 'Parcial').reduce((s, c) => s + toNumber(c.valorRecebido), 0),
+      totalPendente: cobrancas.filter(c => c.status === 'Pendente' || c.status === 'Atrasado').reduce((s, c) => s + toNumber(c.totalClientePaga), 0),
     }
   }))
 

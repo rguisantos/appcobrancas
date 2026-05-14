@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigation } from '@/lib/store/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -169,8 +169,8 @@ export function RelatoriosView() {
       a.download = filename
       document.body.appendChild(a)
       a.click()
-      window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000)
 
       toast.success(`Relatório ${activeReport} exportado com sucesso!`)
     } catch (error) {
@@ -182,7 +182,7 @@ export function RelatoriosView() {
   }
 
   // ==================== FINANCEIRO REPORT ====================
-  const financeiroData = (() => {
+  const financeiroData = useMemo(() => {
     const monthlyMap = new Map<string, { mes: string; valor: number; recebido: number; pendente: number; atrasado: number }>()
 
     cobrancas.forEach((c) => {
@@ -207,25 +207,25 @@ export function RelatoriosView() {
     })
 
     return Array.from(monthlyMap.values()).sort((a, b) => a.mes.localeCompare(b.mes))
-  })()
+  }, [cobrancas])
 
-  const financeiroSummary = {
+  const financeiroSummary = useMemo(() => ({
     totalGeral: cobrancas.reduce((a, c) => a + c.totalClientePaga, 0),
     totalRecebido: cobrancas.filter(c => c.status === 'Pago' || c.status === 'Parcial').reduce((a, c) => a + c.valorRecebido, 0),
     totalPendente: cobrancas.filter(c => c.status === 'Pendente' || c.status === 'Parcial').reduce((a, c) => a + (c.totalClientePaga - c.valorRecebido), 0),
     totalAtrasado: cobrancas.filter(c => c.status === 'Atrasado').reduce((a, c) => a + (c.totalClientePaga - c.valorRecebido), 0),
-  }
+  }), [cobrancas])
 
-  const statusDistribution = (() => {
+  const statusDistribution = useMemo(() => {
     const map = new Map<string, number>()
     cobrancas.forEach(c => {
       map.set(c.status, (map.get(c.status) || 0) + 1)
     })
     return Array.from(map.entries()).map(([status, quantidade]) => ({ status, quantidade }))
-  })()
+  }, [cobrancas])
 
   // ==================== CLIENTES REPORT ====================
-  const clientesData = (() => {
+  const clientesData = useMemo(() => {
     const map = new Map<string, { clienteNome: string; totalCobrancas: number; totalValor: number; totalRecebido: number; totalPendente: number }>()
     cobrancas.forEach(c => {
       if (!map.has(c.clienteId)) {
@@ -238,10 +238,10 @@ export function RelatoriosView() {
       entry.totalPendente += (c.totalClientePaga - c.valorRecebido)
     })
     return Array.from(map.values()).sort((a, b) => b.totalValor - a.totalValor)
-  })()
+  }, [cobrancas])
 
   // ==================== PRODUTOS REPORT ====================
-  const produtosData = (() => {
+  const produtosData = useMemo(() => {
     const map = new Map<string, { produtoIdentificador: string; totalCobrancas: number; totalValor: number; totalRecebido: number }>()
     cobrancas.forEach(c => {
       const key = c.produtoId || c.produtoIdentificador
@@ -254,23 +254,23 @@ export function RelatoriosView() {
       entry.totalRecebido += c.valorRecebido
     })
     return Array.from(map.values()).sort((a, b) => b.totalValor - a.totalValor)
-  })()
+  }, [cobrancas])
 
   // ==================== INADIMPLENCIA REPORT ====================
-  const inadimplenciaData = cobrancas
+  const inadimplenciaData = useMemo(() => cobrancas
     .filter(c => c.status === 'Atrasado' || c.status === 'Pendente' || c.status === 'Parcial')
     .sort((a, b) => (b.totalClientePaga - b.valorRecebido) - (a.totalClientePaga - a.valorRecebido))
     .map(c => ({
       ...c,
       saldoDevedor: c.totalClientePaga - c.valorRecebido,
-    }))
+    })), [cobrancas])
 
   // ==================== RECEBIMENTOS REPORT ====================
-  const recebimentosData = cobrancas
+  const recebimentosData = useMemo(() => cobrancas
     .filter(c => c.valorRecebido > 0 && c.dataPagamento)
-    .sort((a, b) => (b.dataPagamento || '').localeCompare(a.dataPagamento || ''))
+    .sort((a, b) => new Date(b.dataPagamento!).getTime() - new Date(a.dataPagamento!).getTime()), [cobrancas])
 
-  const recebimentosMonthly = (() => {
+  const recebimentosMonthly = useMemo(() => {
     const map = new Map<string, { mes: string; valor: number }>()
     recebimentosData.forEach(c => {
       if (!c.dataPagamento) return
@@ -288,10 +288,10 @@ export function RelatoriosView() {
       map.get(monthKey)!.valor += c.valorRecebido
     })
     return Array.from(map.values()).sort((a, b) => a.mes.localeCompare(b.mes))
-  })()
+  }, [recebimentosData])
 
   // ==================== COMPARATIVO REPORT ====================
-  const comparativoData = (() => {
+  const comparativoData = useMemo(() => {
     const currentYear = new Date().getFullYear()
     const lastYear = currentYear - 1
     const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
@@ -309,12 +309,12 @@ export function RelatoriosView() {
 
       return { mes, atual, anterior }
     })
-  })()
+  }, [cobrancas])
 
   // ==================== ROTAS REPORT ====================
   // For rotas, we need to join with cliente data. Since we only have cobranças here,
   // we'll group by cliente as a proxy (in a full app, we'd fetch rotas data)
-  const rotasData = (() => {
+  const rotasData = useMemo(() => {
     // Group cobranças by first letter of client name as a simple grouping
     // In production, this would join with rotas data
     const map = new Map<string, { rota: string; totalCobrancas: number; totalValor: number; totalRecebido: number }>()
@@ -329,7 +329,7 @@ export function RelatoriosView() {
       entry.totalRecebido += c.valorRecebido
     })
     return Array.from(map.values()).sort((a, b) => b.totalValor - a.totalValor)
-  })()
+  }, [cobrancas])
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '—'

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigation } from '@/lib/store/navigation'
+import { useNavigation, type ViewType } from '@/lib/store/navigation'
 import { formatarMoeda } from '@/lib/cobranca-calculos'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -67,7 +67,7 @@ interface ClienteDetalhe {
   inscricaoEstadual?: string
   telefonePrincipal: string
   email?: string
-  contatos?: string
+  contatos?: Array<{nome?: string; telefone?: string; funcao?: string}>
   cep: string
   logradouro: string
   numero: string
@@ -215,6 +215,19 @@ export function ClienteDetalheView() {
     }))
   }, [cliente?.cobrancas])
 
+  // Financial summary calculations (computed before early returns for hooks rules)
+  const { cobrancasAtivas, totalRecebido, totalPendente, totalAtrasado } = useMemo(() => {
+    const ativas = cliente?.cobrancas?.filter(c => c.status !== 'Cancelada') || []
+    const recebido = ativas.reduce((acc, c) => acc + (c.valorRecebido || 0), 0)
+    const pendente = ativas
+      .filter(c => c.status === 'Pendente' || c.status === 'Parcial')
+      .reduce((acc, c) => acc + (c.totalClientePaga - c.valorRecebido), 0)
+    const atrasado = ativas
+      .filter(c => c.status === 'Atrasado')
+      .reduce((acc, c) => acc + c.totalClientePaga, 0)
+    return { cobrancasAtivas: ativas, totalRecebido: recebido, totalPendente: pendente, totalAtrasado: atrasado }
+  }, [cliente?.cobrancas])
+
   if (loading) {
     return <DetailSkeleton />
   }
@@ -226,16 +239,6 @@ export function ClienteDetalheView() {
       </div>
     )
   }
-
-  // Financial summary calculations
-  const cobrancasAtivas = cliente.cobrancas?.filter(c => c.status !== 'Cancelada') || []
-  const totalRecebido = cobrancasAtivas.reduce((acc, c) => acc + (c.valorRecebido || 0), 0)
-  const totalPendente = cobrancasAtivas
-    .filter(c => c.status === 'Pendente' || c.status === 'Parcial')
-    .reduce((acc, c) => acc + (c.totalClientePaga - c.valorRecebido), 0)
-  const totalAtrasado = cobrancasAtivas
-    .filter(c => c.status === 'Atrasado')
-    .reduce((acc, c) => acc + c.totalClientePaga, 0)
 
   const fullAddress = [
     cliente.logradouro,
@@ -355,38 +358,32 @@ export function ClienteDetalheView() {
           <CardContent className="space-y-1.5">
             <InfoRow label="Telefone" value={cliente.telefonePrincipal} />
             <InfoRow label="Email" value={cliente.email} />
-            {cliente.contatos && (() => {
-              try {
-                const contatos = JSON.parse(cliente.contatos)
-                if (!Array.isArray(contatos) || contatos.length === 0) return null
-                return (
-                  <div className="mt-4">
-                    <h4 className="text-sm font-medium mb-2">Contatos Adicionais</h4>
-                    <div className="space-y-2">
-                      {contatos.map((c: {nome?: string; telefone?: string; funcao?: string}, i: number) => (
-                        <div key={i} className="flex items-center gap-2 text-sm">
-                          <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span>{c.nome || 'Contato'}</span>
-                          {c.funcao && <span className="text-muted-foreground">({c.funcao})</span>}
-                          <span className="text-muted-foreground">{c.telefone}</span>
-                          {c.telefone && (
-                            <a
-                              href={`https://wa.me/55${c.telefone.replace(/\D/g, '')}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-green-600 hover:text-green-700 text-xs ml-auto"
-                            >
-                              <MessageCircle className="h-3.5 w-3.5" />
-                              WhatsApp
-                            </a>
-                          )}
-                        </div>
-                      ))}
+            {cliente.contatos && Array.isArray(cliente.contatos) && cliente.contatos.length > 0 && (
+              <div className="mt-4">
+                <h4 className="text-sm font-medium mb-2">Contatos Adicionais</h4>
+                <div className="space-y-2">
+                  {cliente.contatos.map((c, i) => (
+                    <div key={i} className="flex items-center gap-2 text-sm">
+                      <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>{c.nome || 'Contato'}</span>
+                      {c.funcao && <span className="text-muted-foreground">({c.funcao})</span>}
+                      <span className="text-muted-foreground">{c.telefone}</span>
+                      {c.telefone && (
+                        <a
+                          href={`https://wa.me/55${c.telefone.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-green-600 hover:text-green-700 text-xs ml-auto"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          WhatsApp
+                        </a>
+                      )}
                     </div>
-                  </div>
-                )
-              } catch { return null }
-            })()}
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -842,7 +839,7 @@ function ClientTimeline({ clienteId, clienteNome, locacoes, cobrancas, navigate 
   clienteNome: string
   locacoes: LocacaoItem[]
   cobrancas: CobrancaItem[]
-  navigate: (view: string, id?: string | null) => void
+  navigate: (view: ViewType, id?: string | null, params?: Record<string, string>) => void
 }) {
   const [auditLogs, setAuditLogs] = useState<Array<{
     id: string
@@ -863,13 +860,10 @@ function ClientTimeline({ clienteId, clienteNome, locacoes, cobrancas, navigate 
         if (res.ok) {
           const data = await res.json()
           const logs = (data.data || data || []).filter(
-            (log: { entidadeId?: string; entidadeNome?: string; detalhes?: string }) => {
+            (log: { entidadeId?: string; entidadeNome?: string; detalhes?: Record<string, unknown> }) => {
               if (log.entidadeId === clienteId) return true
               if (log.entidadeNome === clienteNome) return true
-              try {
-                const detalhes = typeof log.detalhes === 'string' ? JSON.parse(log.detalhes) : log.detalhes
-                if (detalhes?.clienteId === clienteId) return true
-              } catch { /* ignore */ }
+              if (log.detalhes?.clienteId === clienteId) return true
               return false
             }
           )

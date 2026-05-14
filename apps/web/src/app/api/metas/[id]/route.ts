@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireAdmin } from '@/lib/rbac'
 import { metaSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
 
@@ -14,7 +15,7 @@ export async function GET(
   try {
   const { id } = await params
   const meta = await db.meta.findFirst({
-    where: { id, deletedAt: null },
+    where: { id },
     include: { rota: true },
   })
 
@@ -30,11 +31,11 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireAdmin()
+  if (!authorized || !session) return response
 
   const { id } = await params
-  const existing = await db.meta.findFirst({ where: { id, deletedAt: null } })
+  const existing = await db.meta.findFirst({ where: { id } })
   if (!existing) return NextResponse.json({ error: 'Meta não encontrada' }, { status: 404 })
 
   try {
@@ -78,17 +79,16 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireAdmin()
+  if (!authorized || !session) return response
 
   try {
   const { id } = await params
-  const existing = await db.meta.findFirst({ where: { id, deletedAt: null } })
+  const existing = await db.meta.findFirst({ where: { id } })
   if (!existing) return NextResponse.json({ error: 'Meta não encontrada' }, { status: 404 })
 
-  const meta = await db.meta.update({
+  const meta = await db.meta.delete({
     where: { id },
-    data: { deletedAt: new Date() },
   })
 
   await registrarAuditoria({

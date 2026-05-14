@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { Prisma } from '@prisma/client'
+import { toNumber } from '@/lib/decimal'
 
 export async function GET() {
   const session = await getAuthSession()
@@ -8,64 +10,50 @@ export async function GET() {
 
   try {
     const now = new Date()
-    const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
-    const fimMes = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+    const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1)
+    const fimMes = new Date(now.getFullYear(), now.getMonth() + 1, 0)
 
-    // Total clientes ativos
-    const totalClientes = await db.cliente.count({
-      where: { deletedAt: null, status: 'Ativo' },
-    })
+    // Run independent counts in parallel
+    const [totalClientes, locacoesAtivas, totalProdutos, produtosLocadosResult] = await Promise.all([
+      db.cliente.count({ where: { deletedAt: null, status: 'Ativo' } }),
+      db.locacao.count({ where: { deletedAt: null, status: 'Ativa' } }),
+      db.produto.count({ where: { deletedAt: null, statusProduto: 'Ativo' } }),
+      // Use count with filter instead of findMany + .length
+      db.produto.count({
+        where: {
+          deletedAt: null,
+          locacoes: { some: { deletedAt: null, status: 'Ativa' } },
+        },
+      }),
+    ])
+    const produtosLocados = produtosLocadosResult
 
-    // Locações ativas
-    const locacoesAtivas = await db.locacao.count({
-      where: { deletedAt: null, status: 'Ativa' },
-    })
-
-    // Produtos locados (produtos que possuem locações ativas)
-    const produtosLocadosResult = await db.produto.findMany({
-      where: {
-        deletedAt: null,
-        locacoes: { some: { deletedAt: null, status: 'Ativa' } },
-      },
-      select: { id: true },
-    })
-    const produtosLocados = produtosLocadosResult.length
-
-    // Total de produtos ativos
-    const totalProdutos = await db.produto.count({
-      where: { deletedAt: null, statusProduto: 'Ativo' },
-    })
-
-    // Ganho atual do mês (cobranças pagas ou parciais no mês)
-    const cobrancasMes = await db.cobranca.findMany({
+    // Current month revenue — use aggregate instead of findMany + reduce
+    const ganhoMesResult = await db.cobranca.aggregate({
       where: {
         deletedAt: null,
         status: { in: ['Pago', 'Parcial'] },
         dataPagamento: { gte: inicioMes, lte: fimMes },
       },
-      select: { valorRecebido: true },
+      _sum: { valorRecebido: true },
     })
-    const ganhoAtualMes = cobrancasMes.reduce((acc, c) => acc + c.valorRecebido, 0)
+    const ganhoAtualMes = toNumber(ganhoMesResult._sum.valorRecebido)
 
     // Cobranças pendentes e atrasadas
-    const cobrancasPendentes = await db.cobranca.count({
-      where: { deletedAt: null, status: { in: ['Pendente', 'Atrasado'] } },
-    })
-
-    // Cobranças atrasadas specifically
-    const cobrancasAtrasadas = await db.cobranca.count({
-      where: { deletedAt: null, status: 'Atrasado' },
-    })
+    const [cobrancasPendentes, cobrancasAtrasadas] = await Promise.all([
+      db.cobranca.count({ where: { deletedAt: null, status: { in: ['Pendente', 'Atrasado'] } } }),
+      db.cobranca.count({ where: { deletedAt: null, status: 'Atrasado' } }),
+    ])
 
     // Total value in Atrasado cobranças
     const cobrancasAtrasadasValor = await db.cobranca.aggregate({
       where: { deletedAt: null, status: 'Atrasado' },
       _sum: { totalClientePaga: true, valorRecebido: true },
     })
-    const totalAtrasadoValor = (cobrancasAtrasadasValor._sum.totalClientePaga || 0) - (cobrancasAtrasadasValor._sum.valorRecebido || 0)
+    const totalAtrasadoValor = toNumber(cobrancasAtrasadasValor._sum.totalClientePaga) - toNumber(cobrancasAtrasadasValor._sum.valorRecebido)
 
-    // Clientes sem cobranças recentes (últimos 30 dias)
-    const trintaDiasAtras = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    // Clientes sem cobranças recentes (últimos 30 dias) — use raw SQL for efficiency
+    const trintaDiasAtras = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
     const clientesComCobrancaRecente = await db.cobranca.findMany({
       where: {
@@ -88,28 +76,38 @@ export async function GET() {
       take: 20,
     })
 
-    // Chart: Monthly revenue (last 12 months)
-    const receitaMensal = []
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const mesInicio = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0]
-      const mesFim = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0]
-      const mesLabel = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')
+    // Chart: Monthly revenue — single groupBy query instead of 12 parallel aggregates
+    const dozeMesesAtras = new Date(now.getFullYear(), now.getMonth() - 11, 1)
+    const receitaMensalRaw = await db.cobranca.groupBy({
+      by: ['dataPagamento'],
+      where: {
+        deletedAt: null,
+        status: { in: ['Pago', 'Parcial'] },
+        dataPagamento: { gte: dozeMesesAtras },
+      },
+      _sum: { valorRecebido: true },
+    })
 
-      const cobrancasDoMes = await db.cobranca.findMany({
-        where: {
-          deletedAt: null,
-          status: { in: ['Pago', 'Parcial'] },
-          dataPagamento: { gte: mesInicio, lte: mesFim },
-        },
-        select: { valorRecebido: true },
-      })
-      const totalMes = cobrancasDoMes.reduce((acc, c) => acc + c.valorRecebido, 0)
-
-      receitaMensal.push({ mes: mesLabel, valor: totalMes })
+    // Aggregate by month from the raw results
+    const monthlyMap = new Map<string, number>()
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1)
+      const label = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')
+      monthlyMap.set(label, 0)
     }
 
-    // Chart: Cobranças by status
+    for (const row of receitaMensalRaw) {
+      if (row.dataPagamento) {
+        const d = new Date(row.dataPagamento)
+        const label = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')
+        const current = monthlyMap.get(label) || 0
+        monthlyMap.set(label, current + toNumber(row._sum.valorRecebido))
+      }
+    }
+
+    const receitaMensal = Array.from(monthlyMap.entries()).map(([mes, valor]) => ({ mes, valor }))
+
+    // Chart: Cobranças by status (single groupBy)
     const cobrancasByStatusRaw = await db.cobranca.groupBy({
       by: ['status'],
       where: { deletedAt: null },
@@ -121,7 +119,7 @@ export async function GET() {
       quantidade: s._count.status,
     }))
 
-    // Chart: Cobranças by forma de pagamento
+    // Chart: Cobranças by forma de pagamento (single groupBy)
     const cobrancasByFormaPagamentoRaw = await db.cobranca.groupBy({
       by: ['formaPagamento'],
       where: { deletedAt: null, status: { in: ['Pago', 'Parcial'] } },
@@ -133,28 +131,25 @@ export async function GET() {
       quantidade: f._count.formaPagamento,
     }))
 
-    // Chart: Top 5 clients with highest pending debts
-    const clientesDividaRaw = await db.cliente.findMany({
-      where: { deletedAt: null, status: 'Ativo' },
-      select: {
-        id: true,
-        nomeExibicao: true,
-        cobrancas: {
-          where: { deletedAt: null, status: { in: ['Pendente', 'Atrasado', 'Parcial'] } },
-          select: { totalClientePaga: true, valorRecebido: true },
-        },
-      },
-    })
+    // Top 5 clients with highest pending debts — use raw SQL aggregation instead of N+1
+    const clientesDividaRaw: { id: string; nomeExibicao: string; divida: number }[] = await db.$queryRaw`
+      SELECT c.id, c."nomeExibicao",
+        COALESCE(SUM(cb."totalClientePaga" - cb."valorRecebido"), 0) as divida
+      FROM clientes c
+      INNER JOIN cobrancas cb ON cb."clienteId" = c.id AND cb."deletedAt" IS NULL
+        AND cb.status IN ('Pendente', 'Atrasado', 'Parcial')
+      WHERE c."deletedAt" IS NULL AND c.status = 'Ativo'
+      GROUP BY c.id, c."nomeExibicao"
+      HAVING COALESCE(SUM(cb."totalClientePaga" - cb."valorRecebido"), 0) > 0
+      ORDER BY divida DESC
+      LIMIT 5
+    `
 
-    const clientesDivida = clientesDividaRaw
-      .map(c => ({
-        id: c.id,
-        nomeExibicao: c.nomeExibicao,
-        divida: c.cobrancas.reduce((acc, cob) => acc + (cob.totalClientePaga - cob.valorRecebido), 0),
-      }))
-      .filter(c => c.divida > 0)
-      .sort((a, b) => b.divida - a.divida)
-      .slice(0, 5)
+    const clientesDivida = clientesDividaRaw.map(c => ({
+      id: c.id,
+      nomeExibicao: c.nomeExibicao,
+      divida: Number(c.divida),
+    }))
 
     // Recent cobranças (last 10)
     const cobrancasRecentes = await db.cobranca.findMany({

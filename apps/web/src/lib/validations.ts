@@ -13,7 +13,11 @@ export const clienteSchema = z.object({
   inscricaoEstadual: z.string().optional(),
   telefonePrincipal: z.string().min(1, 'Telefone é obrigatório'),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
-  contatos: z.string().optional(),
+  contatos: z.array(z.object({
+    nome: z.string().min(1, 'Nome do contato é obrigatório'),
+    telefone: z.string().min(1, 'Telefone do contato é obrigatório'),
+    funcao: z.string().optional(),
+  })).nullable().optional(),
   cep: z.string().default(''),
   logradouro: z.string().default(''),
   numero: z.string().default(''),
@@ -59,8 +63,8 @@ export const rotaSchema = z.object({
 export const locacaoSchema = z.object({
   clienteId: z.string().min(1, 'Cliente é obrigatório'),
   produtoId: z.string().min(1, 'Produto é obrigatório'),
-  dataLocacao: z.string().min(1, 'Data de locação é obrigatória'),
-  dataFim: z.string().optional(),
+  dataLocacao: z.coerce.date(),
+  dataFim: z.coerce.date().optional(),
   formaPagamento: z.enum(['Periodo', 'PercentualPagar', 'PercentualReceber']),
   numeroRelogio: z.string().default('0'),
   precoFicha: z.number().min(0).default(0),
@@ -68,7 +72,7 @@ export const locacaoSchema = z.object({
   percentualCliente: z.number().min(0).max(100).default(0),
   valorFixo: z.number().min(0).optional(),
   periodicidade: z.enum(['Semanal', 'Quinzenal', 'Mensal']).optional(),
-  dataPrimeiraCobranca: z.string().optional(),
+  dataPrimeiraCobranca: z.coerce.date().optional(),
   observacoes: z.string().optional(),
   trocaPano: z.boolean().default(false),
 })
@@ -76,8 +80,8 @@ export const locacaoSchema = z.object({
 // Cobrança
 export const cobrancaSchema = z.object({
   locacaoId: z.string().min(1, 'Locação é obrigatória'),
-  dataInicio: z.string().min(1, 'Data início é obrigatória'),
-  dataFim: z.string().min(1, 'Data fim é obrigatória'),
+  dataInicio: z.coerce.date(),
+  dataFim: z.coerce.date(),
   relogioAnterior: z.number().default(0),
   relogioAtual: z.number().default(0),
   descontoPartidasQtd: z.number().optional(),
@@ -96,9 +100,9 @@ export const usuarioSchema = z.object({
   cpf: z.string().optional(),
   telefone: z.string().optional(),
   tipoPermissao: z.enum(['Administrador', 'Secretario', 'AcessoControlado']).default('AcessoControlado'),
-  permissoesWeb: z.string().default('{}'),
-  permissoesMobile: z.string().default('{}'),
-  rotasPermitidas: z.string().default('[]'),
+  permissoesWeb: z.record(z.string(), z.boolean()).default({}),
+  permissoesMobile: z.record(z.string(), z.boolean()).default({}),
+  rotasPermitidas: z.array(z.string()).default([]),
   status: z.enum(['Ativo', 'Inativo']).default('Ativo'),
 })
 
@@ -123,8 +127,8 @@ export const manutencaoSchema = z.object({
   produtoId: z.string().min(1, 'Produto é obrigatório'),
   tipo: z.enum(['preventiva', 'corretiva', 'troca_pano', 'outra']),
   descricao: z.string().min(1, 'Descrição é obrigatória'),
-  dataInicio: z.string().min(1, 'Data início é obrigatória'),
-  dataFim: z.string().optional(),
+  dataInicio: z.coerce.date(),
+  dataFim: z.coerce.date().optional(),
   custo: z.number().default(0),
   status: z.enum(['EmAndamento', 'Concluida', 'Cancelada']).default('EmAndamento'),
   observacao: z.string().optional(),

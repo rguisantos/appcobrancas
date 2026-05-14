@@ -23,9 +23,11 @@ export function LocacoesScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchLocacoes = useCallback(async (p = 1) => {
     try {
+      setError(null)
       const result = await api.getLocacoes({ page: String(p), limit: '20' })
       if (p === 1) {
         setLocacoes(result.data)
@@ -33,8 +35,9 @@ export function LocacoesScreen() {
         setLocacoes((prev) => [...prev, ...result.data])
       }
       setTotalPages(result.totalPages)
-    } catch (error) {
-      console.error('Error fetching locacoes:', error)
+    } catch (err) {
+      console.error('Error fetching locacoes:', err)
+      setError('Erro ao carregar locacoes')
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -88,6 +91,17 @@ export function LocacoesScreen() {
 
   if (loading) return <LoadingScreen />
 
+  if (error && locacoes.length === 0) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => { setLoading(true); fetchLocacoes(1) }}>
+          <Text style={styles.retryButtonText}>Tentar novamente</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -128,4 +142,28 @@ const styles = StyleSheet.create({
   },
   label: { fontSize: fontSize.xs, color: colors.textMuted },
   value: { fontSize: fontSize.sm, color: colors.text, marginTop: 2 },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    padding: spacing.lg,
+  },
+  errorText: {
+    fontSize: fontSize.md,
+    color: colors.danger,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: fontSize.md,
+    fontWeight: '600',
+  },
 })

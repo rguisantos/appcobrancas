@@ -36,22 +36,27 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const data = historicoRelogioSchema.parse(body)
 
-    const historico = await db.historicoRelogio.create({
-      data: {
-        produtoId: data.produtoId,
-        relogioAnterior: data.relogioAnterior,
-        relogioNovo: data.relogioNovo,
-        motivo: data.motivo,
-        observacao: data.observacao,
-        usuarioId: session.userId,
-        usuarioNome: session.nome,
-      },
-    })
+    // Wrap create + produto.update in a transaction for atomicity
+    const historico = await db.$transaction(async (tx) => {
+      const created = await tx.historicoRelogio.create({
+        data: {
+          produtoId: data.produtoId,
+          relogioAnterior: data.relogioAnterior,
+          relogioNovo: data.relogioNovo,
+          motivo: data.motivo,
+          observacao: data.observacao,
+          usuarioId: session.userId,
+          usuarioNome: session.nome,
+        },
+      })
 
-    // Atualizar número do relógio no produto
-    await db.produto.update({
-      where: { id: data.produtoId },
-      data: { numeroRelogio: data.relogioNovo },
+      // Atualizar número do relógio no produto
+      await tx.produto.update({
+        where: { id: data.produtoId },
+        data: { numeroRelogio: data.relogioNovo },
+      })
+
+      return created
     })
 
     await registrarAuditoria({

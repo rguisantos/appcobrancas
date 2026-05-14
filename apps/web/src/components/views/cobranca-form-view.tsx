@@ -280,13 +280,13 @@ export function CobrancaFormView() {
         } else {
           // No previous cobrança, use locação's dataLocacao or dataPrimeiraCobranca
           const dataInicio = locacao.dataLocacao || locacao.dataPrimeiraCobranca || today
-          handleChange('dataInicio', dataInicio.split ? dataInicio.split('T')[0] : dataInicio)
+          handleChange('dataInicio', dataInicio.split('T')[0])
         }
       })
       .catch(() => {
         // Fallback: use locação date
         const dataInicio = locacao.dataLocacao || today
-        handleChange('dataInicio', dataInicio.split ? dataInicio.split('T')[0] : dataInicio)
+        handleChange('dataInicio', dataInicio.split('T')[0])
       })
 
     // Fetch open cobranças for this client
@@ -303,7 +303,7 @@ export function CobrancaFormView() {
             saldoDevedor: (c.totalClientePaga || 0) - (c.valorRecebido || 0),
             produtoIdentificador: c.produtoIdentificador || '',
           }))
-          .sort((a: {dataVencimento: string}, b: {dataVencimento: string}) => a.dataVencimento.localeCompare(b.dataVencimento)) // FIFO: oldest first
+          .sort((a: {dataVencimento: string}, b: {dataVencimento: string}) => new Date(a.dataVencimento).getTime() - new Date(b.dataVencimento).getTime()) // FIFO: oldest first
         setOpenCobrancas(items)
       })
       .catch(() => setOpenCobrancas([]))
@@ -367,7 +367,7 @@ export function CobrancaFormView() {
     // Sort selected open cobranças by dataVencimento ascending (FIFO: oldest first)
     const sortedOpen = openCobrancas
       .filter(c => selectedOpenIds.has(c.id))
-      .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento))
+      .sort((a, b) => new Date(a.dataVencimento).getTime() - new Date(b.dataVencimento).getTime())
 
     for (const cobranca of sortedOpen) {
       const payAmount = Math.min(cobranca.saldoDevedor, remaining)
@@ -459,7 +459,7 @@ export function CobrancaFormView() {
         // Sort selected open cobranças by dataVencimento ascending (FIFO: oldest first)
         const sortedOpen = openCobrancas
           .filter(c => selectedOpenIds.has(c.id))
-          .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento))
+          .sort((a, b) => new Date(a.dataVencimento).getTime() - new Date(b.dataVencimento).getTime())
 
         for (const cobranca of sortedOpen) {
           const payAmount = Math.min(cobranca.saldoDevedor, remaining)

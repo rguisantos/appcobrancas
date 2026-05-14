@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireMutationRole } from '@/lib/rbac'
 import { locacaoSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { writeSyncLog } from '@/lib/sync-log'
-import { handleApiError } from '@/lib/api-utils'
+import { handleApiError, safeLimit, safePage } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -28,11 +29,15 @@ export async function GET(request: NextRequest) {
       if (clienteId) where.clienteId = clienteId
       if (produtoId) where.produtoId = produtoId
 
+      // Apply reasonable limit for grouped views
+      const groupLimit = safeLimit(searchParams.get('limit'), 500)
+
       const [locacoes, total] = await Promise.all([
         db.locacao.findMany({
           where,
           include: { cliente: { include: { rota: true } }, produto: true },
           orderBy: { createdAt: 'desc' },
+          take: groupLimit,
         }),
         db.locacao.count({ where }),
       ])
@@ -76,8 +81,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Default: flat paginated list
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
+    const page = safePage(searchParams.get('page'))
+    const limit = safeLimit(searchParams.get('limit'))
     const skip = (page - 1) * limit
     const status = searchParams.get('status') || ''
     const clienteId = searchParams.get('clienteId') || ''
@@ -110,8 +115,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized || !session) return response
 
   try {
     const body = await request.json()
@@ -133,8 +138,8 @@ export async function POST(request: NextRequest) {
         produtoId: data.produtoId,
         produtoIdentificador: produto.identificador,
         produtoTipo: produto.tipoNome,
-        dataLocacao: data.dataLocacao,
-        dataFim: data.dataFim,
+        dataLocacao: new Date(data.dataLocacao),
+        dataFim: data.dataFim ? new Date(data.dataFim) : undefined,
         formaPagamento: data.formaPagamento,
         numeroRelogio: data.numeroRelogio,
         precoFicha: data.precoFicha,
@@ -142,7 +147,7 @@ export async function POST(request: NextRequest) {
         percentualCliente: data.percentualCliente,
         valorFixo: data.valorFixo,
         periodicidade: data.periodicidade,
-        dataPrimeiraCobranca: data.dataPrimeiraCobranca,
+        dataPrimeiraCobranca: data.dataPrimeiraCobranca ? new Date(data.dataPrimeiraCobranca) : undefined,
         observacoes: data.observacoes,
         trocaPano: data.trocaPano,
       },

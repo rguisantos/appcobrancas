@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View,
   Text,
@@ -25,9 +25,12 @@ export function ClientesScreen() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [error, setError] = useState<string | null>(null)
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null)
 
   const fetchClientes = useCallback(async (p = 1, s = '') => {
     try {
+      setError(null)
       const result = await api.getClientes({
         page: String(p),
         limit: '20',
@@ -39,8 +42,9 @@ export function ClientesScreen() {
         setClientes((prev) => [...prev, ...result.data])
       }
       setTotalPages(result.totalPages)
-    } catch (error) {
-      console.error('Error fetching clientes:', error)
+    } catch (err) {
+      console.error('Error fetching clientes:', err)
+      setError('Erro ao carregar clientes')
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -48,7 +52,13 @@ export function ClientesScreen() {
   }, [])
 
   useEffect(() => {
-    fetchClientes(1, search)
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    searchTimeout.current = setTimeout(() => {
+      fetchClientes(1, search)
+    }, 300)
+    return () => {
+      if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    }
   }, [fetchClientes, search])
 
   const onRefresh = () => {
@@ -94,6 +104,17 @@ export function ClientesScreen() {
   )
 
   if (loading) return <LoadingScreen />
+
+  if (error && clientes.length === 0) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => { setLoading(true); fetchClientes(1, search) }}>
+          <Text style={styles.retryButtonText}>Tentar novamente</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
 
   return (
     <View style={styles.container}>
@@ -220,5 +241,29 @@ const styles = StyleSheet.create({
   metaText: {
     fontSize: fontSize.xs,
     color: colors.textSecondary,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    padding: spacing.lg,
+  },
+  errorText: {
+    fontSize: fontSize.md,
+    color: colors.danger,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: fontSize.md,
+    fontWeight: '600',
   },
 })

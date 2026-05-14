@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { requireMutationRole } from '@/lib/rbac'
 import { cobrancaSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { calcularCobranca, calcularSaldoDevedor } from '@/lib/cobranca-calculos'
 import { writeSyncLog } from '@/lib/sync-log'
-import { handleApiError } from '@/lib/api-utils'
+import { handleApiError, safeLimit, safePage } from '@/lib/api-utils'
+import { toNumber } from '@/lib/decimal'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -51,12 +53,15 @@ export async function GET(request: NextRequest) {
     // Grouped by route > client > locação
     if (groupBy === 'route') {
       const where = buildWhere()
+      // Apply a reasonable limit to grouped views to prevent OOM
+      const groupLimit = safeLimit(searchParams.get('limit'), 500)
 
       const [cobrancas, total] = await Promise.all([
         db.cobranca.findMany({
           where,
           include: { locacao: true, cliente: { include: { rota: true } }, produto: true },
           orderBy: { createdAt: 'desc' },
+          take: groupLimit,
         }),
         db.cobranca.count({ where }),
       ])
@@ -121,8 +126,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Default: flat paginated list
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
+    const page = safePage(searchParams.get('page'))
+    const limit = safeLimit(searchParams.get('limit'))
     const skip = (page - 1) * limit
     const where = buildWhere()
 
@@ -145,8 +150,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized || !session) return response
 
   try {
     const body = await request.json()
@@ -173,9 +178,9 @@ export async function POST(request: NextRequest) {
       formaPagamento: locacao.formaPagamento as 'Periodo' | 'PercentualPagar' | 'PercentualReceber',
       relogioAnterior: data.relogioAnterior,
       relogioAtual: data.relogioAtual,
-      precoFicha: locacao.precoFicha,
-      percentualEmpresa: locacao.percentualEmpresa,
-      valorFixo: locacao.valorFixo ?? undefined,
+      precoFicha: toNumber(locacao.precoFicha),
+      percentualEmpresa: toNumber(locacao.percentualEmpresa),
+      valorFixo: locacao.valorFixo != null ? toNumber(locacao.valorFixo) : undefined,
       descontoPartidasQtd: data.descontoPartidasQtd,
       descontoPartidasValor: data.descontoPartidasValor,
       descontoDinheiro: data.descontoDinheiro,
@@ -185,11 +190,11 @@ export async function POST(request: NextRequest) {
     const { saldoDevedorGerado } = calcularSaldoDevedor(calcResult.totalClientePaga, data.valorRecebido)
 
     // Data de vencimento = dataFim
-    const dataVencimento = data.dataFim
+    const dataVencimento = new Date(data.dataFim)
 
     // Se status é Pago ou Parcial, dataPagamento = now
     const dataPagamento = (data.status === 'Pago' || data.status === 'Parcial')
-      ? new Date().toISOString().split('T')[0]
+      ? new Date()
       : null
 
     const cobranca = await db.cobranca.create({
@@ -199,8 +204,8 @@ export async function POST(request: NextRequest) {
         clienteNome: cliente.nomeExibicao,
         produtoId: locacao.produtoId,
         produtoIdentificador: locacao.produtoIdentificador,
-        dataInicio: data.dataInicio,
-        dataFim: data.dataFim,
+        dataInicio: new Date(data.dataInicio),
+        dataFim: new Date(data.dataFim),
         dataPagamento,
         dataVencimento,
         relogioAnterior: data.relogioAnterior,

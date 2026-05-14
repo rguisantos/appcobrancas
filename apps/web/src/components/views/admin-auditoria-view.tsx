@@ -40,9 +40,9 @@ interface LogAuditoria {
   entidade: string
   entidadeId: string | null
   entidadeNome: string | null
-  detalhes: string | null
-  antes: string | null
-  depois: string | null
+  detalhes: Record<string, unknown> | null
+  antes: Record<string, unknown> | null
+  depois: Record<string, unknown> | null
   ip: string | null
   severidade: string
   origem: string
@@ -194,20 +194,20 @@ export function AdminAuditoriaView() {
     }
   }
 
-  const formatJson = (jsonStr: string | null): string => {
-    if (!jsonStr) return ''
+  const formatJson = (value: Record<string, unknown> | null): string => {
+    if (!value) return ''
     try {
-      return JSON.stringify(JSON.parse(jsonStr), null, 2)
+      return JSON.stringify(value, null, 2)
     } catch {
-      return jsonStr
+      return String(value)
     }
   }
 
-  const getDiffFields = (antesStr: string | null, depoisStr: string | null) => {
-    if (!antesStr || !depoisStr) return []
+  const getDiffFields = (antesVal: Record<string, unknown> | null, depoisVal: Record<string, unknown> | null) => {
+    if (!antesVal || !depoisVal) return []
     try {
-      const antes = JSON.parse(antesStr) as Record<string, unknown>
-      const depois = JSON.parse(depoisStr) as Record<string, unknown>
+      const antes = antesVal
+      const depois = depoisVal
       const allKeys = new Set([...Object.keys(antes), ...Object.keys(depois)])
       const changes: Array<{ key: string; before: string; after: string }> = []
       allKeys.forEach((key) => {

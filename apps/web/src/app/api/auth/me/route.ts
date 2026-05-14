@@ -25,16 +25,17 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    if (!usuario || usuario.status !== 'Ativo') {
-      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
+    if (!usuario) return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
+    if (usuario.status !== 'Ativo') {
+      return NextResponse.json({ error: 'Usuário inativo' }, { status: 403 })
     }
 
     return NextResponse.json({
       user: {
         ...usuario,
-        permissoesWeb: JSON.parse(usuario.permissoesWeb || '{}'),
-        permissoesMobile: JSON.parse(usuario.permissoesMobile || '{}'),
-        rotasPermitidas: JSON.parse(usuario.rotasPermitidas || '[]'),
+        permissoesWeb: (usuario.permissoesWeb as Record<string, boolean>) || {},
+        permissoesMobile: (usuario.permissoesMobile as Record<string, boolean>) || {},
+        rotasPermitidas: (usuario.rotasPermitidas as string[]) || [],
       },
     })
   } catch (error) {
