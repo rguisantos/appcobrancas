@@ -32,6 +32,7 @@ model Rota {
   @@index([updatedAt])
   @@index([deletedAt])
   @@index([status])
+  @@index([produtoId, status])
   @@map("rotas")
 }
 
@@ -74,7 +75,9 @@ model Cliente {
   @@index([deletedAt])
   @@index([rotaId])
   @@index([status])
+  @@index([produtoId, status])
   @@index([nomeExibicao])
+  @@index([deletedAt, status])
   @@map("clientes")
 }
 
@@ -144,6 +147,8 @@ model Produto {
   @@index([updatedAt])
   @@index([deletedAt])
   @@index([statusProduto])
+  @@index([deletedAt, statusProduto])
+  @@index([tipoId, deletedAt])
   @@map("produtos")
 }
 
@@ -195,6 +200,9 @@ model Locacao {
   @@index([produtoId])
   @@index([status])
   @@index([produtoId, status])
+  @@index([produtoId, status])
+  @@index([deletedAt, status])
+  @@index([dataLocacao])
   @@map("locacoes")
 }
 
@@ -242,10 +250,12 @@ model Cobranca {
   @@index([clienteId])
   @@index([locacaoId])
   @@index([status])
+  @@index([produtoId, status])
   @@index([status, dataVencimento])
   @@index([deletedAt, status])
   @@index([clienteId, status])
   @@index([deletedAt, status, dataVencimento])
+  @@index([deletedAt, clienteId, status])
   @@map("cobrancas")
 }
 
@@ -303,6 +313,7 @@ model Usuario {
   @@index([updatedAt])
   @@index([deletedAt])
   @@index([status])
+  @@index([produtoId, status])
   @@map("usuarios")
 }
 
@@ -364,6 +375,7 @@ model Manutencao {
   @@index([updatedAt])
   @@index([produtoId])
   @@index([status])
+  @@index([produtoId, status])
   @@map("manutencoes")
 }
 
@@ -427,6 +439,7 @@ model LogAuditoria {
   @@index([entidade])
   @@index([createdAt])
   @@index([entidade, createdAt])
+  @@index([usuarioId, createdAt])
   @@map("logs_auditoria")
 }
 

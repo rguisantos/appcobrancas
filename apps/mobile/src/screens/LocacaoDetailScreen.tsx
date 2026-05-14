@@ -18,17 +18,20 @@ export function LocacaoDetailScreen() {
   const [cobrancas, setCobrancas] = useState<Cobranca[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     try {
+      setError(null)
       const [loc, cobs] = await Promise.all([
         api.getLocacao(id),
         api.getCobrancas({ locacaoId: id, limit: '20' }),
       ])
       setLocacao(loc)
       setCobrancas(cobs.data)
-    } catch (error) {
-      console.error('Error fetching locacao:', error)
+    } catch (err) {
+      console.error('Error fetching locacao:', err)
+      setError('Erro ao carregar dados da locação')
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -37,7 +40,17 @@ export function LocacaoDetailScreen() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  if (loading || !locacao) return <LoadingScreen />
+  if (loading) return <LoadingScreen />
+  if (error || !locacao) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error || 'Dados não encontrados'}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+          <Text style={styles.retryText}>Tentar novamente</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
 
   return (
     <ScrollView
@@ -165,4 +178,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   newCobrancaBtnText: { color: '#fff', fontSize: fontSize.md, fontWeight: '700' },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+    gap: spacing.md,
+  },
+  errorText: {
+    fontSize: fontSize.md,
+    color: colors.danger,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+  },
 })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireMutationRole } from '@/lib/rbac'
+import { handleApiError } from '@/lib/api-utils'
 import { db } from '@/lib/db'
-import { getAuthSession } from '@/lib/auth-jwt'
 import { format } from 'date-fns'
 import { toNumber } from '@/lib/decimal'
 
@@ -24,8 +25,8 @@ function escapeCSV(value: string): string {
 }
 
 export async function GET(request: NextRequest) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized || !session) return response
 
   const searchParams = request.nextUrl.searchParams
   const tipo = searchParams.get('tipo') || 'financeiro'
@@ -55,8 +56,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ error: 'Tipo de relatório inválido' }, { status: 400 })
   } catch (error) {
-    console.error('Erro ao gerar relatório:', error)
-    return NextResponse.json({ error: 'Erro ao gerar relatório' }, { status: 500 })
+    return handleApiError(error, 'Erro ao gerar relatório')
   }
 }
 

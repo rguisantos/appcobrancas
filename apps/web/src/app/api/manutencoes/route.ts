@@ -4,7 +4,7 @@ import { getAuthSession } from '@/lib/auth-jwt'
 import { requireMutationRole, requireAdmin } from '@/lib/rbac'
 import { manutencaoSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
-import { safeLimit, safePage } from '@/lib/api-utils'
+import { handleApiError, safeLimit, safePage } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -36,8 +36,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({ data, total, page, totalPages: Math.ceil(total / limit) })
   } catch (error) {
-    console.error('Erro ao buscar manutenções:', error)
-    return NextResponse.json({ error: 'Erro ao buscar manutenções' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar manutenções')
   }
 }
 
@@ -94,9 +93,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(manutencao, { status: 201 })
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'issues' in error) {
-      return NextResponse.json({ error: 'Dados inválidos', details: (error as { issues: unknown }).issues }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Erro ao criar manutenção' }, { status: 500 })
+    return handleApiError(error, 'Erro ao criar manutenção')
   }
 }

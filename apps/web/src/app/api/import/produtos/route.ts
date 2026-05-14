@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getAuthSession } from '@/lib/auth-jwt'
 import { requireMutationRole } from '@/lib/rbac'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { checkRateLimit } from '@/lib/rate-limit'
+import { handleApiError } from '@/lib/api-utils'
 
 interface CsvRow {
   identificador: string
@@ -81,6 +82,15 @@ export async function POST(request: NextRequest) {
   const { authorized, response, session } = await requireMutationRole()
   if (!authorized || !session) return response
 
+  // Rate limit: 10 imports per 15 minutes per user
+  const rateLimit = checkRateLimit(`import-produtos-${session.userId}`, 10, 15 * 60 * 1000)
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Muitas importações. Tente novamente em alguns minutos.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil((rateLimit.resetAtMs - Date.now()) / 1000)) } }
+    )
+  }
+
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File | null
@@ -93,11 +103,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Arquivo deve ser CSV' }, { status: 400 })
     }
 
+    // Limit file size to 5MB
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: 'Arquivo muito grande. Máximo: 5MB' }, { status: 400 })
+    }
+
     const text = await file.text()
     const { rows } = parseCSV(text)
 
     if (rows.length === 0) {
       return NextResponse.json({ error: 'CSV vazio ou formato inválido' }, { status: 400 })
+    }
+
+    // Limit number of rows
+    if (rows.length > 500) {
+      return NextResponse.json({ error: 'Máximo de 500 linhas por importação' }, { status: 400 })
     }
 
     const errors: Array<{ row: number; error: string }> = []
@@ -199,7 +219,6 @@ export async function POST(request: NextRequest) {
       total: rows.length,
     })
   } catch (error) {
-    console.error('Erro ao importar produtos:', error)
-    return NextResponse.json({ error: 'Erro ao processar importação' }, { status: 500 })
+    return handleApiError(error, 'Erro ao importar produtos')
   }
 }

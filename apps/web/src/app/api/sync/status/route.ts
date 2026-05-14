@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { handleApiError } from '@/lib/api-utils'
 
 /**
  * GET /api/sync/status?deviceId=xxx
@@ -55,7 +56,6 @@ export async function GET(request: NextRequest) {
       pendingChanges,
     })
   } catch (error) {
-    console.error('Sync status error:', error)
-    return NextResponse.json({ error: 'Erro ao buscar status de sync' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar status de sync')
   }
 }

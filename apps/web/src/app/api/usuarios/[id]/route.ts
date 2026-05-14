@@ -5,6 +5,7 @@ import { requireAdmin } from '@/lib/rbac'
 import { usuarioSchema } from '@/lib/validations'
 import { hashPassword, verifyPassword } from '@/lib/hash'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { handleApiError } from '@/lib/api-utils'
 
 const USUARIO_SELECT = {
   id: true,
@@ -42,8 +43,7 @@ export async function GET(
   if (!usuario) return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
   return NextResponse.json(usuario)
   } catch (error) {
-    console.error('Erro ao buscar usuário:', error)
-    return NextResponse.json({ error: 'Erro ao buscar usuário' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar usuário')
   }
 }
 
@@ -109,10 +109,7 @@ export async function PUT(
 
     return NextResponse.json(usuario)
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'issues' in error) {
-      return NextResponse.json({ error: 'Dados inválidos', details: (error as { issues: unknown }).issues }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Erro ao atualizar usuário' }, { status: 500 })
+    return handleApiError(error, 'Erro ao atualizar usuário')
   }
 }
 
@@ -150,7 +147,6 @@ export async function DELETE(
 
   return NextResponse.json({ message: 'Usuário excluído com sucesso' })
   } catch (error) {
-    console.error('Erro ao excluir usuário:', error)
-    return NextResponse.json({ error: 'Erro ao excluir usuário' }, { status: 500 })
+    return handleApiError(error, 'Erro ao excluir usuário')
   }
 }

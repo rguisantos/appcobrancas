@@ -4,6 +4,7 @@ import { getAuthSession } from '@/lib/auth-jwt'
 import { requireMutationRole, requireAdmin } from '@/lib/rbac'
 import { z } from 'zod/v4'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { handleApiError } from '@/lib/api-utils'
 
 const estabelecimentoSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório'),
@@ -21,8 +22,7 @@ export async function GET() {
 
   return NextResponse.json(data)
   } catch (error) {
-    console.error('Erro ao buscar estabelecimentos:', error)
-    return NextResponse.json({ error: 'Erro ao buscar estabelecimentos' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar estabelecimentos')
   }
 }
 
@@ -47,9 +47,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(estabelecimento, { status: 201 })
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'issues' in error) {
-      return NextResponse.json({ error: 'Dados inválidos', details: (error as { issues: unknown }).issues }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Erro ao criar estabelecimento' }, { status: 500 })
+    return handleApiError(error, 'Erro ao criar estabelecimento')
   }
 }

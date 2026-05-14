@@ -28,9 +28,11 @@ export function ClienteDetailScreen() {
   const [locacoes, setLocacoes] = useState<Locacao[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     try {
+      setError(null)
       const [clienteData, cobrancasData, locacoesData] = await Promise.all([
         api.getCliente(id),
         api.getCobrancas({ clienteId: id, limit: '10' }),
@@ -39,8 +41,9 @@ export function ClienteDetailScreen() {
       setCliente(clienteData)
       setCobrancas(cobrancasData.data)
       setLocacoes(locacoesData.data)
-    } catch (error) {
-      console.error('Error fetching cliente detail:', error)
+    } catch (err) {
+      console.error('Error fetching cliente detail:', err)
+      setError('Erro ao carregar dados do cliente')
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -51,7 +54,17 @@ export function ClienteDetailScreen() {
     fetchData()
   }, [fetchData])
 
-  if (loading || !cliente) return <LoadingScreen />
+  if (loading) return <LoadingScreen />
+  if (error || !cliente) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error || 'Dados não encontrados'}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+          <Text style={styles.retryText}>Tentar novamente</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
 
   const callPhone = () => {
     if (cliente.telefonePrincipal) {
@@ -199,4 +212,27 @@ const styles = StyleSheet.create({
   },
   listItemTitle: { fontSize: fontSize.sm, fontWeight: '600', color: colors.text },
   emptyText: { fontSize: fontSize.sm, color: colors.textMuted, textAlign: 'center', paddingVertical: spacing.md },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+    gap: spacing.md,
+  },
+  errorText: {
+    fontSize: fontSize.md,
+    color: colors.danger,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+  },
 })

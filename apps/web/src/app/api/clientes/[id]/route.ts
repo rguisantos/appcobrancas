@@ -26,8 +26,7 @@ export async function GET(
   if (!cliente) return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
   return NextResponse.json(cliente)
   } catch (error) {
-    console.error('Erro ao buscar cliente:', error)
-    return NextResponse.json({ error: 'Erro ao buscar cliente' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar cliente')
   }
 }
 
@@ -132,8 +131,7 @@ export async function PATCH(
 
     return NextResponse.json(cliente)
   } catch (error) {
-    console.error('Erro ao atualizar cliente:', error)
-    return NextResponse.json({ error: 'Erro ao atualizar cliente' }, { status: 500 })
+    return handleApiError(error, 'Erro ao atualizar cliente')
   }
 }
 

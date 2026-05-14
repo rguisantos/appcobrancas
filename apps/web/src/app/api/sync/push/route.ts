@@ -11,6 +11,7 @@ import {
 } from '@/lib/sync-log'
 import { pickAllowedFields } from '@/lib/sync-allowed-fields'
 import { handleApiError } from '@/lib/api-utils'
+import { checkRateLimit } from '@/lib/rate-limit'
 import { z } from 'zod/v4'
 
 const pushChangeSchema = z.object({
@@ -34,6 +35,15 @@ const pushBodySchema = z.object({
 export async function POST(request: NextRequest) {
   const { authorized, response, session } = await requireMutationRole()
   if (!authorized || !session) return response
+
+  // Rate limit: 30 sync pushes per 15 minutes per user
+  const rateLimit = checkRateLimit(`sync-push-${session.userId}`, 30, 15 * 60 * 1000)
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Muitas sincronizações. Tente novamente em alguns minutos." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rateLimit.resetAtMs - Date.now()) / 1000)) } }
+    )
+  }
 
   try {
     const body = await request.json()

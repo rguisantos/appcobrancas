@@ -5,6 +5,7 @@ import {
   ALL_SYNC_ENTITIES,
   type SyncEntity,
 } from '@/lib/sync-log'
+import { handleApiError } from '@/lib/api-utils'
 
 const PAGE_SIZE = 1000
 
@@ -163,7 +164,6 @@ export async function GET(request: NextRequest) {
       hasMore,
     })
   } catch (error) {
-    console.error('Sync pull error:', error)
-    return NextResponse.json({ error: 'Erro ao processar pull' }, { status: 500 })
+    return handleApiError(error, 'Erro ao processar sync pull')
   }
 }

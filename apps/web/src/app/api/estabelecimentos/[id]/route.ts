@@ -4,6 +4,7 @@ import { getAuthSession } from '@/lib/auth-jwt'
 import { requireMutationRole, requireAdmin } from '@/lib/rbac'
 import { z } from 'zod/v4'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { handleApiError } from '@/lib/api-utils'
 
 const estabelecimentoSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório'),
@@ -44,10 +45,7 @@ export async function PUT(
 
   return NextResponse.json(estabelecimento)
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'issues' in error) {
-      return NextResponse.json({ error: 'Dados inválidos', details: (error as { issues: unknown }).issues }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Erro ao atualizar estabelecimento' }, { status: 500 })
+    return handleApiError(error, 'Erro ao atualizar estabelecimento')
   }
 }
 
@@ -77,7 +75,6 @@ export async function DELETE(
 
   return NextResponse.json({ message: 'Estabelecimento excluído com sucesso' })
   } catch (error) {
-    console.error('Erro ao excluir estabelecimento:', error)
-    return NextResponse.json({ error: 'Erro ao excluir estabelecimento' }, { status: 500 })
+    return handleApiError(error, 'Erro ao excluir estabelecimento')
   }
 }

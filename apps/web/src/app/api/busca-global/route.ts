@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -68,7 +69,6 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({ clientes, produtos, locacoes, cobrancas })
   } catch (error) {
-    console.error('Erro na busca global:', error)
-    return NextResponse.json({ error: 'Erro na busca global' }, { status: 500 })
+    return handleApiError(error, 'Erro na busca global')
   }
 }

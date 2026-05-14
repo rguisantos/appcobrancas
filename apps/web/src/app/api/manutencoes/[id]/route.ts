@@ -4,6 +4,7 @@ import { getAuthSession } from '@/lib/auth-jwt'
 import { requireMutationRole, requireAdmin } from '@/lib/rbac'
 import { manutencaoSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function GET(
   _request: NextRequest,
@@ -22,8 +23,7 @@ export async function GET(
   if (!manutencao) return NextResponse.json({ error: 'Manutenção não encontrada' }, { status: 404 })
   return NextResponse.json(manutencao)
   } catch (error) {
-    console.error('Erro ao buscar manutenção:', error)
-    return NextResponse.json({ error: 'Erro ao buscar manutenção' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar manutenção')
   }
 }
 
@@ -97,10 +97,7 @@ export async function PUT(
 
     return NextResponse.json(manutencao)
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'issues' in error) {
-      return NextResponse.json({ error: 'Dados inválidos', details: (error as { issues: unknown }).issues }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Erro ao atualizar manutenção' }, { status: 500 })
+    return handleApiError(error, 'Erro ao atualizar manutenção')
   }
 }
 
@@ -149,7 +146,6 @@ export async function DELETE(
 
   return NextResponse.json({ message: 'Manutenção excluída com sucesso' })
   } catch (error) {
-    console.error('Erro ao excluir manutenção:', error)
-    return NextResponse.json({ error: 'Erro ao excluir manutenção' }, { status: 500 })
+    return handleApiError(error, 'Erro ao excluir manutenção')
   }
 }

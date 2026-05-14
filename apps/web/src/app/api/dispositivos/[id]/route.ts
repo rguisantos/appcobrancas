@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/rbac'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function DELETE(
   _request: NextRequest,
@@ -29,7 +30,6 @@ export async function DELETE(
 
   return NextResponse.json({ message: 'Dispositivo excluído com sucesso' })
   } catch (error) {
-    console.error('Erro ao excluir dispositivo:', error)
-    return NextResponse.json({ error: 'Erro ao excluir dispositivo' }, { status: 500 })
+    return handleApiError(error, 'Erro ao excluir dispositivo')
   }
 }

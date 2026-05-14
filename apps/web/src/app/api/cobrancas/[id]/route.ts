@@ -30,7 +30,6 @@ export async function GET(
   if (!cobranca) return NextResponse.json({ error: 'Cobrança não encontrada' }, { status: 404 })
   return NextResponse.json(cobranca)
   } catch (error) {
-    console.error('Erro ao buscar cobrança:', error)
     return handleApiError(error, 'Erro ao buscar cobrança')
   }
 }

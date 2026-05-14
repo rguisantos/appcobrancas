@@ -144,8 +144,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ data, total, page, totalPages: Math.ceil(total / limit) })
   } catch (error) {
-    console.error('Erro ao buscar cobranças:', error)
-    return NextResponse.json({ error: 'Erro ao buscar cobranças' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar cobranças')
   }
 }
 

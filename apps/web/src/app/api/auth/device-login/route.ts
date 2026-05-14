@@ -5,6 +5,7 @@ import { signToken, AuthPayload } from '@/lib/auth-jwt'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { checkRateLimit, resetRateLimit } from '@/lib/rate-limit'
 import { hashToken } from '@/lib/session'
+import { handleApiError } from '@/lib/api-utils'
 
 /**
  * POST /api/auth/device-login
@@ -145,7 +146,6 @@ export async function POST(request: NextRequest) {
         : null,
     })
   } catch (error) {
-    console.error('Device login error:', error)
-    return NextResponse.json({ error: 'Erro ao autenticar dispositivo' }, { status: 500 })
+    return handleApiError(error, 'Erro ao autenticar dispositivo')
   }
 }

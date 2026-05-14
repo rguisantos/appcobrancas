@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { toNumber } from '@/lib/decimal'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -178,7 +179,6 @@ export async function GET(request: NextRequest) {
     },
   })
   } catch (error) {
-    console.error('Erro ao buscar dados do mapa:', error)
-    return NextResponse.json({ error: 'Erro ao buscar dados do mapa' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar dados do mapa')
   }
 }

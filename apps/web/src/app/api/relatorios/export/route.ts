@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthSession } from '@/lib/auth-jwt'
 import { requireMutationRole } from '@/lib/rbac'
+import { handleApiError } from '@/lib/api-utils'
+import { checkRateLimit } from '@/lib/rate-limit'
 import { db } from '@/lib/db'
 import ExcelJS from 'exceljs'
 import { format as formatDate } from 'date-fns'
@@ -12,8 +13,17 @@ const VALID_TYPES: ReportType[] = ['financeiro', 'clientes', 'produtos', 'locaco
 
 export async function GET(request: NextRequest) {
   // Export requires at least Secretario role — contains sensitive financial data
-  const { authorized, response } = await requireMutationRole()
-  if (!authorized) return response
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized || !session) return response
+
+  // Rate limit: 10 exports per 15 minutes per user
+  const rateLimit = checkRateLimit(`export-relatorio-${session.userId}`, 10, 15 * 60 * 1000)
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Muitas exportações. Tente novamente em alguns minutos." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rateLimit.resetAtMs - Date.now()) / 1000)) } }
+    )
+  }
 
   const searchParams = request.nextUrl.searchParams
   const tipo = searchParams.get('tipo') as ReportType | null
@@ -104,8 +114,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Erro ao gerar relatório:', error)
-    return NextResponse.json({ error: 'Erro ao gerar relatório' }, { status: 500 })
+    return handleApiError(error, 'Erro ao gerar relatório')
   }
 }
 

@@ -34,13 +34,16 @@ export function DashboardScreen() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchDashboard = useCallback(async () => {
     try {
+      setError(null)
       const result = await api.getDashboard() as DashboardData
       setData(result)
-    } catch (error) {
-      console.error('Dashboard error:', error)
+    } catch (err) {
+      console.error('Dashboard error:', err)
+      setError('Erro ao carregar dados do dashboard')
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -57,6 +60,16 @@ export function DashboardScreen() {
   }
 
   if (loading) return <LoadingScreen />
+  if (error || !data) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error || 'Dados não encontrados'}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchDashboard}>
+          <Text style={styles.retryText}>Tentar novamente</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
 
   const greeting = () => {
     const hour = new Date().getHours()
@@ -252,6 +265,29 @@ const styles = StyleSheet.create({
   actionLabel: {
     fontSize: fontSize.xs,
     color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+    gap: spacing.md,
+  },
+  errorText: {
+    fontSize: fontSize.md,
+    color: colors.danger,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: fontSize.sm,
     fontWeight: '600',
   },
 })

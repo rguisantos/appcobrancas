@@ -3,6 +3,7 @@ import { getAuthSession } from '@/lib/auth-jwt'
 import { db } from '@/lib/db'
 import { hashToken } from '@/lib/session'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { handleApiError } from '@/lib/api-utils'
 import { cookies } from 'next/headers'
 
 export async function POST() {
@@ -40,7 +41,6 @@ export async function POST() {
 
     return response
   } catch (error) {
-    console.error('Logout error:', error)
-    return NextResponse.json({ error: 'Erro ao fazer logout' }, { status: 500 })
+    return handleApiError(error, 'Erro ao fazer logout')
   }
 }

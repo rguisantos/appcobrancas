@@ -1830,3 +1830,34 @@ Stage Summary:
 | JWT_SECRET | app-cobrancas-prod-secret-key-2024-mudar | Yes - CHANGE THIS! |
 | SECURE_COOKIES | true | Yes - required for HTTPS |
 | CRON_SECRET | cron-secret-prod-mudar | Yes - CHANGE THIS! |
+
+---
+Task ID: 3
+Agent: Super Z (main)
+Task: Review codebase, troubleshoot issues, and continue improving engineering details (Round 3)
+
+Work Log:
+- Performed comprehensive scan of 62 API routes identifying 24 unprotected mutation endpoints
+- Added RBAC (requireMutationRole/requireAdmin) to all 24 unprotected mutation endpoints
+- Replaced 35+ inline Zod error handling patterns with handleApiError() across all routes
+- Added missing writeSyncLog() calls to 15+ mutation endpoints for mobile sync
+- Fixed sync/push: added requireMutationRole(), validated updatedAt as ISO datetime, type-safe txModel
+- Fixed cobrancas/batch: replaced manual 'Admin' string with requireAdmin() + Zod validation
+- Fixed import routes: added 500-row batch limit to prevent DoS
+- Fixed usuarios GET: now requires admin (was any authenticated user)
+- Extracted viewLabels to shared @/lib/view-labels.ts module (eliminates DRY violation)
+- Fixed 'any' types in top-bar.tsx: added Notification, SearchResult, SearchResults interfaces
+- Fixed rate-limit.ts: lazy-init cleanup interval, unref() for serverless, configurable params
+- Fixed mobile sync store: persist changeQueue + lastSyncAt to AsyncStorage
+- Verified: TypeScript 0 new errors, Next.js build passes
+- Committed and pushed as 2bd8748
+
+Stage Summary:
+- Commit: 2bd8748 on fix/vercel-build-missing-types
+- 33 files changed, 4534 insertions, 461 deletions
+- All mutation endpoints now have proper RBAC
+- All catch blocks now use handleApiError()
+- All mutation endpoints now call writeSyncLog()
+- Frontend: eliminated viewLabels duplication, fixed any types
+- Mobile: offline data persistence via AsyncStorage
+- Rate limiter: serverless-safe with lazy init

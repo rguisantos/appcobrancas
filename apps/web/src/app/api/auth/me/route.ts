@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { db } from '@/lib/db'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,7 +40,6 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Me error:', error)
-    return NextResponse.json({ error: 'Erro ao buscar dados' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar dados do usuário')
   }
 }

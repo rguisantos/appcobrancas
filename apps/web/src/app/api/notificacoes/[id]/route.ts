@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function PUT(
   _request: NextRequest,
@@ -25,8 +26,7 @@ export async function PUT(
 
   return NextResponse.json(notificacao)
   } catch (error) {
-    console.error('Erro ao atualizar notificação:', error)
-    return NextResponse.json({ error: 'Erro ao atualizar notificação' }, { status: 500 })
+    return handleApiError(error, 'Erro ao atualizar notificação')
   }
 }
 
@@ -58,7 +58,6 @@ export async function DELETE(
 
   return NextResponse.json({ message: 'Notificação excluída com sucesso' })
   } catch (error) {
-    console.error('Erro ao excluir notificação:', error)
-    return NextResponse.json({ error: 'Erro ao excluir notificação' }, { status: 500 })
+    return handleApiError(error, 'Erro ao excluir notificação')
   }
 }

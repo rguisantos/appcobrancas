@@ -6,6 +6,7 @@ import { loginSchema } from '@/lib/validations'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { checkRateLimit, resetRateLimit } from '@/lib/rate-limit'
 import { hashToken } from '@/lib/session'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function POST(request: NextRequest) {
   try {
@@ -117,7 +118,6 @@ export async function POST(request: NextRequest) {
 
     return response
   } catch (error) {
-    console.error('Login error:', error)
-    return NextResponse.json({ error: 'Erro ao fazer login' }, { status: 500 })
+    return handleApiError(error, 'Erro ao fazer login')
   }
 }

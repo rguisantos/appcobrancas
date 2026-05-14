@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { Prisma } from '@prisma/client'
 import { toNumber } from '@/lib/decimal'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function GET() {
   const session = await getAuthSession()
@@ -185,7 +186,6 @@ export async function GET() {
       cobrancasRecentes,
     })
   } catch (error) {
-    console.error('Erro ao buscar dados do dashboard:', error)
-    return NextResponse.json({ error: 'Erro ao buscar dados do dashboard' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar dados do dashboard')
   }
 }

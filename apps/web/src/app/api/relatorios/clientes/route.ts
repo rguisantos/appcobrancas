@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthSession } from '@/lib/auth-jwt'
+import { requireMutationRole } from '@/lib/rbac'
+import { handleApiError } from '@/lib/api-utils'
 import { db } from '@/lib/db'
 import { toNumber } from '@/lib/decimal'
 
 export async function GET(request: NextRequest) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized || !session) return response
 
   try {
   const clientes = await db.cliente.findMany({
@@ -37,7 +38,6 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({ data })
   } catch (error) {
-    console.error('Erro ao buscar relatório de clientes:', error)
-    return NextResponse.json({ error: 'Erro ao buscar relatório de clientes' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar relatório de clientes')
   }
 }

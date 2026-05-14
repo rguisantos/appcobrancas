@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   const session = await getAuthSession()
@@ -29,7 +30,6 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json(cobrancas)
   } catch (error) {
-    console.error('Erro ao buscar agenda:', error)
-    return NextResponse.json({ error: 'Erro ao buscar agenda' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar agenda')
   }
 }

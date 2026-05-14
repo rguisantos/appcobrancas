@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthSession } from '@/lib/auth-jwt'
+import { requireMutationRole } from '@/lib/rbac'
+import { handleApiError } from '@/lib/api-utils'
 import { db } from '@/lib/db'
 import { format } from 'date-fns'
 import { toNumber } from '@/lib/decimal'
 
 export async function GET(request: NextRequest) {
-  const session = await getAuthSession()
-  if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  const { authorized, response, session } = await requireMutationRole()
+  if (!authorized || !session) return response
 
   try {
   const searchParams = request.nextUrl.searchParams
@@ -55,7 +56,6 @@ export async function GET(request: NextRequest) {
     cobrancas: cobrancas.slice(0, 100),
   })
   } catch (error) {
-    console.error('Erro ao buscar relatório financeiro:', error)
-    return NextResponse.json({ error: 'Erro ao buscar relatório financeiro' }, { status: 500 })
+    return handleApiError(error, 'Erro ao buscar relatório financeiro')
   }
 }

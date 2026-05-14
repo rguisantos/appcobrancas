@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getAuthSession } from '@/lib/auth-jwt'
 import { requireAdmin } from '@/lib/rbac'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { checkRateLimit } from '@/lib/rate-limit'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function POST(request: NextRequest) {
   const { authorized, response, session } = await requireAdmin()
   if (!authorized || !session) return response
+
+  // Rate limit: 20 batch operations per 15 minutes per user
+  const rateLimit = checkRateLimit(`batch-cobrancas-${session.userId}`, 20, 15 * 60 * 1000)
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Muitas operações batch. Tente novamente em alguns minutos.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil((rateLimit.resetAtMs - Date.now()) / 1000)) } }
+    )
+  }
 
   try {
     const body = await request.json()
@@ -92,7 +102,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ updated: 0 })
   } catch (error) {
-    console.error('Erro na operação batch:', error)
-    return NextResponse.json({ error: 'Erro ao processar operação batch' }, { status: 500 })
+    return handleApiError(error, 'Erro na operação batch de cobranças')
   }
 }

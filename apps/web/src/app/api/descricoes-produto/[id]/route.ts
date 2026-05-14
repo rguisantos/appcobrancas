@@ -4,6 +4,7 @@ import { getAuthSession } from '@/lib/auth-jwt'
 import { requireMutationRole, requireAdmin } from '@/lib/rbac'
 import { z } from 'zod/v4'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { handleApiError } from '@/lib/api-utils'
 
 const descricaoProdutoSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório'),
@@ -43,10 +44,7 @@ export async function PUT(
 
     return NextResponse.json(descricao)
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'issues' in error) {
-      return NextResponse.json({ error: 'Dados inválidos', details: (error as { issues: unknown }).issues }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Erro ao atualizar descrição de produto' }, { status: 500 })
+    return handleApiError(error, 'Erro ao atualizar descrição de produto')
   }
 }
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { View, Text, ScrollView, StyleSheet, RefreshControl } from 'react-native'
+import { View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native'
 import { useRoute } from '@react-navigation/native'
 import { api } from '@/services/api'
 import { Card } from '@/components/Card'
@@ -17,9 +17,11 @@ export function ProdutoDetailScreen() {
   const [historico, setHistorico] = useState<HistoricoRelogio[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     try {
+      setError(null)
       const [prod, mData, hData] = await Promise.all([
         api.getProduto(id),
         api.getManutencoes({ produtoId: id }),
@@ -28,8 +30,9 @@ export function ProdutoDetailScreen() {
       setProduto(prod)
       setManutencoes(mData.data)
       setHistorico(hData.data)
-    } catch (error) {
-      console.error('Error fetching produto:', error)
+    } catch (err) {
+      console.error('Error fetching produto:', err)
+      setError('Erro ao carregar dados do produto')
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -38,7 +41,17 @@ export function ProdutoDetailScreen() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  if (loading || !produto) return <LoadingScreen />
+  if (loading) return <LoadingScreen />
+  if (error || !produto) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error || 'Dados não encontrados'}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+          <Text style={styles.retryText}>Tentar novamente</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
 
   return (
     <ScrollView
@@ -167,4 +180,27 @@ const styles = StyleSheet.create({
   listItemTitle: { fontSize: fontSize.sm, fontWeight: '600', color: colors.text },
   meta: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
   emptyText: { fontSize: fontSize.sm, color: colors.textMuted, textAlign: 'center', padding: spacing.md },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+    gap: spacing.md,
+  },
+  errorText: {
+    fontSize: fontSize.md,
+    color: colors.danger,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+  },
 })

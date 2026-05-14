@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthSession } from '@/lib/auth-jwt'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { handleApiError } from '@/lib/api-utils'
 import { timingSafeEqual } from 'crypto'
 
 /** Timing-safe string comparison to prevent timing attacks. */
@@ -109,7 +110,6 @@ export async function POST(request: NextRequest) {
       })),
     })
   } catch (error) {
-    console.error('Erro ao processar vencimentos:', error)
-    return NextResponse.json({ error: 'Erro ao processar vencimentos' }, { status: 500 })
+    return handleApiError(error, 'Erro ao processar vencimentos')
   }
 }
